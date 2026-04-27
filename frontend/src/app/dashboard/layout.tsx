@@ -76,8 +76,8 @@ export default function DashboardLayout({
       {/* Mobile Top Header */}
       <div className="md:hidden bg-emerald-800 text-white p-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div>
-          <h1 className="text-lg font-black tracking-tight">Dawat-e-Quran</h1>
-          <p className="text-[10px] uppercase font-bold tracking-widest opacity-80">Admin Portal</p>
+          <h1 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200">Dawat-e-Quran</h1>
+          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-emerald-200/80">Admin Portal</p>
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

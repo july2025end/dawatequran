@@ -39,12 +39,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
-        <div className="bg-emerald-700 p-8 text-center">
-          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-            <BookOpen className="text-emerald-700 w-8 h-8" />
+        <div className="bg-emerald-800 bg-gradient-to-br from-emerald-800 to-emerald-900 p-8 text-center border-b border-emerald-950/50">
+          <div className="w-16 h-16 bg-white/10 rounded-2xl backdrop-blur-sm flex items-center justify-center mx-auto mb-4 border border-white/20 shadow-lg">
+            <BookOpen className="text-white w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-bold text-white">Dawat-e-Quran</h1>
-          <p className="text-emerald-100 mt-2">Zone 5 Management System</p>
+          <h1 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200">Dawat-e-Quran</h1>
+          <p className="text-xs uppercase font-black tracking-[0.25em] text-emerald-200/80 mt-2">Zone 5 Management System</p>
         </div>
         
         <div className="p-8 space-y-6">

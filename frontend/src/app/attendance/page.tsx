@@ -153,14 +153,14 @@ export default function AttendancePage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* Mobile Header */}
-      <div className="bg-emerald-700 text-white p-4 shadow-md sticky top-0 z-10">
-        <h1 className="text-xl font-bold">Jaiza & Attendance</h1>
+      <div className="bg-emerald-800 text-white p-5 shadow-lg sticky top-0 z-10 bg-gradient-to-br from-emerald-800 to-emerald-900 border-b border-emerald-950/50">
+        <h1 className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200 mb-1">Murabbi Portal</h1>
         <div className="flex flex-col">
-          <p className="text-sm opacity-90">
+          <p className="text-sm font-bold text-emerald-100">
             {activeCircle ? `${activeCircle.name}` : "Select Circle"}
           </p>
           {activeCircle?.murabbi_name && (
-            <p className="text-xs opacity-80 italic">
+            <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
               Murabbi: {activeCircle.murabbi_name}
             </p>
           )}

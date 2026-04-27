@@ -61,9 +61,9 @@ export default function AttendeePortal() {
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
       {/* Header */}
-      <div className="bg-emerald-800 bg-gradient-to-br from-emerald-800 to-emerald-900 text-white p-8 pb-10 shadow-lg">
-        <h1 className="text-3xl font-black tracking-tight text-center">Attendee Portal</h1>
-        <p className="text-emerald-100/70 text-center text-xs font-bold uppercase tracking-[0.3em] mt-2">Dawat-e-Quran • Zone 5</p>
+      <div className="bg-emerald-800 bg-gradient-to-br from-emerald-800 to-emerald-900 text-white p-8 pb-10 shadow-lg border-b border-emerald-950/50">
+        <h1 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200 text-center">Attendee Portal</h1>
+        <p className="text-xs uppercase font-black tracking-[0.3em] text-emerald-200/80 text-center mt-2">Dawat-e-Quran • Zone 5</p>
       </div>
 
       {/* Tabs */}
