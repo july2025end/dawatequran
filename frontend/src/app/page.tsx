@@ -12,8 +12,7 @@ export default function Home() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handlePortalClick = (e: React.MouseEvent, portal: 'admin' | 'murabbi') => {
-    e.preventDefault();
+  const handlePortalClick = (portal: 'admin' | 'murabbi') => {
     setTargetPortal(portal);
     setPassword('');
     setError('');
@@ -53,7 +52,7 @@ export default function Home() {
             Select your portal to continue. Access requires authorization.
           </p>
 
-          <button onClick={(e) => handlePortalClick(e, 'murabbi')} className="flex text-left items-center gap-4 w-full p-4 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all group">
+          <button type="button" onClick={() => handlePortalClick('murabbi')} className="flex text-left items-center gap-4 w-full p-4 rounded-xl border border-gray-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all group">
             <div className="bg-emerald-100 p-3 rounded-lg group-hover:bg-emerald-200 transition-colors flex-shrink-0">
               <LogIn className="text-emerald-700 w-6 h-6" />
             </div>
@@ -63,7 +62,7 @@ export default function Home() {
             </div>
           </button>
 
-          <button onClick={(e) => handlePortalClick(e, 'admin')} className="flex text-left items-center gap-4 w-full p-4 rounded-xl border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group">
+          <button type="button" onClick={() => handlePortalClick('admin')} className="flex text-left items-center gap-4 w-full p-4 rounded-xl border border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group">
             <div className="bg-blue-100 p-3 rounded-lg group-hover:bg-blue-200 transition-colors flex-shrink-0">
               <LogIn className="text-blue-700 w-6 h-6" />
             </div>
@@ -106,7 +105,7 @@ export default function Home() {
                   autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 ${targetPortal === 'admin' ? 'focus:ring-blue-500' : 'focus:ring-emerald-500'}`}
+                  className={`w-full p-3 bg-gray-50 border border-gray-200 text-gray-900 rounded-xl outline-none focus:ring-2 ${targetPortal === 'admin' ? 'focus:ring-blue-500' : 'focus:ring-emerald-500'}`}
                   placeholder="Password..."
                 />
                 {error && <p className="text-red-500 text-xs font-bold mt-2">{error}</p>}
