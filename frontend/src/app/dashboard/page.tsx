@@ -84,10 +84,10 @@ export default function AdminDashboard() {
           { name: 'Remaining', value: (totalSyllabus || 0) - uniqueCompleted },
         ]);
 
-        setRecentReports(reports?.map(r => ({
-          circle: r.quran_circles?.name,
-          murabbi: r.quran_circles?.murabbi_name || 'Admin',
-          topic: r.syllabus_topics ? `Topic ${r.syllabus_topics.topic_number}: ${r.syllabus_topics.title}` : 'General',
+        setRecentReports(reports?.map((r: any) => ({
+          circle: r.quran_circles?.name || r.quran_circles?.[0]?.name,
+          murabbi: r.quran_circles?.murabbi_name || r.quran_circles?.[0]?.murabbi_name || 'Admin',
+          topic: r.syllabus_topics ? `Topic ${r.syllabus_topics.topic_number || r.syllabus_topics[0]?.topic_number}: ${r.syllabus_topics.title || r.syllabus_topics[0]?.title}` : 'General',
           date: new Date(r.session_date).toLocaleDateString(),
           att: `${r.attendance?.filter((a: any) => a.status).length} / ${r.attendance?.length}`
         })) || []);
