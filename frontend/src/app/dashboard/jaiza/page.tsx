@@ -358,7 +358,7 @@ export default function JaizaReports() {
                 onClick={handleUpdateReport}
                 className="px-8 py-2 bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-800 transition-all flex items-center gap-2"
               >
-                <Safe className="w-4 h-4" />
+                <Save className="w-4 h-4" />
                 Update Report
               </button>
             </div>
