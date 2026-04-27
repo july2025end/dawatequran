@@ -108,18 +108,18 @@ export default function SyllabusEditor() {
         <div className="bg-white p-6 rounded-2xl shadow-md border border-emerald-100 space-y-4 animate-in fade-in zoom-in-95 duration-200">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="md:col-span-1">
-              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Topic #</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Topic #</label>
               <input type="number" className="p-2 border rounded-xl w-full bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Topic #" value={formData.topic_number} onChange={e => setFormData({...formData, topic_number: parseInt(e.target.value)})} />
             </div>
             <div className="md:col-span-3">
-              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Title</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Title</label>
               <input type="text" className="p-2 border rounded-xl w-full bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500" placeholder="Topic Title" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Select Surah</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Select Surah</label>
               <select 
                 className="p-2 border rounded-xl w-full bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500" 
                 value={formData.selectedSura}
@@ -133,7 +133,7 @@ export default function SyllabusEditor() {
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Start Ayat</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Start Ayat</label>
               <input 
                 type="number" 
                 className="p-2 border rounded-xl w-full bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500" 
@@ -144,7 +144,7 @@ export default function SyllabusEditor() {
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">End Ayat</label>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">End Ayat</label>
               <input 
                 type="number" 
                 className="p-2 border rounded-xl w-full bg-gray-50 outline-none focus:ring-2 focus:ring-emerald-500" 

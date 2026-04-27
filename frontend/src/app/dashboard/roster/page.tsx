@@ -231,14 +231,14 @@ export default function RosterManagement() {
                       <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Location</span>
                       <div className="text-right md:text-left">
                         <div className="font-bold text-gray-800">{p.quran_circles?.union_councils?.name}</div>
-                        <div className="text-[10px] text-gray-400 font-bold uppercase">{p.quran_circles?.name}</div>
+                        <div className="text-xs text-gray-500 font-bold uppercase">{p.quran_circles?.name}</div>
                       </div>
                     </td>
                     <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0">
                       <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Name & Role</span>
                       <div className="text-right md:text-left">
                         <div className="font-bold text-gray-900">{p.full_name}</div>
-                        <div className="text-[10px] uppercase font-bold text-blue-600">{p.type.replace('_', ' ')}</div>
+                        <div className="text-xs uppercase font-bold text-blue-700">{p.type.replace('_', ' ')}</div>
                       </div>
                     </td>
                     <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 font-mono text-gray-600">

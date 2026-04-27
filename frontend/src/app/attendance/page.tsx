@@ -160,7 +160,7 @@ export default function AttendancePage() {
             {activeCircle ? `${activeCircle.name}` : "Select Circle"}
           </p>
           {activeCircle?.murabbi_name && (
-            <p className="text-[10px] opacity-70 italic">
+            <p className="text-xs opacity-80 italic">
               Murabbi: {activeCircle.murabbi_name}
             </p>
           )}
@@ -282,7 +282,7 @@ export default function AttendancePage() {
                 </select>
                 {topic && (
                   <div className="mt-2 flex items-center justify-between px-1">
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Reference:</span>
+                    <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Reference:</span>
                     <a 
                       href={getTafheemLink(syllabus.find(t => t.id === topic)?.reference) || "#"} 
                       target="_blank" 
@@ -364,7 +364,7 @@ export default function AttendancePage() {
                 <span className="text-xs text-gray-500 font-medium">
                   Search & Select
                 </span>
-                <span className="text-[10px] bg-white border text-gray-400 px-2 py-0.5 rounded-full font-bold">
+                <span className="text-xs bg-white border text-gray-500 px-2 py-0.5 rounded-full font-bold">
                   {filteredParticipants.filter(p => p.present).length} / {filteredParticipants.length} Present
                 </span>
               </div>
@@ -389,7 +389,7 @@ export default function AttendancePage() {
                   >
                     <div>
                       <h3 className={`font-bold ${p.present ? 'text-emerald-900' : 'text-gray-800'}`}>{p.full_name}</h3>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full mt-1 font-bold inline-block uppercase tracking-tighter ${p.type === 'haazir_arkan' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                      <span className={`text-xs px-2 py-0.5 rounded-full mt-1 font-bold inline-block uppercase tracking-tighter ${p.type === 'haazir_arkan' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
                         {p.type.replace('_', ' ')}
                       </span>
                     </div>

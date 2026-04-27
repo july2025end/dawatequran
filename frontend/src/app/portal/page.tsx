@@ -104,7 +104,7 @@ export default function AttendeePortal() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`whitespace-nowrap px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all ${selectedCategory === cat ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-gray-400 border border-gray-100'}`}
+                  className={`whitespace-nowrap px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider transition-all ${selectedCategory === cat ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-gray-500 border border-gray-100'}`}
                 >
                   {cat}
                 </button>
@@ -122,17 +122,17 @@ export default function AttendeePortal() {
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
               <h2 className="text-gray-900 font-black text-lg">Upcoming Events</h2>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">{filteredSchedule.length} found</span>
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md">{filteredSchedule.length} found</span>
             </div>
             {filteredSchedule.map(item => (
               <div key={item.id} className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex gap-5 items-start relative overflow-hidden group hover:shadow-md transition-all">
                 <div className="absolute top-0 right-0">
-                   <span className={`text-[8px] font-black uppercase tracking-widest px-4 py-1.5 rounded-bl-2xl text-white ${item.category === 'quran_circle' ? 'bg-blue-500' : item.category === 'ijtima_arkan' ? 'bg-purple-500' : 'bg-emerald-500'}`}>
+                   <span className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-bl-2xl text-white ${item.category === 'quran_circle' ? 'bg-blue-500' : item.category === 'ijtima_arkan' ? 'bg-purple-500' : 'bg-emerald-500'}`}>
                     {item.category.replace('_', ' ')}
                    </span>
                 </div>
                 <div className="bg-emerald-50 text-emerald-700 p-4 rounded-2xl flex flex-col items-center justify-center min-w-[70px] border border-emerald-100">
-                  <span className="text-[10px] uppercase font-black tracking-widest opacity-60">
+                  <span className="text-xs uppercase font-black tracking-widest opacity-80">
                     {new Date(item.session_date).toLocaleString('default', { month: 'short' })}
                   </span>
                   <span className="text-2xl font-black">{new Date(item.session_date).getDate()}</span>
@@ -142,7 +142,7 @@ export default function AttendeePortal() {
                     {item.syllabus_topics?.title || "Special Session"}
                   </h3>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-gray-500">
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-600">
                       <div className="w-6 h-6 rounded-lg bg-gray-50 flex items-center justify-center">
                         <Clock className="w-3.5 h-3.5 text-gray-400" />
                       </div>
@@ -153,7 +153,7 @@ export default function AttendeePortal() {
                         href={getTafheemLink(item.syllabus_topics.reference) || "#"} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-[11px] text-emerald-600 font-black hover:text-emerald-800 transition-colors bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100"
+                        className="inline-flex items-center gap-2 text-xs text-emerald-700 font-black hover:text-emerald-800 transition-colors bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100"
                       >
                         <Book className="w-3.5 h-3.5" />
                         {item.syllabus_topics.reference}
@@ -161,7 +161,7 @@ export default function AttendeePortal() {
                       </a>
                     )}
                     {item.location && (
-                      <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400">
+                      <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
                         <div className="w-6 h-6 rounded-lg bg-gray-50 flex items-center justify-center">
                           <MapPin className="w-3.5 h-3.5 text-gray-400" />
                         </div>
@@ -186,7 +186,7 @@ export default function AttendeePortal() {
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
               <h2 className="text-gray-900 font-black text-lg">Syllabus Overview</h2>
-              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">{filteredSyllabus.length} topics</span>
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md">{filteredSyllabus.length} topics</span>
             </div>
             <div className="grid grid-cols-1 gap-3">
               {filteredSyllabus.map(item => (
@@ -215,7 +215,7 @@ export default function AttendeePortal() {
 
       <div className="mt-12 px-8 text-center pb-20">
         <div className="w-12 h-1 bg-gray-100 mx-auto mb-6 rounded-full"></div>
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] leading-relaxed">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] leading-relaxed">
           Need help or want to join a circle? <br />
           Contact your local Union Council representative.
         </p>

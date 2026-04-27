@@ -34,7 +34,7 @@ export default function DashboardLayout({
       <div className="hidden md:flex w-64 bg-emerald-800 text-white flex-col sticky top-0 h-screen shadow-xl shadow-emerald-900/20">
         <div className="p-8">
           <h1 className="text-2xl font-black tracking-tight text-white">Dawat-e-Quran</h1>
-          <p className="text-[10px] uppercase font-bold tracking-[0.2em] opacity-60 mt-1">Zone 5, Islamabad</p>
+          <p className="text-xs uppercase font-bold tracking-[0.2em] opacity-80 mt-1">Zone 5, Islamabad</p>
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -77,7 +77,7 @@ export default function DashboardLayout({
       <div className="md:hidden bg-emerald-800 text-white p-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div>
           <h1 className="text-lg font-black tracking-tight">Dawat-e-Quran</h1>
-          <p className="text-[8px] uppercase font-bold tracking-widest opacity-60">Admin Portal</p>
+          <p className="text-[10px] uppercase font-bold tracking-widest opacity-80">Admin Portal</p>
         </div>
         <button 
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -138,7 +138,7 @@ export default function DashboardLayout({
               className={`flex flex-col items-center gap-1 px-1 transition-all cursor-pointer ${isActive ? 'text-emerald-600 scale-110' : 'text-gray-400 active:scale-95'}`}
             >
               <Icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={isActive ? 3 : 2} />
-              <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-tighter truncate max-w-[50px] text-center">{item.name.split(' ')[0]}</span>
+              <span className="text-[10px] sm:text-xs font-black uppercase tracking-tighter truncate max-w-[60px] text-center">{item.name.split(' ')[0]}</span>
             </Link>
           );
         })}

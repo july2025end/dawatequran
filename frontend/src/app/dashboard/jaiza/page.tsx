@@ -154,7 +154,7 @@ export default function JaizaReports() {
                         <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Date & Type</span>
                         <div className="text-right md:text-left">
                           <div className="font-bold text-gray-900">{new Date(report.session_date).toLocaleDateString()}</div>
-                          <div className="text-[10px] text-gray-400 font-bold uppercase">{report.category.replace('_', ' ')}</div>
+                          <div className="text-xs text-gray-500 font-bold uppercase">{report.category.replace('_', ' ')}</div>
                         </div>
                       </td>
                       <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0">
@@ -175,7 +175,7 @@ export default function JaizaReports() {
                           {report.syllabus_topics ? (
                             <>
                               <div className="font-medium text-gray-800">{report.syllabus_topics.title}</div>
-                              <div className="text-[10px] text-emerald-600 font-bold">TOPIC #{report.syllabus_topics.topic_number}</div>
+                              <div className="text-xs text-emerald-700 font-bold uppercase tracking-wider">TOPIC #{report.syllabus_topics.topic_number}</div>
                             </>
                           ) : (
                             <span className="text-gray-400 italic">No topic assigned</span>
@@ -246,11 +246,11 @@ export default function JaizaReports() {
                                 >
                                   <div>
                                     <div className="text-sm font-bold text-gray-800">{att.participants?.full_name}</div>
-                                    <div className="text-[10px] uppercase font-black text-gray-400">{att.participants?.type.replace('_', ' ')}</div>
+                                    <div className="text-xs uppercase font-bold text-gray-500">{att.participants?.type.replace('_', ' ')}</div>
                                   </div>
                                   <button 
                                     onClick={() => toggleAttendance(att.session_id, att.participant_id, att.status)}
-                                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${att.status ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-100 text-gray-400'}`}
+                                    className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider transition-all ${att.status ? 'bg-emerald-600 text-white shadow-sm' : 'bg-gray-100 text-gray-400'}`}
                                   >
                                     {att.status ? 'Present' : 'Absent'}
                                   </button>

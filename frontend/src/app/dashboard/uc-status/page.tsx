@@ -204,7 +204,7 @@ export default function UCStatus() {
                     <td className="block md:table-cell px-4 py-4 md:px-6 md:py-6 md:pr-8 bg-gray-50/30 md:bg-transparent">
                       <div className="flex items-center gap-4">
                         <div className="flex-1">
-                          <div className="flex justify-between text-[10px] font-black uppercase text-gray-400 mb-1">
+                          <div className="flex justify-between text-xs font-bold uppercase text-gray-500 mb-1">
                             <span className="md:hidden">Progress</span>
                             <span className="hidden md:inline">{uc.uniqueTopics} / {totalTopics} Topics</span>
                             <span>{uc.progress}%</span>
