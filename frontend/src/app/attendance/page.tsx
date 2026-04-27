@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { CheckCircle, XCircle, Search, Save, Loader2, Plus, X, ExternalLink, LogOut } from "lucide-react";
 import { getTafheemLink } from "@/lib/quran_utils";
