@@ -1,0 +1,95 @@
+{
+  "zones": [
+    {
+      "name": "Zone 5 (Islamabad)",
+      "sectors": [
+        {
+          "name": "G-Sectors",
+          "union_councils": [
+            {
+              "name": "UC-81 (G-9/3)",
+              "quran_circles": [
+                { "name": "Circle 1", "murabbi": "Professor Abdul Sami", "participants": ["Jawad Saleem", "Muhammad Saleem Chaudhry", "Auf Abdul Rehman", "Abdul Rab"] },
+                { "name": "Circle 2", "murabbi": "Hafiz Mubarak Ahmed", "participants": ["Mubashir", "Adnan Sami"] },
+                { "name": "Circle 3", "murabbi": "Dr. Zaheer-ud-Din Bahram", "participants": ["Muhammad Rashid", "Umar Shah", "Bilal Rukhsar Abbasi", "Zia-ur-Rehman"] },
+                { "name": "Circle 4", "murabbi": "Malik Noman", "participants": ["Muhammad Anwar Khawaja", "Muhammad Akhtar Abbas", "Naeem Abbasi", "Rao Ashfaq", "Bashir"] }
+              ]
+            },
+            {
+              "name": "UC-82 (G-9/2)",
+              "quran_circles": [
+                { "name": "Circle 1", "murabbi": "Mubarak Ahmed", "participants": ["Shafqat Saleem", "Arshad"] },
+                { "name": "Circle 2", "murabbi": "Abdul Samad", "participants": ["Raja Tanveer", "Ibrahim Samad", "Taha", "Moiz", "Sarwar Hasan", "Syed Zubair", "Tajammul Hussain", "Mohsin", "Atif"] }
+              ]
+            },
+            {
+              "name": "UC-83 (G-9/4)",
+              "quran_circles": [
+                { "name": "Circle 1", "murabbi": "Dr. Mubeen Siddiqui", "participants": ["Azhar Baloch", "Rashid Hussain", "Raja Muhammad Mansoor", "Syed Hussain Shah", "Chaudhry Muhammad Iqbal", "Shahid Imran Gondal", "Mahboob Hashmi", "Waqar Jadoon"] }
+              ]
+            },
+            {
+              "name": "UC-84 (G-10 2/3)",
+              "quran_circles": [
+                { "name": "Circle 1", "murabbi": "Maaz Siddiqui", "participants": ["Local Residents"] },
+                { "name": "Circle 2", "murabbi": "Mushtaq Najmi", "participants": ["Aman bin Mushtaq", "Badr-ul-Islam", "Waqar Ahmed", "Dilawar Shah", "Qari Abdullah", "Asjad Murtaza", "Hafiz Ali"] },
+                { "name": "Circle 3", "murabbi": "Ghulam Sarwar Shakir", "participants": ["Chaudhry Muhammad Siddique", "Muhammad Yusuf Ghazi", "Muzammil Sarwar Shakir"] },
+                { "name": "Circle 4", "murabbi": "Ghulam Mustafa", "participants": ["Muhammad Tariq", "Jameel Baloch", "Umar Farooq", "Fayyaz Ahmed", "Muhammad Waseem Sheikh", "Shah Gul"] }
+              ]
+            },
+            {
+              "name": "UC-85 (G-10 1/4)",
+              "quran_circles": [
+                { "name": "Circle 1", "murabbi": "Dr. Tahir Farooq", "participants": ["Syed Saif-ul-Islam", "Malik Inam", "Youth Group", "Atta-ur-Rehman", "Mukhtar Bhatti"] },
+                { "name": "Circle 2", "murabbi": "Abdullah Sarfraz", "participants": ["Ibrahim Alvi", "Abdul Samad", "Jahanzeb Bhatti", "Muhammad Aslam", "Umair Hasan"] },
+                { "name": "Circle 3", "murabbi": "Abdul Quddus Qureshi", "participants": ["Farman Allah", "Aurangzeb Baig", "Umair"] }
+              ]
+            },
+            {
+              "name": "UC-86 (G-11 1-2)",
+              "quran_circles": [
+                { "name": "Circle 1", "murabbi": "Abdul Haseeb", "participants": ["Adnan Shah", "Muhammad Arslan", "Dr. Abdul Jabbar", "Malik Abdul Rehman", "Muneeb ur Rehman"] },
+                { "name": "Circle 2", "murabbi": "Hafiz Bakht Ali", "participants": ["Imdad Ali", "Fateh Muhammad", "Khalid Hayat", "Dr. Noor Hayat"] },
+                { "name": "Circle 3", "murabbi": "Sagheer Bhatti", "participants": ["Tajammul Nadir", "Abdul Mannan", "Saeed Ahmed"] },
+                { "name": "Circle 4", "murabbi": "Farid Brohi", "participants": ["Shabbir Ahmed", "Chaudhry Younas"] },
+                { "name": "Circle 5", "murabbi": "Mushtaq Ahmed", "participants": ["Zia ur Rehman", "Fawad Ahmed"] }
+              ]
+            },
+            {
+              "name": "UC-87 (G-11/3)",
+              "quran_circles": [
+                { "name": "Circle 1", "murabbi": "Niaz Malik", "participants": ["Zafarullah Chaudhry", "Daler Khan", "Dr. Abdul Khaliq", "Abdul Ghaffar Nadeem", "Syed Mehmood Ahmed"] },
+                { "name": "Circle 2", "murabbi": "Tayyab Siddiqui", "participants": ["Shabbir Hussain", "Abdul Waheed", "Rizwan Khan", "Syed Saeed-ur-Rehman", "Rizwan Baig", "Zaheer Ahmed", "Muneeb Chughtai"] }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "I-Sectors",
+          "union_councils": [
+            {
+              "name": "UC-88 (I-8 2/3)",
+              "quran_circles": [
+                { "name": "Circle 1", "murabbi": "Zubair Ahmed Siddiqui", "participants": ["Asad Ali Mughal", "Shams-ul-Islam", "Shams-ul-Haq", "Mushtaq-ur-Rehman", "Qazi Israil", "Farooq Khan", "Najeeb ur Rehman Abbasi", "Muhammad Younas Shakir"] },
+                { "name": "Circle 2", "murabbi": "Saeed Ahmed", "participants": ["Altaf Sher", "Imran Bukhari", "Aamir Nadeem Janjua", "Saqib Riaz", "Ahmed Ali Janjua", "Taha Saeed"] }
+              ]
+            },
+            {
+              "name": "UC-89 (I-8 1/4)",
+              "quran_circles": [
+                { "name": "Circle 1", "murabbi": "Haroon Abbasi", "participants": ["Sikandar Hayat", "Saadan Yusuf", "Israr Ahmed", "Shakeel Ahmed"] },
+                { "name": "Circle 2", "murabbi": "Qayyum Johar", "participants": ["Muhammad Sibtain", "No Zaman", "M. Arif Bhatti", "Rana Ijaz"] },
+                { "name": "Circle 3", "murabbi": "Dr. Hussain Majid", "participants": ["Zafar-ul-Islam Chaudhry", "Anjum Raheel", "Javed Akhtar Chaudhry"] }
+              ]
+            },
+            { "name": "UC-90-A (I-9/4)", "quran_circles": [ { "name": "Circle 1", "murabbi": "Pending", "participants": [] }, { "name": "Circle 2", "murabbi": "Pending", "participants": [] } ] },
+            { "name": "UC-90-B (I-9/1)", "quran_circles": [ { "name": "Circle 1", "murabbi": "Pending", "participants": [] }, { "name": "Circle 2", "murabbi": "Pending", "participants": [] }, { "name": "Circle 3", "murabbi": "Pending", "participants": [] } ] },
+            { "name": "UC-91 (I-10/4)", "quran_circles": [ { "name": "Circle 1", "murabbi": "Pending", "participants": [] }, { "name": "Circle 2", "murabbi": "Pending", "participants": [] }, { "name": "Circle 3", "murabbi": "Pending", "participants": [] }, { "name": "Circle 4", "murabbi": "Pending", "participants": [] }, { "name": "Circle 5", "murabbi": "Pending", "participants": [] } ] },
+            { "name": "UC-92 (I-10/2)", "quran_circles": [ { "name": "Circle 1", "murabbi": "Pending", "participants": [] }, { "name": "Circle 2", "murabbi": "Pending", "participants": [] }, { "name": "Circle 3", "murabbi": "Pending", "participants": [] }, { "name": "Circle 4", "murabbi": "Pending", "participants": [] }, { "name": "Circle 5", "murabbi": "Pending", "participants": [] } ] },
+            { "name": "UC-93 (I-10/1)", "quran_circles": [ { "name": "Circle 1", "murabbi": "Pending", "participants": [] }, { "name": "Circle 2", "murabbi": "Pending", "participants": [] }, { "name": "Circle 3", "murabbi": "Pending", "participants": [] }, { "name": "Circle 4", "murabbi": "Pending", "participants": [] }, { "name": "Circle 5", "murabbi": "Pending", "participants": [] } ] }
+          ]
+        }
+      ]
+    }
+  ]
+}
