@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import { getTafheemLink } from "@/lib/quran_utils";
-import { Calendar, Book, Clock, MapPin, Search, ChevronRight, Loader2, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Calendar, Book, Clock, MapPin, Search, ChevronRight, Loader2, ExternalLink, LogOut } from "lucide-react";
 
 export default function AttendeePortal() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("schedule");
   const [searchQuery, setSearchQuery] = useState("");
   
@@ -61,9 +60,17 @@ export default function AttendeePortal() {
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
       {/* Header */}
-      <div className="bg-emerald-800 bg-gradient-to-br from-emerald-800 to-emerald-900 text-white p-8 pb-10 shadow-lg border-b border-emerald-950/50">
-        <h1 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200 text-center">Attendee Portal</h1>
-        <p className="text-xs uppercase font-black tracking-[0.3em] text-emerald-200/80 text-center mt-2">Dawat-e-Quran • Zone 5</p>
+      <div className="bg-emerald-800 bg-gradient-to-br from-emerald-800 to-emerald-900 text-white p-8 pb-10 shadow-lg border-b border-emerald-950/50 relative overflow-hidden">
+        <div className="relative z-10">
+          <h1 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200 text-center">Attendee Portal</h1>
+          <p className="text-xs uppercase font-black tracking-[0.3em] text-emerald-200/80 text-center mt-2">Dawat-e-Quran • Zone 5</p>
+        </div>
+        <button 
+          onClick={() => router.push('/')}
+          className="absolute top-6 right-6 p-2 bg-white/10 rounded-xl border border-white/10 active:scale-95 transition-all text-emerald-100 z-20"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Tabs */}

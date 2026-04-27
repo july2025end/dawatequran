@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import { CheckCircle, XCircle, Search, Save, Loader2, Plus, X, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CheckCircle, XCircle, Search, Save, Loader2, Plus, X, ExternalLink, LogOut } from "lucide-react";
 import { getTafheemLink } from "@/lib/quran_utils";
 
 export default function AttendancePage() {
+  const router = useRouter();
   const [selectedUC, setSelectedUC] = useState("");
   const [selectedCircle, setSelectedCircle] = useState("");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
@@ -153,18 +153,26 @@ export default function AttendancePage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* Mobile Header */}
-      <div className="bg-emerald-800 text-white p-5 shadow-lg sticky top-0 z-10 bg-gradient-to-br from-emerald-800 to-emerald-900 border-b border-emerald-950/50">
-        <h1 className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200 mb-1">Murabbi Portal</h1>
-        <div className="flex flex-col">
-          <p className="text-sm font-bold text-emerald-100">
-            {activeCircle ? `${activeCircle.name}` : "Select Circle"}
-          </p>
-          {activeCircle?.murabbi_name && (
-            <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
-              Murabbi: {activeCircle.murabbi_name}
+      <div className="bg-emerald-800 text-white p-5 shadow-lg sticky top-0 z-10 bg-gradient-to-br from-emerald-800 to-emerald-900 border-b border-emerald-950/50 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200 mb-1">Murabbi Portal</h1>
+          <div className="flex flex-col">
+            <p className="text-sm font-bold text-emerald-100">
+              {activeCircle ? `${activeCircle.name}` : "Select Circle"}
             </p>
-          )}
+            {activeCircle?.murabbi_name && (
+              <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
+                Murabbi: {activeCircle.murabbi_name}
+              </p>
+            )}
+          </div>
         </div>
+        <button 
+          onClick={() => router.push('/')}
+          className="p-2 bg-white/10 rounded-xl border border-white/10 active:scale-95 transition-all text-emerald-100"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
       </div>
 
       <div className="p-4 space-y-4">

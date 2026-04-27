@@ -58,11 +58,7 @@ export default function DashboardLayout({
           })}
         </nav>
 
-        <div className="p-6 border-t border-emerald-700/50 space-y-2">
-           <button className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-emerald-100 font-bold hover:bg-emerald-700/50 hover:text-white transition-all">
-             <Settings className="w-5 h-5 opacity-50" />
-             Settings
-           </button>
+        <div className="p-6 border-t border-emerald-700/50">
            <button 
              onClick={handleLogout}
              className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-200 font-bold hover:bg-red-900/50 hover:text-white transition-all"
@@ -109,8 +105,7 @@ export default function DashboardLayout({
               );
             })}
           </nav>
-          <div className="absolute bottom-10 left-6 right-6 border-t border-emerald-700 pt-6 space-y-4">
-            <button className="flex items-center gap-4 text-emerald-100 font-bold text-lg"><Settings className="w-6 h-6" /> Settings</button>
+          <div className="absolute bottom-10 left-6 right-6 border-t border-emerald-700 pt-6">
             <button 
               onClick={handleLogout}
               className="flex items-center gap-4 text-red-300 font-bold text-lg"
