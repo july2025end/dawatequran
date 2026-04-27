@@ -102,53 +102,73 @@ export default function ScheduleEditor() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 font-medium border-b">
-            <tr>
-              <th className="px-6 py-4">Date</th>
-              <th className="px-6 py-4">Circle & UC</th>
-              <th className="px-6 py-4">Topic</th>
-              <th className="px-6 py-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {sessions.map(s => (
-              <tr key={s.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 font-bold text-gray-700">{new Date(s.session_date).toLocaleDateString()}</td>
-                <td className="px-6 py-4">
-                  <div className="font-bold text-gray-900">{s.quran_circles?.name}</div>
-                  <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                    <MapPin className="w-3 h-3 text-emerald-500" /> {s.quran_circles?.union_councils?.name || 'Unknown UC'}
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-gray-500">{s.syllabus_topics?.title || "No topic"}</td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-1">
-                    <button onClick={() => {
-                      setEditingId(s.id); 
-                      setSelectedUC(s.quran_circles?.uc_id || "");
-                      setFormData({
-                        session_date: s.session_date,
-                        category: s.category,
-                        location: s.location || "",
-                        notes: s.notes || "",
-                        circle_id: s.circle_id,
-                        topic_id: s.topic_id || ""
-                      });
-                    }} className="p-2 text-gray-400 hover:text-blue-600 transition-colors"><Edit2 className="w-4 h-4" /></button>
-                    <button 
-                      onClick={() => handleDelete(s.id)} 
-                      className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden md:overflow-visible">
+        <div className="overflow-x-auto md:overflow-visible">
+          <table className="w-full text-left text-sm block md:table">
+            <thead className="hidden md:table-header-group bg-gray-50 text-gray-500 font-medium border-b">
+              <tr>
+                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">Circle & UC</th>
+                <th className="px-6 py-4">Topic</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="block md:table-row-group space-y-4 md:space-y-0 md:divide-y divide-gray-100 p-4 md:p-0 bg-gray-50/30 md:bg-transparent">
+              {sessions.map(s => (
+                <tr key={s.id} className="block md:table-row bg-white border border-gray-100 rounded-2xl shadow-sm md:shadow-none md:border-0 md:rounded-none mb-4 md:mb-0 hover:bg-gray-50 transition-colors">
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 bg-gray-50/50 md:bg-transparent">
+                    <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Date</span>
+                    <span className="font-bold text-gray-700">{new Date(s.session_date).toLocaleDateString()}</span>
+                  </td>
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0">
+                    <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Circle</span>
+                    <div className="text-right md:text-left">
+                      <div className="font-bold text-gray-900 flex justify-end md:justify-start">{s.quran_circles?.name}</div>
+                      <div className="text-xs text-gray-500 flex items-center justify-end md:justify-start gap-1 mt-1">
+                        <MapPin className="w-3 h-3 text-emerald-500" /> {s.quran_circles?.union_councils?.name || 'Unknown UC'}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0">
+                    <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Topic</span>
+                    <span className="text-gray-500">{s.syllabus_topics?.title || "No topic"}</span>
+                  </td>
+                  <td className="block md:table-cell px-4 py-4 md:px-6 md:py-4 md:text-right bg-gray-50/30 md:bg-transparent">
+                    <div className="flex justify-between md:justify-end gap-2 w-full">
+                      <button onClick={() => {
+                        setEditingId(s.id); 
+                        setSelectedUC(s.quran_circles?.uc_id || "");
+                        setFormData({
+                          session_date: s.session_date,
+                          category: s.category,
+                          location: s.location || "",
+                          notes: s.notes || "",
+                          circle_id: s.circle_id,
+                          topic_id: s.topic_id || ""
+                        });
+                      }} className="flex-1 md:flex-none p-2 bg-white border border-gray-200 md:border-transparent text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors rounded-lg flex items-center justify-center">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(s.id)} 
+                        className="flex-1 md:flex-none p-2 bg-white border border-gray-200 md:border-transparent text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors rounded-lg flex items-center justify-center"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {sessions.length === 0 && (
+                <tr className="block md:table-row">
+                  <td colSpan={4} className="block md:table-cell px-6 py-20 text-center text-gray-400">
+                    No scheduled sessions found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

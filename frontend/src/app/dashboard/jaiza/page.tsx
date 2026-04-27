@@ -135,9 +135,9 @@ export default function JaizaReports() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-500 font-medium border-b">
+          <div className="overflow-x-auto md:overflow-visible">
+            <table className="w-full text-left text-sm block md:table">
+              <thead className="hidden md:table-header-group bg-gray-50 text-gray-500 font-medium border-b">
                 <tr>
                   <th className="px-6 py-4">Session Date</th>
                   <th className="px-6 py-4">Quran Circle & UC</th>
@@ -146,35 +146,45 @@ export default function JaizaReports() {
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="block md:table-row-group space-y-4 md:space-y-0 md:divide-y divide-gray-100 p-4 md:p-0 bg-gray-50/30 md:bg-transparent">
                 {filteredReports.map((report) => (
                   <React.Fragment key={report.id}>
-                    <tr className={`hover:bg-gray-50 transition-colors ${viewingDetails === report.id ? 'bg-emerald-50/30' : ''}`}>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-gray-900">{new Date(report.session_date).toLocaleDateString()}</div>
-                        <div className="text-[10px] text-gray-400 font-bold uppercase">{report.category.replace('_', ' ')}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-gray-800">{report.quran_circles?.name}</div>
-                        <div className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                          <MapPin className="w-3 h-3 text-emerald-500" /> {report.quran_circles?.union_councils?.name || 'Unknown UC'}
-                        </div>
-                        <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                          <Users className="w-3 h-3" /> {report.quran_circles?.murabbi_name || 'Admin'}
+                    <tr className={`block md:table-row bg-white border border-gray-100 rounded-2xl shadow-sm md:shadow-none md:border-0 md:rounded-none mb-4 md:mb-0 hover:bg-gray-50 transition-colors ${viewingDetails === report.id ? 'bg-emerald-50/30' : ''} overflow-hidden`}>
+                      <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 bg-gray-50/50 md:bg-transparent">
+                        <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Date & Type</span>
+                        <div className="text-right md:text-left">
+                          <div className="font-bold text-gray-900">{new Date(report.session_date).toLocaleDateString()}</div>
+                          <div className="text-[10px] text-gray-400 font-bold uppercase">{report.category.replace('_', ' ')}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        {report.syllabus_topics ? (
-                          <>
-                            <div className="font-medium text-gray-800">{report.syllabus_topics.title}</div>
-                            <div className="text-[10px] text-emerald-600 font-bold">TOPIC #{report.syllabus_topics.topic_number}</div>
-                          </>
-                        ) : (
-                          <span className="text-gray-400 italic">No topic assigned</span>
-                        )}
+                      <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0">
+                        <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Circle</span>
+                        <div className="text-right md:text-left">
+                          <div className="font-bold text-gray-800 flex justify-end md:justify-start">{report.quran_circles?.name}</div>
+                          <div className="text-xs text-gray-500 flex items-center justify-end md:justify-start gap-1 mt-1">
+                            <MapPin className="w-3 h-3 text-emerald-500" /> {report.quran_circles?.union_councils?.name || 'Unknown UC'}
+                          </div>
+                          <div className="text-xs text-gray-400 flex items-center justify-end md:justify-start gap-1 mt-0.5">
+                            <Users className="w-3 h-3" /> {report.quran_circles?.murabbi_name || 'Admin'}
+                          </div>
+                        </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                      <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0">
+                        <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Topic</span>
+                        <div className="text-right md:text-left">
+                          {report.syllabus_topics ? (
+                            <>
+                              <div className="font-medium text-gray-800">{report.syllabus_topics.title}</div>
+                              <div className="text-[10px] text-emerald-600 font-bold">TOPIC #{report.syllabus_topics.topic_number}</div>
+                            </>
+                          ) : (
+                            <span className="text-gray-400 italic">No topic assigned</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0">
+                        <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Attendance</span>
+                        <div className="flex items-center justify-end md:justify-start gap-2">
                           <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-bold">
                             {report.attendance?.filter((a: any) => a.status).length || 0} Present
                           </span>
@@ -183,8 +193,8 @@ export default function JaizaReports() {
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
+                      <td className="block md:table-cell px-4 py-4 md:px-6 md:py-4 md:text-right bg-gray-50/30 md:bg-transparent">
+                        <div className="flex justify-between md:justify-end gap-2 w-full">
                           <button 
                             onClick={() => {
                               if (viewingDetails === report.id) setViewingDetails(null);
@@ -193,21 +203,22 @@ export default function JaizaReports() {
                                 fetchAttendanceDetails(report.id);
                               }
                             }}
-                            className={`p-2 rounded-lg transition-colors ${viewingDetails === report.id ? 'bg-emerald-600 text-white' : 'text-gray-400 hover:bg-gray-100'}`}
+                            className={`flex-1 md:flex-none p-2 rounded-lg transition-colors flex justify-center items-center gap-2 ${viewingDetails === report.id ? 'bg-emerald-600 text-white' : 'bg-white border border-gray-200 md:border-transparent text-gray-600 hover:bg-gray-100'}`}
                             title="View Attendance Details"
                           >
+                            <span className="text-xs font-bold md:hidden">View Details</span>
                             {viewingDetails === report.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                           </button>
                           <button 
                             onClick={() => setEditingReport(report)}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                            className="p-2 bg-white border border-gray-200 md:border-transparent text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center"
                             title="Edit Report"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleDelete(report.id)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            className="p-2 bg-white border border-gray-200 md:border-transparent text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center"
                             title="Delete Report"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -216,18 +227,18 @@ export default function JaizaReports() {
                       </td>
                     </tr>
                     {viewingDetails === report.id && (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-6 bg-gray-50/50">
+                      <tr className="block md:table-row bg-gray-50/50">
+                        <td colSpan={5} className="block md:table-cell px-4 py-4 md:px-8 md:py-6 border-b border-gray-100 rounded-b-2xl md:rounded-none">
                           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-2">
                             <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
                               <h4 className="font-bold text-gray-700 flex items-center gap-2 text-sm">
                                 <Users className="w-4 h-4" /> Attendance Breakdown
                               </h4>
-                              <div className="text-xs text-gray-500">
-                                Click on status to toggle manually
+                              <div className="text-[10px] md:text-xs text-gray-500">
+                                Click status to toggle
                               </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 p-4">
                               {sessionAttendance.map(att => (
                                 <div 
                                   key={`${att.session_id}-${att.participant_id}`} 
@@ -264,8 +275,8 @@ export default function JaizaReports() {
                   </React.Fragment>
                 ))}
                 {filteredReports.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-20 text-center text-gray-400">
+                  <tr className="block md:table-row">
+                    <td colSpan={5} className="block md:table-cell px-6 py-20 text-center text-gray-400">
                       No Jaiza reports found matching your search.
                     </td>
                   </tr>

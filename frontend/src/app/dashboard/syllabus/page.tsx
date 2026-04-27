@@ -163,46 +163,64 @@ export default function SyllabusEditor() {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 text-gray-500 font-medium border-b">
-            <tr>
-              <th className="px-6 py-4 w-16">#</th>
-              <th className="px-6 py-4">Title</th>
-              <th className="px-6 py-4">Reference</th>
-              <th className="px-6 py-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {topics.map(t => (
-              <tr key={t.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 font-bold text-gray-400">#{t.topic_number}</td>
-                <td className="px-6 py-4 font-bold text-gray-800">{t.title}</td>
-                <td className="px-6 py-4">
-                  {t.reference ? (
-                    <a 
-                      href={getTafheemLink(t.reference) || "#"} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-emerald-600 hover:text-emerald-800 font-bold flex items-center gap-1 group transition-colors"
-                    >
-                      {t.reference}
-                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </a>
-                  ) : (
-                    <span className="text-gray-300 italic">No reference</span>
-                  )}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => startEditing(t)} className="p-2 text-gray-400 hover:text-blue-600"><Edit2 className="w-4 h-4" /></button>
-                    <button onClick={() => handleDelete(t.id)} className="p-2 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                </td>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden md:overflow-visible">
+        <div className="overflow-x-auto md:overflow-visible">
+          <table className="w-full text-left text-sm block md:table">
+            <thead className="hidden md:table-header-group bg-gray-50 text-gray-500 font-medium border-b">
+              <tr>
+                <th className="px-6 py-4 w-16">#</th>
+                <th className="px-6 py-4">Title</th>
+                <th className="px-6 py-4">Reference</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="block md:table-row-group space-y-4 md:space-y-0 md:divide-y divide-gray-100 p-4 md:p-0 bg-gray-50/30 md:bg-transparent">
+              {topics.map(t => (
+                <tr key={t.id} className="block md:table-row bg-white border border-gray-100 rounded-2xl shadow-sm md:shadow-none md:border-0 md:rounded-none mb-4 md:mb-0 hover:bg-gray-50 transition-colors">
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 bg-gray-50/50 md:bg-transparent font-bold text-gray-400">
+                    <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Topic Number</span>
+                    #{t.topic_number}
+                  </td>
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 font-bold text-gray-800">
+                    <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Title</span>
+                    <span className="text-right md:text-left">{t.title}</span>
+                  </td>
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0">
+                    <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Reference</span>
+                    <div className="text-right md:text-left">
+                      {t.reference ? (
+                        <a 
+                          href={getTafheemLink(t.reference) || "#"} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-emerald-600 hover:text-emerald-800 font-bold flex items-center justify-end md:justify-start gap-1 group transition-colors"
+                        >
+                          {t.reference}
+                          <ExternalLink className="w-3 h-3 md:opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </a>
+                      ) : (
+                        <span className="text-gray-300 italic">No reference</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="block md:table-cell px-4 py-4 md:px-6 md:py-4 md:text-right bg-gray-50/30 md:bg-transparent">
+                    <div className="flex justify-between md:justify-end gap-2 w-full">
+                      <button onClick={() => startEditing(t)} className="flex-1 md:flex-none p-2 bg-white border border-gray-200 md:border-transparent text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(t.id)} className="flex-1 md:flex-none p-2 bg-white border border-gray-200 md:border-transparent text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {topics.length === 0 && (
+                <tr className="block md:table-row">
+                  <td colSpan={4} className="block md:table-cell px-6 py-20 text-center text-gray-400">
+                    No syllabus topics found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

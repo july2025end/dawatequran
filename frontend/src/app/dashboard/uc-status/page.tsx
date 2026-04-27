@@ -153,9 +153,9 @@ export default function UCStatus() {
         <div className="p-6 border-b border-gray-100">
           <h3 className="text-xl font-bold text-gray-800">UC-Wise Performance Breakdown</h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 font-bold uppercase tracking-wider">
+        <div className="overflow-x-auto md:overflow-visible">
+          <table className="w-full text-left text-sm block md:table">
+            <thead className="hidden md:table-header-group bg-gray-50 text-gray-500 font-bold uppercase tracking-wider">
               <tr>
                 <th className="px-8 py-5">Union Council</th>
                 <th className="px-6 py-5 text-center">Circles</th>
@@ -164,29 +164,35 @@ export default function UCStatus() {
                 <th className="px-6 py-5">Syllabus Progress</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="block md:table-row-group space-y-4 md:space-y-0 md:divide-y divide-gray-100 p-4 md:p-0 bg-gray-50/30 md:bg-transparent">
               {ucStats.map((uc, i) => (
                 <React.Fragment key={uc.id}>
                   <tr 
                     onClick={() => setExpandedUC(expandedUC === uc.id ? null : uc.id)}
-                    className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                    className="block md:table-row bg-white border border-gray-100 rounded-2xl shadow-sm md:shadow-none md:border-0 md:rounded-none mb-4 md:mb-0 hover:bg-gray-50/50 transition-colors cursor-pointer overflow-hidden"
                   >
-                    <td className="px-8 py-6">
-                      <div className="font-black text-gray-900 text-base flex items-center gap-2">
-                        {uc.name}
+                    <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-8 md:py-6 border-b border-gray-50 md:border-0 bg-gray-50/50 md:bg-transparent">
+                      <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Union Council</span>
+                      <div className="text-right md:text-left">
+                        <div className="font-black text-gray-900 text-base flex items-center justify-end md:justify-start gap-2">
+                          {uc.name}
+                        </div>
+                        <div className="text-xs text-gray-400 font-medium mt-1">Zone 5, Islamabad</div>
                       </div>
-                      <div className="text-xs text-gray-400 font-medium mt-1">Zone 5, Islamabad</div>
                     </td>
-                    <td className="px-6 py-6 text-center">
+                    <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-6 border-b border-gray-50 md:border-0 text-center">
+                      <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Total Circles</span>
                       <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl font-black text-xs">
                         {uc.circles} Circles
                       </span>
                     </td>
-                    <td className="px-6 py-6 text-center text-gray-600 font-bold">
-                      {uc.participants}
+                    <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-6 border-b border-gray-50 md:border-0 text-center text-gray-600 font-bold">
+                      <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Participants</span>
+                      <span>{uc.participants}</span>
                     </td>
-                    <td className="px-6 py-6 text-center">
-                      <div className="flex flex-col items-center">
+                    <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-6 border-b border-gray-50 md:border-0 text-center">
+                      <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Avg Attendance</span>
+                      <div className="flex flex-col items-end md:items-center">
                         <span className={`text-base font-black ${uc.avgAttendance > 70 ? 'text-emerald-600' : uc.avgAttendance > 40 ? 'text-orange-500' : 'text-red-500'}`}>
                           {uc.avgAttendance}%
                         </span>
@@ -195,14 +201,15 @@ export default function UCStatus() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-6 pr-8">
+                    <td className="block md:table-cell px-4 py-4 md:px-6 md:py-6 md:pr-8 bg-gray-50/30 md:bg-transparent">
                       <div className="flex items-center gap-4">
                         <div className="flex-1">
                           <div className="flex justify-between text-[10px] font-black uppercase text-gray-400 mb-1">
-                            <span>{uc.uniqueTopics} / {totalTopics} Topics</span>
+                            <span className="md:hidden">Progress</span>
+                            <span className="hidden md:inline">{uc.uniqueTopics} / {totalTopics} Topics</span>
                             <span>{uc.progress}%</span>
                           </div>
-                          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="w-full h-2 bg-gray-100 md:bg-gray-200 rounded-full overflow-hidden">
                             <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000" style={{width: `${uc.progress}%`}}></div>
                           </div>
                         </div>
@@ -212,8 +219,8 @@ export default function UCStatus() {
                   </tr>
                   
                   {expandedUC === uc.id && (
-                    <tr className="bg-gray-50/50">
-                      <td colSpan={5} className="px-8 py-6 border-b border-gray-100">
+                    <tr className="block md:table-row bg-gray-50/50">
+                      <td colSpan={5} className="block md:table-cell px-4 py-4 md:px-8 md:py-6 border-b border-gray-100 rounded-b-2xl md:rounded-none">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {uc.circleDetails.map((c: any) => (
                             <div key={c.id} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 hover:border-emerald-200 transition-colors">
