@@ -199,9 +199,9 @@ export default function AdminDashboard() {
           <h3 className="text-lg font-bold text-gray-800">Recent Jaiza Reports</h3>
           <a href="/dashboard/schedule" className="text-emerald-600 font-medium text-sm hover:text-emerald-700">Manage Schedule</a>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-gray-500 font-medium">
+        <div className="overflow-x-auto md:overflow-visible">
+          <table className="w-full text-left text-sm block md:table">
+            <thead className="hidden md:table-header-group bg-gray-50 text-gray-500 font-medium">
               <tr>
                 <th className="px-6 py-4">Quran Circle</th>
                 <th className="px-6 py-4">Murabbi</th>
@@ -210,22 +210,35 @@ export default function AdminDashboard() {
                 <th className="px-6 py-4">Attendance</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="block md:table-row-group space-y-4 md:space-y-0 md:divide-y divide-gray-100 p-4 md:p-0 bg-gray-50/30 md:bg-transparent">
               {recentReports.length > 0 ? recentReports.map((row, i) => (
-                <tr key={i} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 font-medium text-gray-800">{row.circle}</td>
-                  <td className="px-6 py-4 text-gray-600">{row.murabbi}</td>
-                  <td className="px-6 py-4 text-gray-600">{row.topic}</td>
-                  <td className="px-6 py-4 text-gray-500">{row.date}</td>
-                  <td className="px-6 py-4">
-                    <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full font-medium text-xs">
+                <tr key={i} className="block md:table-row bg-white border border-gray-100 rounded-2xl shadow-sm md:shadow-none md:border-0 md:rounded-none mb-4 md:mb-0 hover:bg-gray-50 transition-colors">
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 font-medium text-gray-800 bg-gray-50/50 md:bg-transparent">
+                    <span className="md:hidden text-xs text-gray-500 font-bold uppercase">Quran Circle</span>
+                    {row.circle}
+                  </td>
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 text-gray-600">
+                    <span className="md:hidden text-xs text-gray-500 font-bold uppercase">Murabbi</span>
+                    {row.murabbi}
+                  </td>
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 text-gray-600">
+                    <span className="md:hidden text-xs text-gray-500 font-bold uppercase">Topic</span>
+                    {row.topic}
+                  </td>
+                  <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 text-gray-500">
+                    <span className="md:hidden text-xs text-gray-500 font-bold uppercase">Date</span>
+                    {row.date}
+                  </td>
+                  <td className="flex justify-between items-center md:table-cell px-4 py-4 md:px-6 md:py-4 bg-gray-50/30 md:bg-transparent">
+                    <span className="md:hidden text-xs text-gray-500 font-bold uppercase">Attendance</span>
+                    <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full font-bold text-xs shadow-sm">
                       {row.att}
                     </span>
                   </td>
                 </tr>
               )) : (
-                <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-gray-400">No reports submitted yet</td>
+                <tr className="block md:table-row">
+                  <td colSpan={5} className="block md:table-cell px-6 py-10 text-center text-gray-400">No reports submitted yet</td>
                 </tr>
               )}
             </tbody>
