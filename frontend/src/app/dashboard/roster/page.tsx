@@ -203,9 +203,9 @@ export default function RosterManagement() {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? <div className="p-20 text-center text-gray-400">Loading...</div> : (
-          <div className="overflow-x-auto md:overflow-visible">
-            <table className="w-full text-left text-sm block md:table">
-              <thead className="hidden md:table-header-group bg-gray-50 text-gray-500 font-medium border-b">
+          <div className="overflow-x-auto lg:overflow-visible">
+            <table className="w-full text-left text-sm block lg:table">
+              <thead className="hidden lg:table-header-group bg-gray-50 text-gray-500 font-medium border-b">
                 <tr>
                   <th className="px-4 py-4 w-12 text-center">#</th>
                   <th className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group" onClick={() => handleSort('uc')}>
@@ -223,36 +223,36 @@ export default function RosterManagement() {
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="block md:table-row-group space-y-4 md:space-y-0 md:divide-y divide-gray-100 p-4 md:p-0 bg-gray-50/30 md:bg-transparent">
+              <tbody className="block lg:table-row-group space-y-4 lg:space-y-0 lg:divide-y divide-gray-100 p-4 lg:p-0 bg-gray-50/30 lg:bg-transparent">
                 {filteredParticipants.map((p, index) => (
-                  <tr key={p.id} className="block md:table-row bg-white border border-gray-100 rounded-2xl shadow-sm md:shadow-none md:border-0 md:rounded-none mb-4 md:mb-0 hover:bg-gray-50 transition-colors relative overflow-hidden">
-                    <td className="hidden md:table-cell px-4 py-4 text-center font-mono text-xs text-gray-400 border-b border-gray-50 md:border-0">{index + 1}</td>
-                    <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 bg-gray-50/50 md:bg-transparent">
-                      <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Location</span>
-                      <div className="text-right md:text-left">
+                  <tr key={p.id} className="block lg:table-row bg-white border border-gray-100 rounded-2xl shadow-sm lg:shadow-none lg:border-0 lg:rounded-none mb-4 lg:mb-0 hover:bg-gray-50 transition-colors relative overflow-hidden">
+                    <td className="hidden lg:table-cell px-4 py-4 text-center font-mono text-xs text-gray-400 border-b border-gray-50 lg:border-0">{index + 1}</td>
+                    <td className="flex justify-between items-center lg:table-cell px-4 py-3 lg:px-6 lg:py-4 border-b border-gray-50 lg:border-0 bg-gray-50/50 lg:bg-transparent">
+                      <span className="lg:hidden text-xs text-gray-400 font-bold uppercase">Location</span>
+                      <div className="text-right lg:text-left">
                         <div className="font-bold text-gray-800">{p.quran_circles?.union_councils?.name}</div>
                         <div className="text-xs text-gray-500 font-bold uppercase">{p.quran_circles?.name}</div>
                       </div>
                     </td>
-                    <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0">
-                      <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Name & Role</span>
-                      <div className="text-right md:text-left">
+                    <td className="flex justify-between items-center lg:table-cell px-4 py-3 lg:px-6 lg:py-4 border-b border-gray-50 lg:border-0">
+                      <span className="lg:hidden text-xs text-gray-400 font-bold uppercase">Name & Role</span>
+                      <div className="text-right lg:text-left">
                         <div className="font-bold text-gray-900">{p.full_name}</div>
                         <div className="text-xs uppercase font-bold text-blue-700">{p.type.replace('_', ' ')}</div>
                       </div>
                     </td>
-                    <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 font-mono text-gray-600">
-                      <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Phone</span>
+                    <td className="flex justify-between items-center lg:table-cell px-4 py-3 lg:px-6 lg:py-4 border-b border-gray-50 lg:border-0 font-mono text-gray-600">
+                      <span className="lg:hidden text-xs text-gray-400 font-bold uppercase">Phone</span>
                       {p.phone || '-'}
                     </td>
-                    <td className="flex flex-col md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 text-gray-500">
-                      <span className="md:hidden text-xs text-gray-400 font-bold uppercase mb-1">Remarks</span>
+                    <td className="flex flex-col lg:table-cell px-4 py-3 lg:px-6 lg:py-4 border-b border-gray-50 lg:border-0 text-gray-500">
+                      <span className="lg:hidden text-xs text-gray-400 font-bold uppercase mb-1">Remarks</span>
                       <span className="max-w-xs truncate" title={p.remarks}>{p.remarks || '-'}</span>
                     </td>
-                    <td className="block md:table-cell px-4 py-4 md:px-6 md:py-4 md:text-right bg-gray-50/30 md:bg-transparent">
-                      <div className="flex justify-between md:justify-end gap-2 w-full">
-                        <button onClick={() => startEdit(p)} className="flex-1 md:flex-none p-2 bg-white border border-gray-200 md:border-transparent text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center transition-colors"><Edit2 className="w-4 h-4" /></button>
-                        <button onClick={() => handleDelete(p.id)} className="flex-1 md:flex-none p-2 bg-white border border-gray-200 md:border-transparent text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    <td className="block lg:table-cell px-4 py-4 lg:px-6 lg:py-4 lg:text-right bg-gray-50/30 lg:bg-transparent">
+                      <div className="flex justify-between lg:justify-end gap-2 w-full">
+                        <button onClick={() => startEdit(p)} className="flex-1 lg:flex-none p-2 bg-white border border-gray-200 lg:border-transparent text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center transition-colors"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(p.id)} className="flex-1 lg:flex-none p-2 bg-white border border-gray-200 lg:border-transparent text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center transition-colors"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </td>
                   </tr>
