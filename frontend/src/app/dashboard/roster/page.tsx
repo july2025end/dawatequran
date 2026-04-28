@@ -168,7 +168,7 @@ export default function RosterManagement() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="relative md:col-span-2">
           <input type="text" placeholder="Search..." className="w-full bg-white border border-gray-200 rounded-xl pl-10 pr-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500 outline-none" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           <Search className="absolute left-3 top-3.5 text-gray-400 w-5 h-5" />
@@ -187,7 +187,7 @@ export default function RosterManagement() {
             <h3 className="font-bold text-gray-800">{editingId ? "Edit Attendee" : "Add New Attendee"}</h3>
             <button onClick={() => {setEditingId(null); setIsAdding(false);}}><X className="w-5 h-5 text-gray-400" /></button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <input type="text" className="w-full p-2 bg-gray-50 border rounded-lg" placeholder="Full Name" value={formData.full_name} onChange={(e) => setFormData({...formData, full_name: e.target.value})} />
             <input type="text" className="w-full p-2 bg-gray-50 border rounded-lg" placeholder="Phone" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
             <select className="w-full p-2 bg-gray-50 border rounded-lg" value={formData.circle_id} onChange={(e) => setFormData({...formData, circle_id: e.target.value})}>

@@ -103,7 +103,7 @@ export default function AttendeePortal() {
         </div>
       </div>
 
-      <div className="p-5 space-y-6 mt-2 relative z-10">
+      <div className="p-4 md:p-6 space-y-6 mt-2 relative z-10 max-w-2xl mx-auto">
         {/* Search & Filter */}
         <div className="space-y-4">
           <div className="relative group">

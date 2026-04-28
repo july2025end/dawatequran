@@ -93,3 +93,6 @@ body {
 /* Hide scrollbar utility */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Custom width for icon-only sidebar */
+.w-18 { width: 4.5rem; }

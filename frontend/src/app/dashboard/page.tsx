@@ -108,7 +108,7 @@ export default function AdminDashboard() {
       </header>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 stagger">
         {stats.map((s, i) => {
           const Icon = s.icon;
           const c = statColorMap[s.color];
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Bar Chart */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 lg:col-span-2">
           <div className="flex items-start justify-between mb-6">

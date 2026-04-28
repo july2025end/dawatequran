@@ -68,7 +68,7 @@ export default function ScheduleEditor() {
 
       {(isAdding || editingId) && (
         <div className="bg-white p-6 rounded-2xl shadow-md border border-blue-100 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">Session Date</label>
               <input type="date" className="w-full p-2 border rounded" value={formData.session_date} onChange={e => setFormData({...formData, session_date: e.target.value})} />
@@ -88,7 +88,7 @@ export default function ScheduleEditor() {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
              <select className="p-2 border rounded" value={formData.topic_id || ""} onChange={e => setFormData({...formData, topic_id: e.target.value})}>
                 <option value="">Select Topic (Optional)</option>
                 {topics.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}

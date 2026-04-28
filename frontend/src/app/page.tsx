@@ -68,7 +68,7 @@ export default function Home() {
       <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-200/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-teal-200/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
-      <div className="max-w-md w-full relative z-10 animate-fade-in-up">
+      <div className="max-w-md md:max-w-lg w-full relative z-10 animate-fade-in-up">
         {/* Hero Card */}
         <div className="bg-white rounded-3xl shadow-2xl shadow-emerald-900/10 overflow-hidden border border-gray-100">
 
