@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <BookOpen className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-base font-black text-white tracking-tight leading-none">Dawat-e-Quran</h1>
+              <h1 className="text-base font-bold text-white tracking-tight leading-none">Dawat-e-Quran</h1>
               <p className="text-[10px] text-emerald-300/80 font-bold uppercase tracking-widest mt-0.5">Zone 5</p>
             </div>
           </div>
@@ -43,7 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Nav */}
         <nav className="flex-1 px-4 py-5 space-y-1 overflow-y-auto">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400/60 px-3 mb-3">Navigation</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/60 px-3 mb-3">Navigation</p>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -88,7 +88,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <BookOpen className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h1 className="text-base font-black tracking-tight text-white leading-none">Dawat-e-Quran</h1>
+            <h1 className="text-base font-bold tracking-tight text-white leading-none">Dawat-e-Quran</h1>
             <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300/80 leading-none mt-0.5">Admin Portal</p>
           </div>
         </div>
@@ -120,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-emerald-600 shadow-lg shadow-emerald-300/40 scale-110' : 'bg-transparent'}`}>
                   <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-white' : 'text-gray-400'}`} strokeWidth={isActive ? 2.5 : 2} />
                 </div>
-                <span className={`text-[9px] font-black uppercase tracking-tighter transition-colors ${isActive ? 'text-emerald-600' : 'text-gray-400'}`}>{item.short}</span>
+                <span className={`text-[9px] font-bold uppercase tracking-tighter transition-colors ${isActive ? 'text-emerald-600' : 'text-gray-400'}`}>{item.short}</span>
               </Link>
             );
           })}

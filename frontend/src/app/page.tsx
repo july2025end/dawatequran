@@ -38,7 +38,7 @@ export default function Home() {
       desc: 'Log Jaiza & mark attendance for your circle',
       icon: LogIn,
       accent: 'emerald',
-      badge: 'Mobile Optimised',
+      badge: 'Mark Attendance',
       gradient: 'from-emerald-500 to-teal-600',
       bg: 'bg-emerald-50',
       border: 'border-emerald-100 hover:border-emerald-300',
@@ -52,7 +52,7 @@ export default function Home() {
       desc: 'Zone Nazim dashboard with full analytics',
       icon: Shield,
       accent: 'blue',
-      badge: 'Desktop First',
+      badge: 'Admin Only',
       gradient: 'from-blue-500 to-indigo-600',
       bg: 'bg-blue-50',
       border: 'border-blue-100 hover:border-blue-300',
@@ -85,7 +85,7 @@ export default function Home() {
               <div className="w-18 h-18 bg-white/10 rounded-2xl backdrop-blur-sm flex items-center justify-center mx-auto mb-5 border border-white/20 shadow-xl w-16 h-16">
                 <BookOpen className="text-white w-8 h-8" />
               </div>
-              <h1 className="text-3xl font-black tracking-tight text-white">Dawat-e-Quran</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-white">Dawat-e-Quran</h1>
               <div className="mt-2 inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 border border-white/10">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-200">Zone 5 Management</p>
@@ -113,7 +113,7 @@ export default function Home() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="font-bold text-gray-900">{p.title}</h2>
-                        <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${p.badgeColor}`}>{p.badge}</span>
+                        <span className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${p.badgeColor}`}>{p.badge}</span>
                       </div>
                       <p className="text-sm text-gray-500 mt-0.5 leading-snug">{p.desc}</p>
                     </div>
@@ -137,7 +137,7 @@ export default function Home() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h2 className="font-bold text-gray-900">Attendee Portal</h2>
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Public</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Public</span>
                   </div>
                   <p className="text-sm text-gray-500 mt-0.5">View schedule & syllabus — no login needed</p>
                 </div>
@@ -166,7 +166,7 @@ export default function Home() {
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
                   <Lock className="w-4 h-4" />
-                  <h3 className="font-black text-base">{targetPortal === 'admin' ? 'Admin Login' : 'Murabbi Login'}</h3>
+                  <h3 className="font-bold text-base">{targetPortal === 'admin' ? 'Admin Login' : 'Murabbi Login'}</h3>
                 </div>
                 <p className="text-xs text-white/70">Enter your password to continue</p>
               </div>
@@ -200,7 +200,7 @@ export default function Home() {
               </div>
               <button
                 type="submit"
-                className={`w-full py-4 text-white font-black rounded-2xl transition-all active:scale-[0.98] shadow-lg text-base bg-gradient-to-r ${targetPortal === 'admin' ? 'from-blue-600 to-indigo-600 shadow-blue-200 hover:shadow-blue-300' : 'from-emerald-600 to-teal-600 shadow-emerald-200 hover:shadow-emerald-300'}`}
+                className={`w-full py-4 text-white font-bold rounded-2xl transition-all active:scale-[0.98] shadow-lg text-base bg-gradient-to-r ${targetPortal === 'admin' ? 'from-blue-600 to-indigo-600 shadow-blue-200 hover:shadow-blue-300' : 'from-emerald-600 to-teal-600 shadow-emerald-200 hover:shadow-emerald-300'}`}
               >
                 Enter Portal →
               </button>

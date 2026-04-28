@@ -163,9 +163,9 @@ export default function AttendancePage() {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-300/80">Murabbi Portal</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-300/80">Murabbi Portal</p>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-white mb-1">
+            <h1 className="text-2xl font-bold tracking-tight text-white mb-1">
               {activeCircle ? activeCircle.name : 'Select Your Circle'}
             </h1>
             {activeCircle?.murabbi_name && (
@@ -442,7 +442,7 @@ export default function AttendancePage() {
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)] z-50">
         <button 
           onClick={handleSubmit} 
-          className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-emerald-200 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg"
+          className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-emerald-200 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg"
         >
           <Save className="w-6 h-6" />
           Submit Jaiza Report

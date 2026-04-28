@@ -84,7 +84,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="text-center">
-          <p className="font-black text-gray-800 text-lg">Syncing Dashboard</p>
+          <p className="font-bold text-gray-800 text-lg">Syncing Dashboard</p>
           <p className="text-sm text-gray-500 mt-1">Fetching latest data from all circles...</p>
         </div>
       </div>
@@ -102,8 +102,8 @@ export default function AdminDashboard() {
     <div className="p-5 md:p-8 max-w-7xl mx-auto animate-fade-in">
       {/* Page Header */}
       <header className="mb-8">
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-emerald-600 mb-1">Overview</p>
-        <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Zone Nazim Dashboard</h2>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-600 mb-1">Overview</p>
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Zone Nazim Dashboard</h2>
         <p className="text-gray-500 mt-1 text-sm md:text-base">Real-time overview of all sectors and union councils.</p>
       </header>
 
@@ -118,11 +118,11 @@ export default function AdminDashboard() {
                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${c.icon}`}>
                   <Icon className="w-5 h-5" />
                 </div>
-                <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full ${c.badge}`}>{s.trend}</span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${c.badge}`}>{s.trend}</span>
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{s.label}</p>
-                <p className={`text-3xl font-black mt-0.5 ${c.val}`}>{s.value}</p>
+                <p className={`text-3xl font-bold mt-0.5 ${c.val}`}>{s.value}</p>
               </div>
             </div>
           );
@@ -135,8 +135,8 @@ export default function AdminDashboard() {
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 lg:col-span-2">
           <div className="flex items-start justify-between mb-6">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.15em] text-emerald-600 mb-0.5">Analytics</p>
-              <h3 className="text-lg font-black text-gray-900">Attendance by Union Council</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-600 mb-0.5">Analytics</p>
+              <h3 className="text-lg font-bold text-gray-900">Attendance by Union Council</h3>
             </div>
             <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-emerald-600" />
@@ -167,8 +167,8 @@ export default function AdminDashboard() {
         {/* Pie Chart */}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <div className="mb-4">
-            <p className="text-xs font-black uppercase tracking-[0.15em] text-purple-600 mb-0.5">Progress</p>
-            <h3 className="text-lg font-black text-gray-900">Syllabus Coverage</h3>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-purple-600 mb-0.5">Progress</p>
+            <h3 className="text-lg font-bold text-gray-900">Syllabus Coverage</h3>
           </div>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -190,7 +190,7 @@ export default function AdminDashboard() {
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }} />
                   <span className="text-gray-600 font-medium">{item.name}</span>
                 </div>
-                <span className="font-black text-gray-900">{item.value}</span>
+                <span className="font-bold text-gray-900">{item.value}</span>
               </div>
             ))}
           </div>
@@ -201,17 +201,17 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.15em] text-emerald-600 mb-0.5">Recent Activity</p>
-            <h3 className="text-lg font-black text-gray-900">Jaiza Reports</h3>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-600 mb-0.5">Recent Activity</p>
+            <h3 className="text-lg font-bold text-gray-900">Jaiza Reports</h3>
           </div>
-          <Link href="/dashboard/jaiza" className="flex items-center gap-1 text-xs font-black text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-xl transition-colors">
+          <Link href="/dashboard/jaiza" className="flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-xl transition-colors">
             View All <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         <div className="overflow-x-auto md:overflow-visible">
           <table className="w-full text-left text-sm block md:table">
-            <thead className="hidden md:table-header-group bg-slate-50/70 text-gray-500 text-xs font-black uppercase tracking-wider">
+            <thead className="hidden md:table-header-group bg-slate-50/70 text-gray-500 text-xs font-bold uppercase tracking-wider">
               <tr>
                 <th className="px-6 py-4">Quran Circle</th>
                 <th className="px-6 py-4">Murabbi</th>
@@ -224,24 +224,24 @@ export default function AdminDashboard() {
               {recentReports.length > 0 ? recentReports.map((row, i) => (
                 <tr key={i} className="block md:table-row bg-white border border-gray-100 rounded-2xl shadow-sm md:shadow-none md:border-0 md:rounded-none mb-3 md:mb-0 hover:bg-slate-50/70 transition-colors">
                   <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 bg-slate-50/50 md:bg-transparent rounded-t-2xl md:rounded-none">
-                    <span className="md:hidden text-[10px] text-gray-400 font-black uppercase tracking-wider">Circle</span>
+                    <span className="md:hidden text-[10px] text-gray-400 font-bold uppercase tracking-wider">Circle</span>
                     <span className="font-bold text-gray-800">{row.circle}</span>
                   </td>
                   <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 text-gray-600">
-                    <span className="md:hidden text-[10px] text-gray-400 font-black uppercase tracking-wider">Murabbi</span>
+                    <span className="md:hidden text-[10px] text-gray-400 font-bold uppercase tracking-wider">Murabbi</span>
                     {row.murabbi}
                   </td>
                   <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 text-gray-600">
-                    <span className="md:hidden text-[10px] text-gray-400 font-black uppercase tracking-wider">Topic</span>
+                    <span className="md:hidden text-[10px] text-gray-400 font-bold uppercase tracking-wider">Topic</span>
                     <span className="text-right md:text-left text-xs md:text-sm">{row.topic}</span>
                   </td>
                   <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-4 border-b border-gray-50 md:border-0 text-gray-500">
-                    <span className="md:hidden text-[10px] text-gray-400 font-black uppercase tracking-wider">Date</span>
+                    <span className="md:hidden text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date</span>
                     {row.date}
                   </td>
                   <td className="flex justify-between items-center md:table-cell px-4 py-4 md:px-6 md:py-4 rounded-b-2xl md:rounded-none">
-                    <span className="md:hidden text-[10px] text-gray-400 font-black uppercase tracking-wider">Attendance</span>
-                    <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-black text-xs border border-emerald-200">
+                    <span className="md:hidden text-[10px] text-gray-400 font-bold uppercase tracking-wider">Attendance</span>
+                    <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-bold text-xs border border-emerald-200">
                       ✓ {row.att}
                     </span>
                   </td>

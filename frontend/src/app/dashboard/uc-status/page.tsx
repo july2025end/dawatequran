@@ -174,7 +174,7 @@ export default function UCStatus() {
                     <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-8 md:py-6 border-b border-gray-50 md:border-0 bg-gray-50/50 md:bg-transparent">
                       <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Union Council</span>
                       <div className="text-right md:text-left">
-                        <div className="font-black text-gray-900 text-base flex items-center justify-end md:justify-start gap-2">
+                        <div className="font-bold text-gray-900 text-base flex items-center justify-end md:justify-start gap-2">
                           {uc.name}
                         </div>
                         <div className="text-xs text-gray-400 font-medium mt-1">Zone 5, Islamabad</div>
@@ -182,7 +182,7 @@ export default function UCStatus() {
                     </td>
                     <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-6 border-b border-gray-50 md:border-0 text-center">
                       <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Total Circles</span>
-                      <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl font-black text-xs">
+                      <span className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl font-bold text-xs">
                         {uc.circles} Circles
                       </span>
                     </td>
@@ -193,7 +193,7 @@ export default function UCStatus() {
                     <td className="flex justify-between items-center md:table-cell px-4 py-3 md:px-6 md:py-6 border-b border-gray-50 md:border-0 text-center">
                       <span className="md:hidden text-xs text-gray-400 font-bold uppercase">Avg Attendance</span>
                       <div className="flex flex-col items-end md:items-center">
-                        <span className={`text-base font-black ${uc.avgAttendance > 70 ? 'text-emerald-600' : uc.avgAttendance > 40 ? 'text-orange-500' : 'text-red-500'}`}>
+                        <span className={`text-base font-bold ${uc.avgAttendance > 70 ? 'text-emerald-600' : uc.avgAttendance > 40 ? 'text-orange-500' : 'text-red-500'}`}>
                           {uc.avgAttendance}%
                         </span>
                         <div className="w-16 h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
@@ -236,13 +236,13 @@ export default function UCStatus() {
                                 </div>
                                 <div className="flex justify-between items-center text-xs pt-2 border-t border-gray-100">
                                   <span className="text-gray-500 font-medium">Avg Attendance</span>
-                                  <span className={`font-black ${c.avgAttendance > 70 ? 'text-emerald-600' : c.avgAttendance > 40 ? 'text-orange-500' : 'text-red-500'}`}>
+                                  <span className={`font-bold ${c.avgAttendance > 70 ? 'text-emerald-600' : c.avgAttendance > 40 ? 'text-orange-500' : 'text-red-500'}`}>
                                     {c.avgAttendance}%
                                   </span>
                                 </div>
                                 <div className="flex justify-between items-center text-xs">
                                   <span className="text-gray-500 font-medium">Syllabus Progress</span>
-                                  <span className={`font-black ${c.progress > 50 ? 'text-emerald-600' : 'text-gray-500'}`}>
+                                  <span className={`font-bold ${c.progress > 50 ? 'text-emerald-600' : 'text-gray-500'}`}>
                                     {c.progress}%
                                   </span>
                                 </div>
