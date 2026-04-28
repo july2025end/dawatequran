@@ -247,9 +247,11 @@ export default function RosterManagement() {
                     </td>
                     <td className="flex flex-col lg:table-cell px-4 py-3 lg:px-6 lg:py-4 border-b border-gray-50 lg:border-0 text-gray-500">
                       <span className="lg:hidden text-xs text-gray-400 font-bold uppercase mb-1">Remarks</span>
-                      <span className="max-w-xs truncate" title={p.remarks}>{p.remarks || '-'}</span>
+                      <div className="lg:max-w-[150px] xl:max-w-[300px] break-words line-clamp-2 lg:line-clamp-3 text-xs" title={p.remarks}>
+                        {p.remarks || '-'}
+                      </div>
                     </td>
-                    <td className="block lg:table-cell px-4 py-4 lg:px-6 lg:py-4 lg:text-right bg-gray-50/30 lg:bg-transparent">
+                    <td className="block lg:table-cell px-4 py-4 lg:px-6 lg:py-4 lg:text-right bg-gray-50/30 lg:bg-transparent whitespace-nowrap min-w-[100px]">
                       <div className="flex justify-between lg:justify-end gap-2 w-full">
                         <button onClick={() => startEdit(p)} className="flex-1 lg:flex-none p-2 bg-white border border-gray-200 lg:border-transparent text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg flex items-center justify-center transition-colors"><Edit2 className="w-4 h-4" /></button>
                         <button onClick={() => handleDelete(p.id)} className="flex-1 lg:flex-none p-2 bg-white border border-gray-200 lg:border-transparent text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg flex items-center justify-center transition-colors"><Trash2 className="w-4 h-4" /></button>
