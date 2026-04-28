@@ -113,19 +113,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-8">
-      <header className="flex justify-between items-center mb-8">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-800">Zone Nazim Dashboard</h2>
-          <p className="text-gray-500 mt-1">Real-time overview of all sectors and union councils.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <button onClick={() => window.location.reload()} className="bg-white px-4 py-2 border border-gray-200 rounded-lg shadow-sm text-gray-600 font-medium hover:bg-gray-50">
-            Refresh Data
-          </button>
-          <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
-            ZN
-          </div>
-        </div>
+      <header className="mb-8">
+        <h2 className="text-3xl font-bold text-gray-800">Zone Nazim Dashboard</h2>
+        <p className="text-gray-500 mt-1">Real-time overview of all sectors and union councils.</p>
       </header>
 
       {/* Stats Grid */}
