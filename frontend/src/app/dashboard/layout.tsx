@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Activity, BookOpen, Calendar, Users, LogOut, Settings, ClipboardList, Map, Menu, X } from 'lucide-react';
+import { Activity, BookOpen, Calendar, Users, LogOut, Settings, ClipboardList, Map } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -12,7 +12,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
 
   const menuItems = [
     { name: 'Dashboard', href: '/dashboard', icon: Activity },
@@ -76,45 +76,14 @@ export default function DashboardLayout({
           <p className="text-[10px] uppercase font-black tracking-[0.25em] text-emerald-200/80">Admin Portal</p>
         </div>
         <button 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="p-2 bg-emerald-700 rounded-xl active:scale-95 transition-all"
+          onClick={handleLogout}
+          className="p-2 bg-white/10 rounded-xl border border-white/10 active:scale-95 transition-all text-emerald-100"
         >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          <LogOut className="w-6 h-6" />
         </button>
       </div>
 
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-40 bg-emerald-800 pt-20 animate-in fade-in slide-in-from-top duration-300">
-          <nav className="px-6 space-y-4">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-lg transition-all ${
-                    isActive ? 'bg-white text-emerald-800' : 'text-emerald-100'
-                  }`}
-                >
-                  <Icon className="w-6 h-6" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="absolute bottom-10 left-6 right-6 border-t border-emerald-700 pt-6">
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-4 text-red-300 font-bold text-lg"
-            >
-              <LogOut className="w-6 h-6" /> Logout
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
