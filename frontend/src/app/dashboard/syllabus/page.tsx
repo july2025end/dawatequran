@@ -111,69 +111,104 @@ export default function SyllabusEditor() {
 
       {/* Table */}
       <div className="glass-table">
-        <table className="w-full text-left border-separate border-spacing-0">
-          <thead>
-            <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider w-20">#</th>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Title</th>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:table-cell">Reference</th>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {loading ? (
-              <tr>
-                <td colSpan={4} className="py-12 text-center">
-                  <p className="text-sm text-slate-400">Loading...</p>
-                </td>
-              </tr>
-            ) : filteredTopics.length > 0 ? filteredTopics.map(t => (
-              <tr key={t.id} className="hover:bg-slate-50/60 transition-colors group">
-                <td className="px-5 md:px-6 py-4">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center font-bold text-emerald-600 text-xs group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-all duration-200">
-                    {t.topic_number}
+        {loading ? (
+          <div className="flex items-center justify-center gap-2.5 py-16 text-emerald-600">
+            <p className="text-sm text-slate-400">Loading...</p>
+          </div>
+        ) : filteredTopics.length === 0 ? (
+          <div className="py-16 text-center">
+            <BookOpen className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-slate-400">No topics found</p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile/Tablet card view */}
+            <div className="lg:hidden divide-y divide-slate-100">
+              {filteredTopics.map(t => {
+                const link = getTafheemLink(t.reference);
+                return (
+                  <div key={t.id} className="p-4 hover:bg-slate-50/60 transition-colors">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center font-bold text-emerald-600 text-xs flex-shrink-0">
+                          {t.topic_number}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-800 text-sm leading-snug">{t.title}</p>
+                          {t.reference && (
+                            <p className="text-xs text-slate-400 mt-0.5 truncate">{t.reference}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {link && (
+                          <a href={link} target="_blank" rel="noopener noreferrer"
+                            className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all">
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+                        <button onClick={() => startEditing(t)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(t.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </td>
-                <td className="px-5 md:px-6 py-4">
-                  <p className="font-semibold text-slate-800 text-sm leading-snug group-hover:text-emerald-700 transition-colors">{t.title}</p>
-                  {/* Show reference on mobile */}
-                  <p className="text-xs text-slate-400 mt-0.5 md:hidden">{t.reference || 'No reference'}</p>
-                </td>
-                <td className="px-5 md:px-6 py-4 hidden md:table-cell">
-                  {t.reference ? (
-                    <a
-                      href={getTafheemLink(t.reference) || "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all"
-                    >
-                      {t.reference} <ExternalLink className="w-3 h-3" />
-                    </a>
-                  ) : (
-                    <span className="text-xs text-slate-300 italic">No reference</span>
-                  )}
-                </td>
-                <td className="px-5 md:px-6 py-4">
-                  <div className="flex items-center justify-end gap-1.5">
-                    <button onClick={() => startEditing(t)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDelete(t.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            )) : (
-              <tr>
-                <td colSpan={4} className="py-16 text-center">
-                  <BookOpen className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-slate-400">No topics found</p>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                );
+              })}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left border-separate border-spacing-0">
+                <thead>
+                  <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider w-20">#</th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Title</th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Reference</th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredTopics.map(t => (
+                    <tr key={t.id} className="hover:bg-slate-50/60 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center font-bold text-emerald-600 text-xs group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-all duration-200">
+                          {t.topic_number}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-semibold text-slate-800 text-sm leading-snug group-hover:text-emerald-700 transition-colors">{t.title}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        {t.reference ? (
+                          <a href={getTafheemLink(t.reference) || "#"} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all">
+                            {t.reference} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : (
+                          <span className="text-xs text-slate-300 italic">No reference</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button onClick={() => startEditing(t)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(t.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Add/Edit Modal */}

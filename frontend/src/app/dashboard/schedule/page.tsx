@@ -76,6 +76,48 @@ export default function ScheduleEditor() {
             <span className="text-sm text-slate-400">Loading schedule...</span>
           </div>
         ) : (
+          <>
+            {/* Mobile / Tablet card view */}
+            <div className="lg:hidden divide-y divide-slate-100">
+              {sessions.length > 0 ? sessions.map(s => (
+                <div key={s.id + '-card'} className="p-4 hover:bg-slate-50/60 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                        <span className="text-xs font-bold text-slate-500">
+                          {new Date(s.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                        <span className="badge badge-blue">{s.category.replace('_', ' ')}</span>
+                      </div>
+                      <p className="font-bold text-slate-800 text-sm group-hover:text-blue-700">{s.quran_circles?.name}</p>
+                      <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />{s.quran_circles?.union_councils?.name || 'Unknown UC'}
+                      </p>
+                      {s.syllabus_topics && <p className="text-xs text-slate-500 mt-1">{s.syllabus_topics.title}</p>}
+                      {s.location && <p className="text-xs text-slate-400 mt-0.5">{s.location}</p>}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={() => { setEditingId(s.id); setSelectedUC(s.quran_circles?.uc_id || ""); setFormData({ session_date: s.session_date, category: s.category, location: s.location || "", notes: s.notes || "", circle_id: s.circle_id, topic_id: s.topic_id || "" }); }}
+                        className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(s.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                <div className="py-16 text-center">
+                  <Calendar className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-400">No sessions scheduled</p>
+                  <p className="text-xs text-slate-300 mt-1">Add a session to get started</p>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="hidden lg:block">
           <table className="w-full text-left border-separate border-spacing-0">
             <thead>
               <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
@@ -141,6 +183,8 @@ export default function ScheduleEditor() {
               )}
             </tbody>
           </table>
+            </div>
+          </>
         )}
       </div>
 

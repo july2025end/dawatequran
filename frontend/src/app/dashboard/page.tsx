@@ -232,12 +232,41 @@ export default function AdminDashboard() {
           </Link>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile/Tablet card view */}
+        <div className="lg:hidden divide-y divide-slate-100">
+          {recentReports.length > 0 ? recentReports.map((row, i) => (
+            <div key={i} className="p-4 hover:bg-slate-50/60 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-slate-800 text-sm leading-snug">{row.circle}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{row.uc}</p>
+                </div>
+                <span className="badge badge-emerald flex-shrink-0">{row.att}</span>
+              </div>
+              <div className="mt-2.5 space-y-1">
+                <p className="text-xs text-slate-500 truncate"><span className="font-semibold text-slate-600">Murabbi:</span> {row.murabbi}</p>
+                <p className="text-xs text-slate-500 truncate"><span className="font-semibold text-slate-600">Topic:</span> {row.topic}</p>
+                <p className="text-xs text-slate-400">{row.date}</p>
+              </div>
+            </div>
+          )) : (
+            <div className="py-12 text-center">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm"
+                style={{ background: 'rgba(236,253,245,0.8)', border: '1px solid rgba(167,243,208,0.5)' }}>
+                <BookOpen className="w-6 h-6 text-emerald-300" />
+              </div>
+              <p className="text-sm font-semibold text-slate-500">No sessions recorded yet</p>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left border-separate border-spacing-0">
             <thead>
               <tr style={{ background: 'rgba(248,250,252,0.7)' }}>
                 {['Circle / UC', 'Murabbi', 'Topic', 'Date', 'Attendance'].map((h, i) => (
-                  <th key={h} className={`px-5 md:px-6 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider ${i === 1 ? 'hidden sm:table-cell' : i === 2 ? 'hidden md:table-cell' : i === 3 ? 'hidden sm:table-cell' : i === 4 ? 'text-right' : ''}`}>
+                  <th key={h} className={`px-5 md:px-6 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider ${i === 4 ? 'text-right' : ''}`}>
                     {h}
                   </th>
                 ))}
@@ -245,19 +274,19 @@ export default function AdminDashboard() {
             </thead>
             <tbody className="divide-y" style={{ '--tw-divide-opacity': 1 } as any}>
               {recentReports.length > 0 ? recentReports.map((row, i) => (
-                <tr key={i} className="group transition-colors" style={{}} onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,250,252,0.5)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                  <td className="px-5 md:px-6 py-4" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>
+                <tr key={i} className="group transition-colors" onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,250,252,0.5)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                  <td className="px-5 py-4" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>
                     <div className="flex flex-col">
                       <span className="font-semibold text-slate-800 text-sm group-hover:text-emerald-700 transition-colors">{row.circle}</span>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{row.uc}</span>
                     </div>
                   </td>
-                  <td className="px-5 md:px-6 py-4 text-slate-500 text-sm hidden sm:table-cell" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>{row.murabbi}</td>
-                  <td className="px-5 md:px-6 py-4 text-slate-500 text-sm hidden md:table-cell max-w-xs" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>
+                  <td className="px-5 py-4 text-slate-500 text-sm" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>{row.murabbi}</td>
+                  <td className="px-5 py-4 text-slate-500 text-sm max-w-xs" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>
                     <span className="truncate block">{row.topic}</span>
                   </td>
-                  <td className="px-5 md:px-6 py-4 text-slate-400 text-sm hidden sm:table-cell" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>{row.date}</td>
-                  <td className="px-5 md:px-6 py-4 text-right" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>
+                  <td className="px-5 py-4 text-slate-400 text-sm" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>{row.date}</td>
+                  <td className="px-5 py-4 text-right" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>
                     <span className="badge badge-emerald">{row.att}</span>
                   </td>
                 </tr>

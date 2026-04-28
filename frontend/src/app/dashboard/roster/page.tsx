@@ -144,64 +144,105 @@ export default function RosterManagement() {
             <span className="text-sm text-slate-400">Loading registry...</span>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-separate border-spacing-0 min-w-[600px]">
-              <thead>
-                <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
-                  <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider w-8">#</th>
-                  <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('uc')}>
-                    <div className="flex items-center gap-1.5">Circle / UC <SortIcon columnKey="uc" /></div>
-                  </th>
-                  <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('full_name')}>
-                    <div className="flex items-center gap-1.5">Name <SortIcon columnKey="full_name" /></div>
-                  </th>
-                  <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:table-cell" onClick={() => handleSort('phone')}>
-                    <div className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors group">Phone <SortIcon columnKey="phone" /></div>
-                  </th>
-                  <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden lg:table-cell">Remarks</th>
-                  <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredParticipants.map((p, index) => (
-                  <tr key={p.id} className="hover:bg-slate-50/60 transition-colors group">
-                    <td className="px-5 md:px-6 py-3.5 text-xs font-medium text-slate-300 group-hover:text-emerald-500 transition-colors">{index + 1}</td>
-                    <td className="px-5 md:px-6 py-3.5">
-                      <p className="text-xs font-semibold text-slate-500 truncate">{p.quran_circles?.union_councils?.name}</p>
-                      <p className="text-xs text-emerald-600 font-medium mt-0.5 truncate">{p.quran_circles?.name}</p>
-                    </td>
-                    <td className="px-5 md:px-6 py-3.5">
-                      <p className="text-sm font-semibold text-slate-800 group-hover:text-emerald-700 transition-colors">{p.full_name}</p>
-                      <span className={`badge mt-1 ${p.type === 'haazir_arkan' ? 'badge-blue' : 'badge-slate'}`}>{p.type.replace('_', ' ')}</span>
-                    </td>
-                    <td className="px-5 md:px-6 py-3.5 text-sm text-slate-500 hidden md:table-cell">{p.phone || <span className="text-slate-200">—</span>}</td>
-                    <td className="px-5 md:px-6 py-3.5 text-xs text-slate-400 hidden lg:table-cell max-w-xs">
-                      <span className="line-clamp-2">{p.remarks || <span className="text-slate-200">—</span>}</span>
-                    </td>
-                    <td className="px-5 md:px-6 py-3.5">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button onClick={() => startEdit(p)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(p.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Delete">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+          <>
+            {/* Mobile / Tablet card view */}
+            <div className="lg:hidden divide-y divide-slate-100">
+              {filteredParticipants.length > 0 ? filteredParticipants.map((p, index) => (
+                <div key={p.id} className="p-4 hover:bg-slate-50/60 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-slate-800 text-sm">{p.full_name}</p>
+                        <span className={`badge ${p.type === 'haazir_arkan' ? 'badge-blue' : 'badge-slate'}`}>
+                          {p.type.replace('_', ' ')}
+                        </span>
+                        {!p.is_active && <span className="badge badge-slate">Inactive</span>}
                       </div>
-                    </td>
+                      <p className="text-xs font-semibold text-slate-500 mt-0.5">{p.quran_circles?.union_councils?.name}</p>
+                      <p className="text-xs text-emerald-600 font-medium">{p.quran_circles?.name}</p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={() => startEdit(p)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(p.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {p.phone && (
+                    <p className="text-xs text-slate-400 mt-2">{p.phone}</p>
+                  )}
+                </div>
+              )) : (
+                <div className="py-16 text-center">
+                  <Users className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-400">No participants found</p>
+                  {searchQuery && <p className="text-xs text-slate-300 mt-1">Try adjusting your search</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left border-separate border-spacing-0 min-w-[600px]">
+                <thead>
+                  <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider w-8">#</th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('uc')}>
+                      <div className="flex items-center gap-1.5">Circle / UC <SortIcon columnKey="uc" /></div>
+                    </th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('full_name')}>
+                      <div className="flex items-center gap-1.5">Name <SortIcon columnKey="full_name" /></div>
+                    </th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider" onClick={() => handleSort('phone')}>
+                      <div className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors group">Phone <SortIcon columnKey="phone" /></div>
+                    </th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Remarks</th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                   </tr>
-                ))}
-                {filteredParticipants.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-16 text-center">
-                      <Users className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                      <p className="text-sm font-semibold text-slate-400">No participants found</p>
-                      {searchQuery && <p className="text-xs text-slate-300 mt-1">Try adjusting your search</p>}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredParticipants.map((p, index) => (
+                    <tr key={p.id} className="hover:bg-slate-50/60 transition-colors group">
+                      <td className="px-6 py-3.5 text-xs font-medium text-slate-300 group-hover:text-emerald-500 transition-colors">{index + 1}</td>
+                      <td className="px-6 py-3.5">
+                        <p className="text-xs font-semibold text-slate-500 truncate">{p.quran_circles?.union_councils?.name}</p>
+                        <p className="text-xs text-emerald-600 font-medium mt-0.5 truncate">{p.quran_circles?.name}</p>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm font-semibold text-slate-800 group-hover:text-emerald-700 transition-colors">{p.full_name}</p>
+                        <span className={`badge mt-1 ${p.type === 'haazir_arkan' ? 'badge-blue' : 'badge-slate'}`}>{p.type.replace('_', ' ')}</span>
+                      </td>
+                      <td className="px-6 py-3.5 text-sm text-slate-500">{p.phone || <span className="text-slate-200">—</span>}</td>
+                      <td className="px-6 py-3.5 text-xs text-slate-400 max-w-xs">
+                        <span className="line-clamp-2">{p.remarks || <span className="text-slate-200">—</span>}</span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button onClick={() => startEdit(p)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(p.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Delete">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredParticipants.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-16 text-center">
+                        <Users className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                        <p className="text-sm font-semibold text-slate-400">No participants found</p>
+                        {searchQuery && <p className="text-xs text-slate-300 mt-1">Try adjusting your search</p>}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

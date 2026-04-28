@@ -106,6 +106,71 @@ export default function JaizaReports() {
         </div>
       ) : (
         <div className="glass-table">
+          {/* Mobile / Tablet card view */}
+          <div className="lg:hidden divide-y divide-slate-100">
+            {filteredReports.length > 0 ? filteredReports.map((report) => (
+              <div key={report.id + '-card'} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className="text-xs font-bold text-slate-500">
+                        {new Date(report.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                      <span className="badge badge-emerald">{report.category.replace('_', ' ')}</span>
+                    </div>
+                    <p className="font-bold text-slate-800 text-sm">{report.quran_circles?.name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />{report.quran_circles?.union_councils?.name || 'Unknown UC'}
+                    </p>
+                    {report.syllabus_topics && (
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        <span className="font-semibold">Topic #{report.syllabus_topics.topic_number}:</span> {report.syllabus_topics.title}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                    <span className="badge badge-emerald">{report.attendance?.filter((a: any) => a.status).length || 0} present</span>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => { if (viewingDetails === report.id) setViewingDetails(null); else { setViewingDetails(report.id); fetchAttendanceDetails(report.id); } }}
+                        className={`p-2 rounded-lg transition-all ${viewingDetails === report.id ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}>
+                        {viewingDetails === report.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </button>
+                      <button onClick={() => setEditingReport(report)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(report.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                </div>
+                {viewingDetails === report.id && (
+                  <div className="mt-3 pt-3 border-t border-slate-100 animate-fade-in">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-slate-500 flex items-center gap-1"><Users className="w-3.5 h-3.5 text-emerald-600" /> Attendance</p>
+                      <span className="badge badge-emerald">{sessionAttendance.filter(a => a.status).length} / {sessionAttendance.length} present</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {sessionAttendance.map(att => (
+                        <button key={`m-${att.session_id}-${att.participant_id}`}
+                          onClick={() => toggleAttendance(att.session_id, att.participant_id, att.status)}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border-2 transition-all text-left text-xs ${att.status ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-slate-100 text-slate-400'}`}>
+                          <span className="font-semibold truncate">{att.participants?.full_name}</span>
+                          <div className={`w-4 h-4 rounded-full flex-shrink-0 ml-1 flex items-center justify-center ${att.status ? 'bg-emerald-500' : 'bg-slate-200'}`}>
+                            {att.status && <span className="text-white text-[10px]">✓</span>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )) : (
+              <div className="py-16 text-center">
+                <ClipboardList className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                <p className="text-sm font-semibold text-slate-400">No reports found</p>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop table view */}
+          <div className="hidden lg:block">
           <table className="w-full text-left border-separate border-spacing-0">
             <thead>
               <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
@@ -227,6 +292,7 @@ export default function JaizaReports() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
