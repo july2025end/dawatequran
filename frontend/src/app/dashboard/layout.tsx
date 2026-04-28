@@ -1,43 +1,49 @@
 "use client";
 
-import { useState } from 'react';
-import { Activity, BookOpen, Calendar, Users, LogOut, Settings, ClipboardList, Map } from 'lucide-react';
+import { Activity, BookOpen, Calendar, Users, LogOut, ClipboardList, Map } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-
   const menuItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: Activity },
-    { name: 'UC Status', href: '/dashboard/uc-status', icon: Map },
-    { name: 'Schedule', href: '/dashboard/schedule', icon: Calendar },
-    { name: 'Jaiza Reports', href: '/dashboard/jaiza', icon: ClipboardList },
-    { name: 'Syllabus', href: '/dashboard/syllabus', icon: BookOpen },
-    { name: 'Directory', href: '/dashboard/roster', icon: Users },
+    { name: 'Dashboard', href: '/dashboard', icon: Activity, short: 'Home' },
+    { name: 'UC Status', href: '/dashboard/uc-status', icon: Map, short: 'UC' },
+    { name: 'Schedule', href: '/dashboard/schedule', icon: Calendar, short: 'Schedule' },
+    { name: 'Jaiza', href: '/dashboard/jaiza', icon: ClipboardList, short: 'Jaiza' },
+    { name: 'Syllabus', href: '/dashboard/syllabus', icon: BookOpen, short: 'Syllabus' },
+    { name: 'Directory', href: '/dashboard/roster', icon: Users, short: 'Directory' },
   ];
 
-  const handleLogout = () => {
-    // In a real app, you'd call supabase.auth.signOut() here
-    router.push('/');
-  };
+  const handleLogout = () => router.push('/');
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row relative">
-      {/* Desktop Sidebar */}
-      <div className="hidden md:flex w-64 bg-emerald-800 text-white flex-col sticky top-0 h-screen shadow-xl shadow-emerald-900/20">
-        <div className="p-8">
-          <h1 className="text-2xl font-black tracking-tight text-white">Dawat-e-Quran</h1>
-          <p className="text-xs uppercase font-bold tracking-[0.2em] opacity-80 mt-1">Zone 5, Islamabad</p>
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row relative">
+
+      {/* ─── Desktop Sidebar ─────────────────────────────────────── */}
+      <aside className="hidden md:flex w-64 flex-col sticky top-0 h-screen bg-gradient-to-b from-emerald-900 via-emerald-800 to-teal-900 shadow-2xl shadow-emerald-950/30">
+        {/* Logo area */}
+        <div className="p-7 pb-6 border-b border-white/10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center border border-white/20">
+              <BookOpen className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base font-black text-white tracking-tight leading-none">Dawat-e-Quran</h1>
+              <p className="text-[10px] text-emerald-300/80 font-bold uppercase tracking-widest mt-0.5">Zone 5</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-3 bg-emerald-950/40 rounded-xl px-3 py-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+            <span className="text-xs text-emerald-300 font-medium">Admin Portal • Active</span>
+          </div>
         </div>
-        
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+
+        {/* Nav */}
+        <nav className="flex-1 px-4 py-5 space-y-1 overflow-y-auto">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400/60 px-3 mb-3">Navigation</p>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -45,69 +51,81 @@ export default function DashboardLayout({
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-2xl font-bold transition-all duration-300 ${
-                  isActive 
-                    ? 'bg-white text-emerald-800 shadow-lg shadow-emerald-950/20' 
-                    : 'text-emerald-100 hover:bg-emerald-700/50 hover:text-white'
+                className={`flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold text-sm transition-all duration-200 group ${
+                  isActive
+                    ? 'bg-white text-emerald-800 shadow-lg shadow-emerald-950/20'
+                    : 'text-emerald-100/80 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${isActive ? 'bg-emerald-100' : 'bg-white/5 group-hover:bg-white/15'}`}>
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-700' : ''}`} />
+                </div>
                 {item.name}
+                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-500" />}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-6 border-t border-emerald-700/50">
-           <button 
-             onClick={handleLogout}
-             className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-red-200 font-bold hover:bg-red-900/50 hover:text-white transition-all"
-           >
-             <LogOut className="w-5 h-5 opacity-50" />
-             Logout
-           </button>
+        {/* Logout */}
+        <div className="p-4 border-t border-white/10">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3 w-full rounded-2xl text-rose-300/80 font-semibold text-sm hover:bg-rose-500/20 hover:text-rose-200 transition-all group"
+          >
+            <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-rose-500/20 transition-colors">
+              <LogOut className="w-4 h-4" />
+            </div>
+            Logout
+          </button>
         </div>
-      </div>
+      </aside>
 
-      {/* Mobile Top Header */}
-      <div className="md:hidden bg-emerald-800 text-white p-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
-        <div>
-          <h1 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200">Dawat-e-Quran</h1>
-          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-emerald-200/80">Admin Portal</p>
+      {/* ─── Mobile Top Header ───────────────────────────────────── */}
+      <div className="md:hidden sticky top-0 z-50 bg-gradient-to-r from-emerald-900 to-teal-900 text-white px-4 py-3 flex items-center justify-between shadow-lg shadow-emerald-950/30">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center border border-white/20">
+            <BookOpen className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h1 className="text-base font-black tracking-tight text-white leading-none">Dawat-e-Quran</h1>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300/80 leading-none mt-0.5">Admin Portal</p>
+          </div>
         </div>
-        <button 
+        <button
           onClick={handleLogout}
-          className="p-2 bg-white/10 rounded-xl border border-white/10 active:scale-95 transition-all text-emerald-100"
+          className="p-2 bg-white/10 rounded-xl border border-white/10 active:scale-95 transition-all hover:bg-white/20"
         >
-          <LogOut className="w-6 h-6" />
+          <LogOut className="w-5 h-5 text-white" />
         </button>
       </div>
 
-
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
+      {/* ─── Main Content ────────────────────────────────────────── */}
+      <main className="flex-1 overflow-y-auto pb-24 md:pb-0 min-h-0">
         {children}
-      </div>
+      </main>
 
-      {/* Mobile Bottom Navigation (Quick Actions) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 sm:px-4 py-3 flex justify-between items-center z-[100] shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] pointer-events-auto">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href;
-          return (
-            <Link 
-              key={item.name} 
-              href={item.href}
-              className={`flex flex-col items-center gap-1 px-1 transition-all cursor-pointer ${isActive ? 'text-emerald-600 scale-110' : 'text-gray-400 active:scale-95'}`}
-            >
-              <Icon className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={isActive ? 3 : 2} />
-              <span className="text-[10px] sm:text-xs font-black uppercase tracking-tighter truncate max-w-[60px] text-center">{item.name.split(' ')[0]}</span>
-            </Link>
-          );
-        })}
+      {/* ─── Mobile Bottom Navigation ────────────────────────────── */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-white/95 backdrop-blur-xl border-t border-gray-200/80 shadow-[0_-8px_30px_-8px_rgba(0,0,0,0.12)]">
+        <div className="flex justify-around items-center px-1 py-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="flex flex-col items-center gap-1 flex-1 py-1 px-0.5 relative"
+              >
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-emerald-600 shadow-lg shadow-emerald-300/40 scale-110' : 'bg-transparent'}`}>
+                  <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-white' : 'text-gray-400'}`} strokeWidth={isActive ? 2.5 : 2} />
+                </div>
+                <span className={`text-[9px] font-black uppercase tracking-tighter transition-colors ${isActive ? 'text-emerald-600' : 'text-gray-400'}`}>{item.short}</span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
-
   );
 }

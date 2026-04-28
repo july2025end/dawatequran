@@ -1,5 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+import { getTafheemLink } from "@/lib/quran_utils";
 import { useRouter } from "next/navigation";
 import { Calendar, Book, Clock, MapPin, Search, ChevronRight, Loader2, ExternalLink, LogOut } from "lucide-react";
 
@@ -60,35 +63,44 @@ export default function AttendeePortal() {
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
       {/* Header */}
-      <div className="bg-emerald-800 bg-gradient-to-br from-emerald-800 to-emerald-900 text-white p-8 pb-10 shadow-lg border-b border-emerald-950/50 relative overflow-hidden">
-        <div className="relative z-10">
-          <h1 className="text-3xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200 text-center">Attendee Portal</h1>
-          <p className="text-xs uppercase font-black tracking-[0.3em] text-emerald-200/80 text-center mt-2">Dawat-e-Quran • Zone 5</p>
+      <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 text-white px-6 pt-8 pb-12 shadow-xl relative overflow-hidden">
+        {/* Decorative rings */}
+        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full border border-white/5 pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full border border-white/5 pointer-events-none" />
+        <div className="relative z-10 max-w-lg mx-auto text-center">
+          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-1.5 border border-white/10 mb-4">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-200">Dawat-e-Quran • Zone 5</p>
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-white">Attendee Portal</h1>
+          <p className="text-sm text-emerald-200/70 mt-2 font-medium">View your upcoming sessions and study syllabus</p>
         </div>
         <button 
           onClick={() => router.push('/')}
-          className="absolute top-6 right-6 p-2 bg-white/10 rounded-xl border border-white/10 active:scale-95 transition-all text-emerald-100 z-20"
+          className="absolute top-5 right-5 p-2 bg-white/10 rounded-xl border border-white/10 active:scale-95 transition-all text-white z-20 hover:bg-white/20"
         >
           <LogOut className="w-5 h-5" />
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-white sticky top-0 z-30 shadow-sm px-4">
-        <button 
-          onClick={() => setActiveTab("schedule")}
-          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-b-2 ${activeTab === 'schedule' ? 'text-emerald-700 border-emerald-700' : 'text-gray-400 border-transparent'}`}
-        >
-          <Calendar className={`w-4 h-4 ${activeTab === 'schedule' ? 'text-emerald-600' : 'text-gray-300'}`} />
-          Schedule
-        </button>
-        <button 
-          onClick={() => setActiveTab("syllabus")}
-          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all border-b-2 ${activeTab === 'syllabus' ? 'text-emerald-700 border-emerald-700' : 'text-gray-400 border-transparent'}`}
-        >
-          <Book className={`w-4 h-4 ${activeTab === 'syllabus' ? 'text-emerald-600' : 'text-gray-300'}`} />
-          Syllabus
-        </button>
+      <div className="bg-white sticky top-0 z-30 shadow-sm">
+        <div className="flex max-w-lg mx-auto px-4 gap-1 py-2">
+          <button 
+            onClick={() => setActiveTab("schedule")}
+            className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all rounded-xl ${activeTab === 'schedule' ? 'text-emerald-700 bg-emerald-50' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            <Calendar className={`w-4 h-4 ${activeTab === 'schedule' ? 'text-emerald-600' : 'text-gray-300'}`} />
+            Schedule
+          </button>
+          <button 
+            onClick={() => setActiveTab("syllabus")}
+            className={`flex-1 py-2.5 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all rounded-xl ${activeTab === 'syllabus' ? 'text-emerald-700 bg-emerald-50' : 'text-gray-400 hover:text-gray-600'}`}
+          >
+            <Book className={`w-4 h-4 ${activeTab === 'syllabus' ? 'text-emerald-600' : 'text-gray-300'}`} />
+            Syllabus
+          </button>
+        </div>
       </div>
 
       <div className="p-5 space-y-6 mt-2 relative z-10">

@@ -155,26 +155,35 @@ export default function AttendancePage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       {/* Mobile Header */}
-      <div className="bg-emerald-800 text-white p-5 shadow-lg sticky top-0 z-10 bg-gradient-to-br from-emerald-800 to-emerald-900 border-b border-emerald-950/50 flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-emerald-200 mb-1">Murabbi Portal</h1>
-          <div className="flex flex-col">
-            <p className="text-sm font-bold text-emerald-100">
-              {activeCircle ? `${activeCircle.name}` : "Select Circle"}
-            </p>
+      <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 text-white px-5 pt-6 pb-8 shadow-xl sticky top-0 z-10 relative overflow-hidden">
+        {/* Decorative rings */}
+        <div className="absolute -top-8 -right-8 w-36 h-36 rounded-full border border-white/5 pointer-events-none" />
+        <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full border border-white/5 pointer-events-none" />
+        <div className="relative z-10 flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-300/80">Murabbi Portal</p>
+            </div>
+            <h1 className="text-2xl font-black tracking-tight text-white mb-1">
+              {activeCircle ? activeCircle.name : 'Select Your Circle'}
+            </h1>
             {activeCircle?.murabbi_name && (
-              <p className="text-xs text-emerald-200/80 font-medium mt-0.5">
+              <p className="text-sm text-emerald-200/80 font-medium">
                 Murabbi: {activeCircle.murabbi_name}
               </p>
             )}
+            {!activeCircle && (
+              <p className="text-sm text-emerald-200/70 font-medium">Choose a UC and circle to get started</p>
+            )}
           </div>
+          <button 
+            onClick={() => router.push('/')}
+            className="p-2.5 bg-white/10 rounded-xl border border-white/10 active:scale-95 transition-all text-emerald-100 flex-shrink-0 hover:bg-white/20"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
         </div>
-        <button 
-          onClick={() => router.push('/')}
-          className="p-2 bg-white/10 rounded-xl border border-white/10 active:scale-95 transition-all text-emerald-100"
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
       </div>
 
       <div className="p-4 space-y-4">
