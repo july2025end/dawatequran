@@ -116,7 +116,7 @@ const surahMap: { [key: string]: number } = {
 };
 
 /**
- * Generates a link to tafheem.net for a given Quran reference string.
+ * Generates a link to islamicstudies.info/tafheem for a given Quran reference string.
  * Supports formats like "2:153", "Al-Baqarah 284-286", etc.
  */
 export function getTafheemLink(reference: string): string | null {
@@ -125,7 +125,8 @@ export function getTafheemLink(reference: string): string | null {
   // 1. Try standard format "2:153"
   const standardMatch = reference.match(/(\d+)\s*:\s*([\d-]+)/);
   if (standardMatch) {
-    return `https://tafheem.net/islamikitabein/urduref.php?sura=${standardMatch[1]}&verse=${standardMatch[2]}`;
+    return `https://www.islamicstudies.info/tafheem.php?sura=${standardMatch[1]}&verse=${standardMatch[2]}`;
+
   }
 
   // 2. Try Name Based format "Al-Baqarah 284-286"
@@ -147,7 +148,7 @@ export function getTafheemLink(reference: string): string | null {
     }
 
     if (suraNum) {
-      return `https://tafheem.net/islamikitabein/urduref.php?sura=${suraNum}&verse=${verse}`;
+      return `https://www.islamicstudies.info/tafheem.php?sura=${suraNum}&verse=${verse}`;
     }
   }
 
