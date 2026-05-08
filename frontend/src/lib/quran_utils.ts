@@ -116,7 +116,7 @@ const surahMap: { [key: string]: number } = {
 };
 
 /**
- * Generates a link to islamicstudies.info/tafheem for a given Quran reference string.
+ * Generates a link to tafheem.net for a given Quran reference string.
  * Supports formats like "2:153", "Al-Baqarah 284-286", etc.
  */
 export function getTafheemLink(reference: string): string | null {
@@ -125,8 +125,7 @@ export function getTafheemLink(reference: string): string | null {
   // 1. Try standard format "2:153"
   const standardMatch = reference.match(/(\d+)\s*:\s*([\d-]+)/);
   if (standardMatch) {
-    return `https://www.islamicstudies.info/tafheem.php?sura=${standardMatch[1]}&verse=${standardMatch[2]}`;
-
+    return `https://tafheem.net/islamikitabein/urduref.php?sura=${standardMatch[1]}&verse=${standardMatch[2]}`;
   }
 
   // 2. Try Name Based format "Al-Baqarah 284-286"
@@ -148,8 +147,71 @@ export function getTafheemLink(reference: string): string | null {
     }
 
     if (suraNum) {
-      return `https://www.islamicstudies.info/tafheem.php?sura=${suraNum}&verse=${verse}`;
+      return `https://tafheem.net/islamikitabein/urduref.php?sura=${suraNum}&verse=${verse}`;
     }
+  }
+
+  return null;
+}
+
+/**
+ * Parses a Quran reference string into surah number + ayah range.
+ * Supports formats like:
+ *   "2:153-162"           → surah 2, ayah 153-162
+ *   "Al-Baqarah 284-286"  → surah 2, ayah 284-286
+ *   "البقرة (Al-Baqara) 1-7" → surah 2, ayah 1-7
+ * Returns null if unparseable.
+ */
+export function parseQuranReference(
+  reference: string
+): { surahNum: number; surahName: string; startAyah: number; endAyah: number } | null {
+  if (!reference) return null;
+
+  // 1. "SurahNum:StartAyah[-EndAyah]"  e.g. "2:153" or "2:153-162"
+  const numericMatch = reference.match(/^(\d+)\s*:\s*(\d+)(?:\s*[-–]\s*(\d+))?/);
+  if (numericMatch) {
+    const surahNum = parseInt(numericMatch[1]);
+    const startAyah = parseInt(numericMatch[2]);
+    const endAyah = numericMatch[3] ? parseInt(numericMatch[3]) : startAyah;
+    // Find surah name
+    const surahName =
+      Object.entries(surahMap).find(
+        ([, v]) => v === surahNum
+      )?.[0] || `Surah ${surahNum}`;
+    return { surahNum, surahName, startAyah, endAyah };
+  }
+
+  // 2. Name-based "Al-Baqarah 284-286" or "البقرة (Al-Baqara) 1-7"
+  //    Extract trailing numbers first
+  const trailingNums = reference.match(/(\d+)\s*[-–]\s*(\d+)\s*$/);
+  if (trailingNums) {
+    const startAyah = parseInt(trailingNums[1]);
+    const endAyah = parseInt(trailingNums[2]);
+
+    // Try English name in parentheses
+    const parenMatch = reference.match(/\(([^)]+)\)/);
+    if (parenMatch) {
+      const engName = parenMatch[1].trim();
+      const surahNum = surahMap[engName];
+      if (surahNum)
+        return { surahNum, surahName: engName, startAyah, endAyah };
+    }
+
+    // Try the whole prefix as a name key
+    const prefix = reference.replace(/\s*\(.*?\)\s*/, "").replace(/[\d\s\-–]+$/, "").trim();
+    const surahNum = surahMap[prefix];
+    if (surahNum)
+      return { surahNum, surahName: prefix, startAyah, endAyah };
+  }
+
+  // 3. Single ayah "Al-Baqarah 255"
+  const singleAyah = reference.match(/(\d+)\s*$/);
+  if (singleAyah) {
+    const ayah = parseInt(singleAyah[1]);
+    const prefix = reference.replace(/\s*\(.*?\)\s*/, "").replace(/\s*\d+\s*$/, "").trim();
+    const surahNum = surahMap[prefix];
+    if (surahNum)
+      return { surahNum, surahName: prefix, startAyah: ayah, endAyah: ayah };
   }
 
   return null;

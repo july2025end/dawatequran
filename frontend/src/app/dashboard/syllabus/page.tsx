@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { SURAHS } from "@/lib/surahs";
-import { getTafheemLink } from "@/lib/quran_utils";
+import Link from "next/link";
 import { BookOpen, Plus, Edit2, Trash2, Save, X, Search, ExternalLink, ChevronDown } from "lucide-react";
 
 export default function SyllabusEditor() {
@@ -124,9 +124,7 @@ export default function SyllabusEditor() {
           <>
             {/* Mobile/Tablet card view */}
             <div className="lg:hidden divide-y divide-slate-100">
-              {filteredTopics.map(t => {
-                const link = getTafheemLink(t.reference);
-                return (
+              {filteredTopics.map(t => (
                   <div key={t.id} className="p-4 hover:bg-slate-50/60 transition-colors">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -141,11 +139,11 @@ export default function SyllabusEditor() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        {link && (
-                          <a href={link} target="_blank" rel="noopener noreferrer"
+                        {t.reference && (
+                          <Link href={`/portal/topic/${t.id}`}
                             className="p-2 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all">
                             <ExternalLink className="w-4 h-4" />
-                          </a>
+                          </Link>
                         )}
                         <button onClick={() => startEditing(t)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
                           <Edit2 className="w-4 h-4" />
@@ -156,8 +154,7 @@ export default function SyllabusEditor() {
                       </div>
                     </div>
                   </div>
-                );
-              })}
+              ))}
             </div>
 
             {/* Desktop table view */}
@@ -184,10 +181,10 @@ export default function SyllabusEditor() {
                       </td>
                       <td className="px-6 py-4">
                         {t.reference ? (
-                          <a href={getTafheemLink(t.reference) || "#"} target="_blank" rel="noopener noreferrer"
+                          <Link href={`/portal/topic/${t.id}`}
                             className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all">
                             {t.reference} <ExternalLink className="w-3 h-3" />
-                          </a>
+                          </Link>
                         ) : (
                           <span className="text-xs text-slate-300 italic">No reference</span>
                         )}

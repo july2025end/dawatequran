@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { BookOpen, Map, LayoutDashboard, Loader2, ChevronRight, Activity, Calendar, ArrowLeft, ExternalLink } from 'lucide-react';
+import { BookOpen, Map, LayoutDashboard, Loader2, ChevronRight, Calendar, ArrowLeft, BookText } from 'lucide-react';
 import Link from "next/link";
-import { getTafheemLink } from "@/lib/quran_utils";
+import { parseQuranReference } from "@/lib/quran_utils";
 
 export default function AttendeePortal() {
   const [loading, setLoading] = useState(true);
@@ -166,21 +166,17 @@ export default function AttendeePortal() {
             {/* Topic cards grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {visibleTopics.map((t) => {
-                const tafheemUrl = getTafheemLink(t.reference);
-                const CardTag = tafheemUrl ? 'a' : 'div';
-                const cardProps = tafheemUrl
-                  ? { href: tafheemUrl, target: '_blank', rel: 'noopener noreferrer' }
-                  : {};
+                const hasRef = !!parseQuranReference(t.reference);
                 return (
-                  <CardTag
+                  <Link
                     key={t.id}
-                    {...(cardProps as any)}
-                    className={`group relative block hover:-translate-y-1 transition-all duration-300 ${tafheemUrl ? 'cursor-pointer' : 'cursor-default'}`}
+                    href={`/portal/topic/${t.id}`}
+                    className="group relative block hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                   >
                     <div className="h-full rounded-2xl overflow-hidden" style={{
                       background: 'rgba(255,255,255,0.80)',
                       backdropFilter: 'blur(20px)',
-                      border: tafheemUrl ? '1px solid rgba(196,181,253,0.35)' : '1px solid rgba(255,255,255,0.9)',
+                      border: '1px solid rgba(196,181,253,0.35)',
                       boxShadow: '0 2px 12px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.95)',
                     }}>
                       {/* Top accent line */}
@@ -197,13 +193,8 @@ export default function AttendeePortal() {
                             }}>
                             {t.topic_number}
                           </div>
-                          {tafheemUrl ? (
-                            <ExternalLink className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200"
-                              style={{ color: '#7c3aed' }} />
-                          ) : (
-                            <ChevronRight className="w-4 h-4 mt-0.5 flex-shrink-0"
-                              style={{ color: 'rgba(203,213,225,0.5)' }} />
-                          )}
+                          <BookText className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                            style={{ color: '#7c3aed' }} />
                         </div>
                         {/* Title */}
                         <h3 className="font-semibold leading-snug mb-2 transition-colors duration-200 group-hover:text-purple-900"
@@ -213,19 +204,17 @@ export default function AttendeePortal() {
                         {/* Reference */}
                         {t.reference ? (
                           <div className="flex items-center gap-1.5">
-                            <p style={{ fontSize: '0.72rem', color: tafheemUrl ? '#7c3aed' : '#94a3b8', fontWeight: 600 }}>
+                            <p style={{ fontSize: '0.72rem', color: '#7c3aed', fontWeight: 600 }}>
                               {t.reference}
                             </p>
-                            {tafheemUrl && (
-                              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tafheem ↗</span>
-                            )}
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em' }}>آیات دیکھیں →</span>
                           </div>
                         ) : (
                           <p style={{ fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 500, fontStyle: 'italic' }}>General Module</p>
                         )}
                       </div>
                     </div>
-                  </CardTag>
+                  </Link>
                 );
               })}
             </div>

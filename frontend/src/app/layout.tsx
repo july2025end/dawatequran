@@ -1,10 +1,24 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans, Amiri_Quran, Noto_Nastaliq_Urdu } from "next/font/google";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ 
   subsets: ["latin"],
   variable: '--font-jakarta',
+});
+
+const amiriQuran = Amiri_Quran({
+  weight: ['400'],
+  subsets: ["arabic"],
+  variable: '--font-amiri',
+  display: 'swap',
+});
+
+const notoUrdu = Noto_Nastaliq_Urdu({
+  weight: ['400', '700'],
+  subsets: ["arabic"],
+  variable: '--font-noto-urdu',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -17,7 +31,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={jakarta.variable} style={{ colorScheme: "light" }}>
+    <html lang="en" className={`${jakarta.variable} ${amiriQuran.variable} ${notoUrdu.variable}`} style={{ colorScheme: "light" }}>
       <head>
         <meta name="color-scheme" content="light" />
         <meta name="theme-color" content="#064e3b" />

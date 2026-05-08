@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&display=swap');
 @import "tailwindcss";
+
 
 /* ─── Design Tokens ────────────────────────────────── */
 :root {
@@ -41,6 +43,49 @@ body {
   color-scheme: light only;
   overflow-x: hidden;
   background: var(--bg);
+}
+
+@font-face {
+  font-family: 'Al Qalam Quran Majeed';
+  src: url('/fonts/AlQalamQuranMajeed.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PDMS Saleem QuranFont';
+  src: url('/fonts/PDMS_Saleem_QuranFont.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-arabic {
+  font-family: 'PDMS Saleem QuranFont', 'Al Qalam Quran Majeed', var(--font-amiri), 'Jameel Noori Nastaleeq', 'IndoPak Nastaleeq', 'Alvi Nastaleeq', var(--font-noto-urdu), serif;
+  direction: rtl;
+  line-height: 2.2;
+}
+
+.font-urdu {
+  font-family: 'Jameel Noori Nastaleeq', 'IndoPak Nastaleeq', 'Alvi Nastaleeq', var(--font-noto-urdu), serif;
+  direction: rtl;
+  line-height: 2.2;
+}
+
+.tafseer-content p {
+  margin-bottom: 1rem;
+  line-height: 2.2;
+}
+
+.tafseer-content p:last-child {
+  margin-bottom: 0;
+}
+
+.tafseer-content n {
+  font-weight: bold;
+  color: #7c3aed;
+  margin-left: 0.25rem;
 }
 
 /* ─── App Background ─────────────────────────────────── */
