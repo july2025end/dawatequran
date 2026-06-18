@@ -3,9 +3,9 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   /* config options here */
-  distDir: '.next_local',
+  distDir: process.env.VERCEL ? undefined : '.next_local',
   turbopack: {
-    root: path.resolve(__dirname),
+    root: process.env.VERCEL ? undefined : path.resolve(__dirname),
   },
 };
 
