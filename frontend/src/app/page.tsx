@@ -166,7 +166,7 @@ export default function Home() {
                     <h2 className="font-bold text-slate-900 text-sm">Public Portal</h2>
                     <span className="badge badge-purple">Public</span>
                   </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">View schedules & curriculum — Open access</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">View schedules & curriculum</p>
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
               </Link>

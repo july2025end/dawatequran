@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, use } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
 import { parseQuranReference } from "@/lib/quran_utils";
 import Link from "next/link";
@@ -19,13 +20,252 @@ import {
   Globe,
 } from "lucide-react";
 
+/* ─── Word Translation Cache ─────────────────────────────
+   Shared across all AyahCards; avoids fetching the same
+   ayah's words multiple times during a session.
+──────────────────────────────────────────────────────── */
+type WordEntry = {
+  position: number;
+  text_uthmani: string;
+  text_simple: string;   // diacritics-stripped, for matching
+  translation: string;
+};
+const wordCache = new Map<string, WordEntry[]>();
+
+/** Strip harakat + tatweel + normalise alef variants for loose text matching */
+function stripDiacritics(s: string): string {
+  return s
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, "") // harakat + tatweel
+    .replace(/[\u0622\u0623\u0625\u0671]/g, "\u0627")  // alef variants (including wasla) → bare alef
+    .trim();
+}
+
+async function fetchWordTranslations(
+  surahNum: number,
+  ayahNum: number
+): Promise<WordEntry[]> {
+  const key = `${surahNum}:${ayahNum}`;
+  if (wordCache.has(key)) return wordCache.get(key)!;
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch(
+      `/api/word-translation?surah=${surahNum}&ayah=${ayahNum}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const json = await res.json();
+    const words: WordEntry[] = json.words || [];
+    wordCache.set(key, words);
+    return words;
+  } catch {
+    return [];
+  }
+}
+
+/* ─── Arabic Word Tooltip ─────────────────────────────── */
+function ArabicWordTooltip({
+  word,
+  surahNum,
+  ayahNum,
+}: {
+  word: string;
+  surahNum: number;
+  ayahNum: number;
+}) {
+  const [visible, setVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [translation, setTranslation] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0 });
+  // Portal needs document to exist (SSR guard)
+  const [mounted, setMounted] = useState(false);
+  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLSpanElement>(null); // ref on inner inline-block for reliable getBoundingClientRect
+  const outerRef = useRef<HTMLSpanElement>(null);  // ref on outer wrapper for touch outside detection
+  const loadedRef = useRef(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  const computePos = useCallback(() => {
+    if (!wrapperRef.current) return;
+    const rect = wrapperRef.current.getBoundingClientRect();
+    // position:fixed uses viewport coords — do NOT add scrollY
+    setTooltipPos({
+      top: rect.top - 10,
+      left: rect.left + rect.width / 2,
+    });
+  }, []);
+
+  const load = useCallback(async () => {
+    if (loadedRef.current) return;
+    loadedRef.current = true;
+    setLoading(true);
+    const allWords = await fetchWordTranslations(surahNum, ayahNum);
+    // Match by normalised text rather than index — the two sources
+    // (alquran.cloud uthmani + quran.com) may tokenise differently.
+    const needle = stripDiacritics(word);
+    const entry =
+      allWords.find((w) => w.text_simple === needle) ||
+      allWords.find((w) => w.text_simple.includes(needle)) ||
+      allWords.find((w) => needle.includes(w.text_simple));
+    setTranslation(entry?.translation || "ترجمہ دستیاب نہیں");
+    setLoading(false);
+  }, [surahNum, ayahNum, word]);
+
+  const show = useCallback(() => {
+    computePos();
+    setVisible(true);
+    load();
+  }, [computePos, load]);
+
+  const hide = useCallback(() => {
+    setVisible(false);
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+  }, []);
+
+  // Keep tooltip anchored during scroll / resize
+  useEffect(() => {
+    if (!visible) return;
+    const update = () => computePos();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [visible, computePos]);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      e.preventDefault();
+      show();
+      if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = setTimeout(() => setVisible(false), 3000);
+    },
+    [show]
+  );
+
+  useEffect(() => {
+    if (!visible) return;
+    const onDocTouch = (e: TouchEvent) => {
+      if (outerRef.current && !outerRef.current.contains(e.target as Node)) {
+        hide();
+      }
+    };
+    document.addEventListener("touchstart", onDocTouch);
+    return () => document.removeEventListener("touchstart", onDocTouch);
+  }, [visible, hide]);
+
+  useEffect(() => () => {
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+  }, []);
+
+  // The tooltip is rendered via portal into document.body so it escapes
+  // any ancestor with backdrop-filter / transform / will-change that would
+  // create a new containing block for position:fixed.
+  const tooltip = visible && mounted
+    ? createPortal(
+        <span
+          className="word-tooltip"
+          style={{
+            position: "fixed",
+            top: tooltipPos.top,
+            left: tooltipPos.left,
+            transform: "translateX(-50%) translateY(-100%)",
+            zIndex: 9999,
+            bottom: "auto",
+          }}
+        >
+          <span className="word-tooltip-label">ترجمہ</span>
+          {loading ? (
+            <span className="word-tooltip-shimmer" />
+          ) : (
+            <span className="word-tooltip-text font-urdu">{translation}</span>
+          )}
+        </span>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+      <span
+        ref={outerRef}
+        className="arabic-word-wrapper"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onTouchStart={handleTouchStart}
+      >
+        {/* ref on the inner inline-block span — gives a reliable single
+            bounding rect for tooltip placement even in RTL inline flow */}
+        <span
+          ref={wrapperRef}
+          className={`arabic-word font-arabic${visible ? " is-active" : ""}`}
+        >
+          {word}
+        </span>
+      </span>
+      {tooltip}
+    </>
+  );
+}
+
+/* ─── Interactive Arabic Text ────────────────────────────
+   Splits an ayah's Arabic string into individual words and
+   renders each as an interactive ArabicWordTooltip.
+──────────────────────────────────────────────────────── */
+function InteractiveArabicText({
+  arabic,
+  surahNum,
+  ayahNum,
+}: {
+  arabic: string;
+  surahNum: number;
+  ayahNum: number;
+}) {
+  // Split on whitespace, filter empties
+  const words = arabic.split(/\s+/).filter(Boolean);
+
+  return (
+    <div
+      className="font-arabic"
+      style={{
+        direction: "rtl",
+        textAlign: "right",
+        fontSize: "clamp(1.4rem, 3.5vw, 2.2rem)",
+        lineHeight: 2.4,
+        // Add a small letter-spacing to keep words from touching when inline-block
+        // spans are rendered next to each other
+        wordSpacing: "0.12em",
+        color: "#1e293b",
+      }}
+    >
+      {words.map((w, i) => (
+        <span key={i}>
+          <ArabicWordTooltip
+            word={w}
+            surahNum={surahNum}
+            ayahNum={ayahNum}
+          />
+          {/* Real space between words so bidi/shaping engine handles word
+              boundaries correctly and line-wrapping works naturally */}
+          {i < words.length - 1 ? '\u0020' : null}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Types ─────────────────────────────────────────────── */
 interface AyahData {
   number: number;
   numberInSurah: number;
   arabic: string;
   maududi: string;
-  tafseer: string;
+  // tafseer is loaded lazily per-card — not part of initial fetch
 }
 
 interface TopicData {
@@ -44,35 +284,39 @@ const TAFSEER_BASE =
     ? "http://localhost:3000"
     : "";
 
+/* fetchTafseer is called lazily from AyahCard — never during page load.
+   A 6-second AbortController timeout prevents tafheem.net slowness from
+   ever hanging the UI. */
 async function fetchTafseer(surahNum: number, ayahNum: number): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
   try {
     const res = await fetch(
-      `${TAFSEER_BASE}/api/tafseer?surah=${surahNum}&ayah=${ayahNum}`,
-      { cache: "no-store" }
+      `/api/tafseer?surah=${surahNum}&ayah=${ayahNum}`,
+      { cache: "force-cache", signal: controller.signal }
     );
+    clearTimeout(timer);
     if (!res.ok) return "";
     const json = await res.json();
     return json.text || "";
   } catch {
+    clearTimeout(timer);
     return "";
   }
 }
 
+/* fetchAyatRange only fetches Arabic text + Maududi tarjuma (both fast).
+   Tafseer is loaded separately and lazily per card. */
 async function fetchAyatRange(
   surahNum: number,
   startAyah: number,
   endAyah: number
 ): Promise<AyahData[]> {
   const editions = "quran-uthmani,ur.maududi";
-  const ayahNums = Array.from(
-    { length: endAyah - startAyah + 1 },
-    (_, i) => startAyah + i
-  );
 
-  const [surahRes, tafseerTexts] = await Promise.all([
-    fetch(`${QURAN_BASE}/surah/${surahNum}/editions/${editions}`),
-    Promise.all(ayahNums.map((n) => fetchTafseer(surahNum, n))),
-  ]);
+  const surahRes = await fetch(
+    `${QURAN_BASE}/surah/${surahNum}/editions/${editions}`
+  );
 
   const json = await surahRes.json();
   if (json.code !== 200 || !json.data) return [];
@@ -83,15 +327,30 @@ async function fetchAyatRange(
   for (let i = startAyah; i <= endAyah; i++) {
     const arabicAyah = arabicEd.ayahs.find((a: any) => a.numberInSurah === i);
     const maududiAyah = maududiEd.ayahs.find((a: any) => a.numberInSurah === i);
-    const tafseerText = tafseerTexts[i - startAyah] || "";
 
     if (arabicAyah) {
+      let arabicText = arabicAyah.text;
+
+      // Strip Bismillah if it's the first ayah of a surah other than Al-Fatihah (1) and At-Tawbah (9)
+      if (surahNum !== 1 && surahNum !== 9 && i === 1) {
+        const words = arabicText.split(/\s+/).filter(Boolean);
+        if (words.length >= 4) {
+          const isBismillah =
+            stripDiacritics(words[0]) === "بسم" &&
+            stripDiacritics(words[1]) === "الله" &&
+            stripDiacritics(words[2]) === "الرحمن" &&
+            stripDiacritics(words[3]) === "الرحيم";
+          if (isBismillah) {
+            arabicText = words.slice(4).join(" ");
+          }
+        }
+      }
+
       results.push({
         number: arabicAyah.number,
         numberInSurah: i,
-        arabic: arabicAyah.text,
+        arabic: arabicText,
         maududi: maududiAyah?.text || "",
-        tafseer: tafseerText,
       });
     }
   }
@@ -106,34 +365,56 @@ function AyahCard({
   onPlay,
   onPause,
   isPlaying,
+  surahNum,
 }: {
   ayah: AyahData;
   activeAyah: number | null;
   onPlay: (num: number) => void;
   onPause: () => void;
   isPlaying: boolean;
+  surahNum: number;
 }) {
   const [showTafseer, setShowTafseer] = useState(false);
+  // null = not yet fetched, '' = fetched but empty, string = content
+  const [tafseerText, setTafseerText] = useState<string | null>(null);
+  const [tafseerLoading, setTafseerLoading] = useState(false);
   const isActive = activeAyah === ayah.number;
+
+  // Fetch tafseer lazily only when the user first opens the section
+  const handleToggleTafseer = useCallback(async () => {
+    const opening = !showTafseer;
+    setShowTafseer(opening);
+    if (opening && tafseerText === null) {
+      setTafseerLoading(true);
+      const text = await fetchTafseer(surahNum, ayah.numberInSurah);
+      setTafseerText(text);
+      setTafseerLoading(false);
+    }
+  }, [showTafseer, tafseerText, surahNum, ayah.numberInSurah]);
 
   return (
     <div
-      className={`rounded-3xl overflow-hidden transition-all duration-500${isActive ? " ring-2 ring-purple-400/40" : ""}`}
+      className={`rounded-3xl transition-all duration-500${isActive ? " ring-2 ring-purple-400/40" : ""}`}
       style={{
         background: isActive ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.80)",
         backdropFilter: "blur(20px)",
+        borderRadius: "1.5rem",
         border: isActive
           ? "1px solid rgba(139,92,246,0.4)"
           : "1px solid rgba(255,255,255,0.9)",
         boxShadow: isActive
           ? "0 8px 32px rgba(109,40,217,0.15), inset 0 1px 0 rgba(255,255,255,0.95)"
           : "0 2px 12px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.95)",
+        overflow: "visible",
       }}
     >
       {isActive && (
         <div
           className="h-0.5 w-full"
-          style={{ background: "linear-gradient(90deg, #7c3aed, #a855f7, #6366f1)" }}
+          style={{
+            background: "linear-gradient(90deg, #7c3aed, #a855f7, #6366f1)",
+            borderRadius: "1.5rem 1.5rem 0 0",
+          }}
         />
       )}
 
@@ -184,7 +465,7 @@ function AyahCard({
           </button>
         </div>
 
-        {/* Arabic text */}
+        {/* Arabic text — interactive word-by-word */}
         <div
           className="mb-5 p-4 md:p-5 rounded-2xl"
           style={{
@@ -192,14 +473,11 @@ function AyahCard({
             border: "1px solid rgba(221,214,254,0.3)",
           }}
         >
-          <p
-            className="font-arabic text-right text-slate-800"
-            style={{
-              fontSize: "clamp(1.4rem, 3.5vw, 2.2rem)",
-            }}
-          >
-            {ayah.arabic}
-          </p>
+          <InteractiveArabicText
+            arabic={ayah.arabic}
+            surahNum={surahNum}
+            ayahNum={ayah.numberInSurah}
+          />
         </div>
 
         {/* Maudoodi Tarjuma */}
@@ -223,51 +501,60 @@ function AyahCard({
           </div>
         )}
 
-        {/* Tafseer toggle */}
-        {ayah.tafseer && (
-          <div>
-            <button
-              onClick={() => setShowTafseer(!showTafseer)}
-              className="flex items-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-sm transition-all font-urdu"
+        {/* Tafseer — always show the button; content loads on first open */}
+        <div>
+          <button
+            onClick={handleToggleTafseer}
+            className="flex items-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-sm transition-all font-urdu"
+            style={{
+              background: showTafseer
+                ? "linear-gradient(135deg, rgba(237,233,254,0.9), rgba(221,214,254,0.7))"
+                : "rgba(248,250,252,0.8)",
+              border: "1px solid rgba(221,214,254,0.4)",
+              color: "#5b21b6",
+            }}
+          >
+            {tafseerLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <BookText className="w-4 h-4" />
+            )}
+            <span className="flex-1 text-right">
+              تفسیر — تفہیم القرآن، مولانا مودودیؒ
+            </span>
+            {showTafseer ? (
+              <ChevronUp className="w-4 h-4 flex-shrink-0" />
+            ) : (
+              <ChevronDown className="w-4 h-4 flex-shrink-0" />
+            )}
+          </button>
+
+          {showTafseer && (
+            <div
+              className="mt-3 p-4 rounded-xl tafseer-content"
               style={{
-                background: showTafseer
-                  ? "linear-gradient(135deg, rgba(237,233,254,0.9), rgba(221,214,254,0.7))"
-                  : "rgba(248,250,252,0.8)",
-                border: "1px solid rgba(221,214,254,0.4)",
-                color: "#5b21b6",
+                background: "rgba(245,243,255,0.5)",
+                border: "1px solid rgba(221,214,254,0.3)",
+                minHeight: tafseerLoading ? "5rem" : undefined,
               }}
             >
-              <BookText className="w-4 h-4" />
-              <span className="flex-1 text-right">
-                تفسیر — تفہیم القرآن، مولانا مودودیؒ
-              </span>
-              {showTafseer ? (
-                <ChevronUp className="w-4 h-4 flex-shrink-0" />
-              ) : (
-                <ChevronDown className="w-4 h-4 flex-shrink-0" />
-              )}
-            </button>
-
-            {showTafseer && (
-              <div
-                className="mt-3 p-4 rounded-xl tafseer-content"
-                style={{
-                  background: "rgba(245,243,255,0.5)",
-                  border: "1px solid rgba(221,214,254,0.3)",
-                }}
-              >
+              {tafseerLoading ? (
+                <div className="flex items-center justify-center py-4 gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                  <span className="font-urdu text-sm text-slate-400">تفسیر لوڈ ہو رہی ہے…</span>
+                </div>
+              ) : tafseerText ? (
                 <div
                   className="font-urdu text-right"
-                  style={{
-                    fontSize: "1.05rem",
-                    color: "#475569",
-                  }}
-                  dangerouslySetInnerHTML={{ __html: ayah.tafseer }}
+                  style={{ fontSize: "1.05rem", color: "#475569" }}
+                  dangerouslySetInnerHTML={{ __html: tafseerText }}
                 />
-              </div>
-            )}
-          </div>
-        )}
+              ) : (
+                <p className="font-urdu text-center text-sm text-slate-400">تفسیر دستیاب نہیں</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -314,6 +601,16 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
 
         const ayaatData = await fetchAyatRange(parsed.surahNum, parsed.startAyah, parsed.endAyah);
         setAyaat(ayaatData);
+
+        // Background-prefetch word translations for all ayahs so hovering
+        // is instant. Fire-and-forget — we deliberately do NOT await this.
+        const ayahNums = Array.from(
+          { length: parsed.endAyah - parsed.startAyah + 1 },
+          (_, i) => parsed.startAyah + i
+        );
+        Promise.allSettled(
+          ayahNums.map((n) => fetchWordTranslations(parsed.surahNum, n))
+        ).catch(() => {/* silent — cache filled as responses arrive */});
       } catch (e: any) {
         setError(e.message || "Unknown error");
       } finally {
@@ -553,6 +850,30 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
           </div>
         ) : (
           <div className="space-y-4 animate-fade-in">
+            {topic && (() => {
+              const ref = parseQuranReference(topic.reference);
+              if (ref && ref.startAyah === 1 && ref.surahNum !== 1 && ref.surahNum !== 9) {
+                return (
+                  <div
+                    className="text-center py-6 mb-2 font-arabic"
+                    style={{
+                      fontSize: "clamp(1.6rem, 4.5vw, 2.4rem)",
+                      color: "#1e293b",
+                      direction: "rtl",
+                      lineHeight: 1.8,
+                      background: "rgba(255,255,255,0.6)",
+                      backdropFilter: "blur(10px)",
+                      borderRadius: "1.5rem",
+                      border: "1px solid rgba(255,255,255,0.8)",
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
+                    }}
+                  >
+                    بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+                  </div>
+                );
+              }
+              return null;
+            })()}
             {ayaat.map((ayah) => (
               <AyahCard
                 key={ayah.number}
@@ -561,6 +882,7 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
                 onPlay={handlePlay}
                 onPause={handlePause}
                 isPlaying={isPlaying}
+                surahNum={topic ? parseQuranReference(topic.reference)?.surahNum ?? 0 : 0}
               />
             ))}
           </div>
