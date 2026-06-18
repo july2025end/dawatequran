@@ -35,10 +35,10 @@ export default function Home() {
   const portals = [
     {
       key: 'murabbi' as const,
-      title: 'Murabbi Portal',
+      title: 'Attendance Portal',
       desc: 'Mark attendance & log session details',
       icon: LogIn,
-      badge: 'Field Access',
+      badge: 'Murabbi',
       badgeClass: 'badge-emerald',
       iconBg: 'from-emerald-400 to-teal-500',
       cardBg: 'from-emerald-50/80 to-teal-50/60',
@@ -163,7 +163,7 @@ export default function Home() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
-                    <h2 className="font-bold text-slate-900 text-sm">Attendee Portal</h2>
+                    <h2 className="font-bold text-slate-900 text-sm">Public Portal</h2>
                     <span className="badge badge-purple">Public</span>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">View schedules & curriculum — Open access</p>
