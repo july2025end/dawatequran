@@ -18,6 +18,7 @@ import {
   BookText,
   Headphones,
   Globe,
+  Calendar,
 } from "lucide-react";
 
 /* ─── Word Translation Cache ─────────────────────────────
@@ -273,6 +274,8 @@ interface TopicData {
   topic_number: number;
   title: string;
   reference: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 /* ─── AlQuran.cloud helpers ─────────────────────────────── */
@@ -765,6 +768,16 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
               <p style={{ color: "rgba(196,181,253,0.7)", fontSize: "0.875rem", fontWeight: 600 }}>
                 {topic.reference}
               </p>
+              {(topic.start_date || topic.end_date) && (
+                <div className="mt-3 flex items-center gap-2 text-emerald-300 font-bold" style={{ fontSize: "0.78rem" }}>
+                  <Calendar className="w-4 h-4 text-emerald-300" />
+                  <span>
+                    Schedule: {topic.start_date ? new Date(topic.start_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    {" to "}
+                    {topic.end_date ? new Date(topic.end_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

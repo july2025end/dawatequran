@@ -203,7 +203,7 @@ export default function AttendeePortal() {
                         </h3>
                         {/* Reference */}
                         {t.reference ? (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <p style={{ fontSize: '0.72rem', color: '#7c3aed', fontWeight: 600 }}>
                               {t.reference}
                             </p>
@@ -211,6 +211,16 @@ export default function AttendeePortal() {
                           </div>
                         ) : (
                           <p style={{ fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 500, fontStyle: 'italic' }}>General Module</p>
+                        )}
+                        {(t.start_date || t.end_date) && (
+                          <div className="mt-2.5 flex items-center gap-1.5 text-slate-500 font-semibold" style={{ fontSize: '0.7rem' }}>
+                            <Calendar className="w-3.5 h-3.5 text-purple-500" />
+                            <span>
+                              {t.start_date ? new Date(t.start_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' }) : '—'}
+                              {" - "}
+                              {t.end_date ? new Date(t.end_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' }) : '—'}
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>

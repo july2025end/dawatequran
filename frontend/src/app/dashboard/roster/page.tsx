@@ -20,6 +20,9 @@ export default function RosterManagement() {
 
   useEffect(() => { fetchData(); }, []);
 
+  const attColor = (v: number) => v > 70 ? 'text-emerald-600' : v > 40 ? 'text-amber-500' : 'text-red-500';
+  const attBg = (v: number) => v > 70 ? 'bg-emerald-500' : v > 40 ? 'bg-amber-500' : 'bg-red-500';
+
   async function fetchData() {
     setLoading(true);
     const { data: pData, error: pError } = await supabase
@@ -29,8 +32,39 @@ export default function RosterManagement() {
     const { data: cData } = await supabase
       .from("quran_circles")
       .select(`id, name, union_councils (name)`);
-    if (pError) console.error("Error fetching participants:", pError);
-    else setParticipants(pData || []);
+    const { data: attData } = await supabase
+      .from("attendance")
+      .select("status, participant_id");
+
+    if (pError) {
+      console.error("Error fetching participants:", pError);
+    } else {
+      const attMap: Record<string, { present: number; total: number }> = {};
+      if (attData) {
+        attData.forEach((a: any) => {
+          if (!attMap[a.participant_id]) {
+            attMap[a.participant_id] = { present: 0, total: 0 };
+          }
+          attMap[a.participant_id].total += 1;
+          if (a.status) {
+            attMap[a.participant_id].present += 1;
+          }
+        });
+      }
+
+      const enrichedParticipants = (pData || []).map((p: any) => {
+        const stats = attMap[p.id] || { present: 0, total: 0 };
+        const pct = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
+        return {
+          ...p,
+          attendance_pct: pct,
+          attendance_present: stats.present,
+          attendance_total: stats.total
+        };
+      });
+
+      setParticipants(enrichedParticipants);
+    }
     setCircles(cData || []);
     setLoading(false);
   }
@@ -71,8 +105,16 @@ export default function RosterManagement() {
 
   const sortedParticipants = [...participants].sort((a, b) => {
     if (!sortConfig.key) return 0;
-    let aValue = sortConfig.key === 'uc' ? a.quran_circles?.union_councils?.name || '' : a[sortConfig.key];
-    let bValue = sortConfig.key === 'uc' ? b.quran_circles?.union_councils?.name || '' : b[sortConfig.key];
+    let aValue = sortConfig.key === 'uc' 
+      ? a.quran_circles?.union_councils?.name || '' 
+      : sortConfig.key === 'attendance'
+      ? a.attendance_pct || 0
+      : a[sortConfig.key];
+    let bValue = sortConfig.key === 'uc' 
+      ? b.quran_circles?.union_councils?.name || '' 
+      : sortConfig.key === 'attendance'
+      ? b.attendance_pct || 0
+      : b[sortConfig.key];
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
@@ -159,7 +201,12 @@ export default function RosterManagement() {
                         {!p.is_active && <span className="badge badge-slate">Inactive</span>}
                       </div>
                       <p className="text-xs font-semibold text-slate-500 mt-0.5">{p.quran_circles?.union_councils?.name}</p>
-                      <p className="text-xs text-emerald-600 font-medium">{p.quran_circles?.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <p className="text-xs text-emerald-600 font-medium">{p.quran_circles?.name}</p>
+                        <span className={`text-[10px] font-bold ${attColor(p.attendance_pct)} bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded`}>
+                          {p.attendance_pct}% Att.
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button onClick={() => startEdit(p)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
@@ -198,6 +245,9 @@ export default function RosterManagement() {
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider" onClick={() => handleSort('phone')}>
                       <div className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors group">Phone <SortIcon columnKey="phone" /></div>
                     </th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('attendance')}>
+                      <div className="flex items-center gap-1.5">Attendance <SortIcon columnKey="attendance" /></div>
+                    </th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Remarks</th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                   </tr>
@@ -215,6 +265,21 @@ export default function RosterManagement() {
                         <span className={`badge mt-1 ${p.type === 'haazir_arkan' ? 'badge-blue' : 'badge-slate'}`}>{p.type.replace('_', ' ')}</span>
                       </td>
                       <td className="px-6 py-3.5 text-sm text-slate-500">{p.phone || <span className="text-slate-200">—</span>}</td>
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-bold ${attColor(p.attendance_pct)}`}>
+                            {p.attendance_pct}%
+                          </span>
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${attBg(p.attendance_pct)}`} style={{ width: `${p.attendance_pct}%` }} />
+                          </div>
+                        </div>
+                        {p.attendance_total > 0 && (
+                          <span className="text-[10px] text-slate-400 block mt-0.5">
+                            {p.attendance_present} of {p.attendance_total} sessions
+                          </span>
+                        )}
+                      </td>
                       <td className="px-6 py-3.5 text-xs text-slate-400 max-w-xs">
                         <span className="line-clamp-2">{p.remarks || <span className="text-slate-200">—</span>}</span>
                       </td>
@@ -232,7 +297,7 @@ export default function RosterManagement() {
                   ))}
                   {filteredParticipants.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-16 text-center">
+                      <td colSpan={7} className="py-16 text-center">
                         <Users className="w-10 h-10 text-slate-200 mx-auto mb-3" />
                         <p className="text-sm font-semibold text-slate-400">No participants found</p>
                         {searchQuery && <p className="text-xs text-slate-300 mt-1">Try adjusting your search</p>}

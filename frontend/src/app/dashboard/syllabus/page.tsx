@@ -18,7 +18,9 @@ export default function SyllabusEditor() {
     title: "",
     selectedSura: 1,
     startAyat: 1,
-    endAyat: 7
+    endAyat: 7,
+    start_date: "",
+    end_date: ""
   });
 
   useEffect(() => { fetchSyllabus(); }, []);
@@ -33,7 +35,13 @@ export default function SyllabusEditor() {
   async function handleSave() {
     const sura = SURAHS.find(s => s.id === formData.selectedSura);
     const reference = `${sura?.urdu} (${sura?.english}) ${formData.startAyat}-${formData.endAyat}`;
-    const payload = { topic_number: formData.topic_number, title: formData.title, reference };
+    const payload = {
+      topic_number: formData.topic_number,
+      title: formData.title,
+      reference,
+      start_date: formData.start_date || null,
+      end_date: formData.end_date || null
+    };
 
     if (editingId) {
       await supabase.from("syllabus_topics").update(payload).eq("id", editingId);
@@ -55,7 +63,15 @@ export default function SyllabusEditor() {
       const foundSura = SURAHS.find(s => s.english === engName);
       if (foundSura) suraId = foundSura.id;
     }
-    setFormData({ topic_number: t.topic_number, title: t.title, selectedSura: suraId, startAyat: start, endAyat: end });
+    setFormData({
+      topic_number: t.topic_number,
+      title: t.title,
+      selectedSura: suraId,
+      startAyat: start,
+      endAyat: end,
+      start_date: t.start_date || "",
+      end_date: t.end_date || ""
+    });
     setEditingId(t.id);
   }
 
@@ -88,7 +104,15 @@ export default function SyllabusEditor() {
         </header>
         <button
           onClick={() => {
-            setFormData({ topic_number: topics.length + 1, title: "", selectedSura: 1, startAyat: 1, endAyat: 7 });
+            setFormData({
+              topic_number: topics.length + 1,
+              title: "",
+              selectedSura: 1,
+              startAyat: 1,
+              endAyat: 7,
+              start_date: "",
+              end_date: ""
+            });
             setIsAdding(true);
           }}
           className="btn btn-primary text-sm py-2.5 px-5 flex-shrink-0"
@@ -133,9 +157,18 @@ export default function SyllabusEditor() {
                         </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-slate-800 text-sm leading-snug">{t.title}</p>
-                          {t.reference && (
-                            <p className="text-xs text-slate-400 mt-0.5 truncate">{t.reference}</p>
-                          )}
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            {t.reference && (
+                              <p className="text-xs text-slate-400 truncate">{t.reference}</p>
+                            )}
+                            {(t.start_date || t.end_date) && (
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded">
+                                {t.start_date ? new Date(t.start_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' }) : '—'}
+                                {" - "}
+                                {t.end_date ? new Date(t.end_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' }) : '—'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
@@ -165,13 +198,14 @@ export default function SyllabusEditor() {
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider w-20">#</th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Title</th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Reference</th>
+                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Schedule</th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredTopics.map(t => (
                     <tr key={t.id} className="hover:bg-slate-50/60 transition-colors group">
-                      <td className="px-6 py-4">
+                       <td className="px-6 py-4">
                         <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center font-bold text-emerald-600 text-xs group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 transition-all duration-200">
                           {t.topic_number}
                         </div>
@@ -187,6 +221,17 @@ export default function SyllabusEditor() {
                           </Link>
                         ) : (
                           <span className="text-xs text-slate-300 italic">No reference</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {t.start_date || t.end_date ? (
+                          <span className="text-xs font-medium text-slate-600 bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg">
+                            {t.start_date ? new Date(t.start_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            {" - "}
+                            {t.end_date ? new Date(t.end_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-300 italic">No schedule</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
@@ -257,6 +302,17 @@ export default function SyllabusEditor() {
                 <div>
                   <label className="form-label">End Ayat</label>
                   <input type="number" className="form-input" min={formData.startAyat} value={formData.endAyat} onChange={e => setFormData({...formData, endAyat: parseInt(e.target.value)})} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Start Date</label>
+                  <input type="date" className="form-input" value={formData.start_date} onChange={e => setFormData({...formData, start_date: e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label">End Date</label>
+                  <input type="date" className="form-input" value={formData.end_date} onChange={e => setFormData({...formData, end_date: e.target.value})} />
                 </div>
               </div>
 

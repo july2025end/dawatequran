@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, BookOpen, Activity, LayoutGrid, Loader2, TrendingUp, ArrowRight } from 'lucide-react';
+import { Users, BookOpen, Activity, LayoutGrid, Loader2, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react';
 import Link from "next/link";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<any[]>([]);
-  const [attendanceData, setAttendanceData] = useState<any[]>([]);
-  const [topicProgress, setTopicProgress] = useState<any[]>([]);
-  const [recentReports, setRecentReports] = useState<any[]>([]);
+  const [timeRange, setTimeRange] = useState<"complete" | "week" | "month" | "3_months">("complete");
+  const [memberType, setMemberType] = useState<"all" | "haazir_arkan" | "aam_afraad">("all");
+
+  const [rawCircles, setRawCircles] = useState<any[]>([]);
+  const [rawSessions, setRawSessions] = useState<any[]>([]);
+  const [rawAttendance, setRawAttendance] = useState<any[]>([]);
+  const [rawSyllabus, setRawSyllabus] = useState<any[]>([]);
+  const [rawReports, setRawReports] = useState<any[]>([]);
 
   const DONUT_COLORS = ['#059669', '#e2e8f0'];
 
@@ -19,59 +23,137 @@ export default function AdminDashboard() {
     async function fetchDashboardData() {
       setLoading(true);
       try {
-        const { count: circleCount } = await supabase.from('quran_circles').select('*', { count: 'exact', head: true });
-        const { count: sessionCount } = await supabase.from('sessions').select('*', { count: 'exact', head: true });
-        const { data: attendanceRaw } = await supabase.from('attendance').select('status');
-        const totalAttendanceRecords = attendanceRaw?.length || 0;
-        const presentCount = attendanceRaw?.filter(r => r.status).length || 0;
-        const avgAtt = totalAttendanceRecords > 0 ? Math.round((presentCount / totalAttendanceRecords) * 100) : 0;
+        const { data: circlesData } = await supabase.from('quran_circles').select('id, name');
+        setRawCircles(circlesData || []);
 
-        const { data: ucAttData } = await supabase.from('attendance').select(`status, participants (type, quran_circles (union_councils (name)))`);
-        const ucMap: Record<string, { name: string, members: number, public: number }> = {};
-        ucAttData?.forEach((record: any) => {
-          if (!record.status) return;
-          const ucName = record.participants?.quran_circles?.union_councils?.name || 'Unknown';
-          const type = record.participants?.type;
-          if (!ucMap[ucName]) ucMap[ucName] = { name: ucName, members: 0, public: 0 };
-          if (type === 'haazir_arkan') ucMap[ucName].members++;
-          else ucMap[ucName].public++;
-        });
+        const { data: sessionsData } = await supabase.from('sessions').select('id, session_date, topic_id');
+        setRawSessions(sessionsData || []);
 
-        const { count: totalSyllabus } = await supabase.from('syllabus_topics').select('*', { count: 'exact', head: true });
-        const { data: completedTopics } = await supabase.from('sessions').select('topic_id').not('topic_id', 'is', null);
-        const uniqueCompleted = new Set(completedTopics?.map(t => t.topic_id)).size;
+        const { data: syllabusData } = await supabase.from('syllabus_topics').select('id, topic_number, title');
+        setRawSyllabus(syllabusData || []);
 
-        const { data: reports } = await supabase
+        const { data: attendanceData } = await supabase
+          .from('attendance')
+          .select(`
+            status,
+            session_id,
+            participant_id,
+            participants (type, quran_circles (union_councils (name))),
+            sessions (session_date)
+          `);
+        setRawAttendance(attendanceData || []);
+
+        const { data: reportsData } = await supabase
           .from('sessions')
-          .select(`id, session_date, quran_circles (name, murabbi_name, union_councils (name)), syllabus_topics (title, topic_number), attendance (status)`)
-          .order('session_date', { ascending: false })
-          .limit(5);
+          .select(`
+            id,
+            session_date,
+            quran_circles (name, murabbi_name, union_councils (name)),
+            syllabus_topics (title, topic_number),
+            attendance (status, participants (type))
+          `)
+          .order('session_date', { ascending: false });
+        setRawReports(reportsData || []);
 
-        setStats([
-          { label: "Total Circles",   value: circleCount || 0,   icon: Users,       color: 'blue',    gradient: 'from-blue-500 to-indigo-600',   bg: 'from-blue-50/80 to-indigo-50/60',   border: 'border-blue-200/50'   },
-          { label: "Classes Held",    value: sessionCount || 0,  icon: BookOpen,    color: 'emerald', gradient: 'from-emerald-500 to-teal-600',  bg: 'from-emerald-50/80 to-teal-50/60', border: 'border-emerald-200/50' },
-          { label: "Avg Attendance",  value: `${avgAtt}%`,       icon: Activity,    color: 'amber',   gradient: 'from-amber-500 to-orange-500',  bg: 'from-amber-50/80 to-orange-50/60', border: 'border-amber-200/50'   },
-          { label: "Syllabus Topics", value: totalSyllabus || 0, icon: LayoutGrid,  color: 'purple',  gradient: 'from-purple-500 to-fuchsia-600',bg: 'from-purple-50/80 to-fuchsia-50/60',border:'border-purple-200/50' },
-        ]);
-
-        setAttendanceData(Object.values(ucMap).slice(0, 5));
-        setTopicProgress([
-          { name: 'Completed', value: uniqueCompleted },
-          { name: 'Remaining', value: (totalSyllabus || 0) - uniqueCompleted },
-        ]);
-        setRecentReports(reports?.map((r: any) => ({
-          circle:  r.quran_circles?.name || r.quran_circles?.[0]?.name,
-          uc:      r.quran_circles?.union_councils?.name || r.quran_circles?.[0]?.union_councils?.name || 'N/A',
-          murabbi: r.quran_circles?.murabbi_name || r.quran_circles?.[0]?.murabbi_name || 'Admin',
-          topic:   r.syllabus_topics ? `Topic ${r.syllabus_topics.topic_number || r.syllabus_topics[0]?.topic_number}: ${r.syllabus_topics.title || r.syllabus_topics[0]?.title}` : 'General',
-          date:    new Date(r.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }),
-          att:     `${r.attendance?.filter((a: any) => a.status).length} / ${r.attendance?.length}`
-        })) || []);
       } catch (e) { console.error("Dashboard data fetch error:", e); }
       finally { setLoading(false); }
     }
     fetchDashboardData();
   }, []);
+
+  const timeRangeFilter = (dateStr: string) => {
+    if (timeRange === "complete") return true;
+    const date = new Date(dateStr);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (timeRange === "week") return diffDays <= 7 && diffDays >= 0;
+    if (timeRange === "month") return diffDays <= 30 && diffDays >= 0;
+    if (timeRange === "3_months") return diffDays <= 90 && diffDays >= 0;
+    return true;
+  };
+
+  const memberTypeFilter = (type: string) => {
+    if (memberType === "all") return true;
+    return type === memberType;
+  };
+
+  const computedData = useMemo(() => {
+    const filteredSessions = rawSessions.filter(s => timeRangeFilter(s.session_date));
+
+    const filteredAttendance = rawAttendance.filter(a => {
+      const sessionDate = a.sessions?.session_date || a.session_date;
+      const partType = a.participants?.type;
+      return timeRangeFilter(sessionDate) && memberTypeFilter(partType);
+    });
+
+    const circleCount = rawCircles.length;
+    const sessionCount = filteredSessions.length;
+    
+    const totalAttendanceRecords = filteredAttendance.length;
+    const presentCount = filteredAttendance.filter(r => r.status).length;
+    const avgAtt = totalAttendanceRecords > 0 ? Math.round((presentCount / totalAttendanceRecords) * 100) : 0;
+
+    const totalSyllabus = rawSyllabus.length;
+    const completedTopicIds = new Set(
+      filteredSessions
+        .filter(s => s.topic_id !== null && s.topic_id !== undefined)
+        .map(s => s.topic_id)
+    );
+    const uniqueCompleted = completedTopicIds.size;
+
+    const statsList = [
+      { label: "Total Circles",   value: circleCount || 0,   icon: Users,       color: 'blue',    gradient: 'from-blue-500 to-indigo-600',   bg: 'from-blue-50/80 to-indigo-50/60',   border: 'border-blue-200/50'   },
+      { label: "Classes Held",    value: sessionCount || 0,  icon: BookOpen,    color: 'emerald', gradient: 'from-emerald-500 to-teal-600',  bg: 'from-emerald-50/80 to-teal-50/60', border: 'border-emerald-200/50' },
+      { label: "Avg Attendance",  value: `${avgAtt}%`,       icon: Activity,    color: 'amber',   gradient: 'from-amber-500 to-orange-500',  bg: 'from-amber-50/80 to-orange-50/60', border: 'border-amber-200/50'   },
+      { label: "Syllabus Topics", value: totalSyllabus || 0, icon: LayoutGrid,  color: 'purple',  gradient: 'from-purple-500 to-fuchsia-600',bg: 'from-purple-50/80 to-fuchsia-50/60',border:'border-purple-200/50' },
+    ];
+
+    const ucMap: Record<string, { name: string, members: number, public: number }> = {};
+    filteredAttendance.forEach((record: any) => {
+      if (!record.status) return;
+      const ucName = record.participants?.quran_circles?.union_councils?.name || 'Unknown';
+      const type = record.participants?.type;
+      if (!ucMap[ucName]) ucMap[ucName] = { name: ucName, members: 0, public: 0 };
+      if (type === 'haazir_arkan') ucMap[ucName].members++;
+      else ucMap[ucName].public++;
+    });
+    const attendanceChartData = Object.values(ucMap).slice(0, 5);
+
+    const topicProgressData = [
+      { name: 'Completed', value: uniqueCompleted },
+      { name: 'Remaining', value: Math.max(0, totalSyllabus - uniqueCompleted) },
+    ];
+
+    const reportsList = rawReports
+      .filter(r => timeRangeFilter(r.session_date))
+      .map((r: any) => {
+        const sessionAtt = r.attendance || [];
+        const filteredAtt = sessionAtt.filter((a: any) => memberTypeFilter(a.participants?.type));
+        const present = filteredAtt.filter((a: any) => a.status).length;
+        const total = filteredAtt.length;
+        return {
+          circle:  r.quran_circles?.name || r.quran_circles?.[0]?.name,
+          uc:      r.quran_circles?.union_councils?.name || r.quran_circles?.[0]?.union_councils?.name || 'N/A',
+          murabbi: r.quran_circles?.murabbi_name || r.quran_circles?.[0]?.murabbi_name || 'Admin',
+          topic:   r.syllabus_topics ? `Topic ${r.syllabus_topics.topic_number || r.syllabus_topics[0]?.topic_number}: ${r.syllabus_topics.title || r.syllabus_topics[0]?.title}` : 'General',
+          date:    new Date(r.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }),
+          att:     total > 0 ? `${present} / ${total}` : '0 / 0'
+        };
+      })
+      .slice(0, 5);
+
+    return {
+      stats: statsList,
+      attendanceData: attendanceChartData,
+      topicProgress: topicProgressData,
+      recentReports: reportsList
+    };
+  }, [rawCircles, rawSessions, rawAttendance, rawSyllabus, rawReports, timeRange, memberType]);
+
+  const { stats, attendanceData, topicProgress, recentReports } = computedData;
 
   if (loading) {
     return (
@@ -89,15 +171,44 @@ export default function AdminDashboard() {
     <div className="p-5 md:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
 
       {/* Page Header */}
-      <header className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm" />
-          <p className="section-label">Overview</p>
+      <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm" />
+            <p className="section-label">Overview</p>
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Zone Dashboard</h2>
+          <p className="text-slate-500 mt-1.5 text-sm leading-relaxed max-w-2xl">
+            Real-time overview of Quran Circle performance, syllabus progress, and participant engagement.
+          </p>
         </div>
-        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Zone Dashboard</h2>
-        <p className="text-slate-500 mt-1.5 text-sm leading-relaxed max-w-2xl">
-          Real-time overview of Quran Circle performance, syllabus progress, and participant engagement.
-        </p>
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative">
+            <select
+              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
+              value={timeRange}
+              onChange={(e: any) => setTimeRange(e.target.value)}
+            >
+              <option value="complete">All Time</option>
+              <option value="week">Last Week</option>
+              <option value="month">Last Month</option>
+              <option value="3_months">Last 3 Months</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select
+              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
+              value={memberType}
+              onChange={(e: any) => setMemberType(e.target.value)}
+            >
+              <option value="all">All Participants</option>
+              <option value="haazir_arkan">Haazir Arkan</option>
+              <option value="aam_afraad">Aam Afraad</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
       </header>
 
       {/* Stats Grid */}

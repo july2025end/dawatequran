@@ -1,13 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Map, Users, Activity, Loader2, ChevronRight, TrendingUp } from 'lucide-react';
+import { Map, Users, Activity, Loader2, ChevronRight, TrendingUp, ChevronDown } from 'lucide-react';
 
 export default function UCStatus() {
   const [loading, setLoading] = useState(true);
-  const [ucStats, setUcStats] = useState<any[]>([]);
+  const [timeRange, setTimeRange] = useState<"complete" | "week" | "month" | "3_months">("complete");
+  const [memberType, setMemberType] = useState<"all" | "haazir_arkan" | "aam_afraad">("all");
+
+  const [rawUcs, setRawUcs] = useState<any[]>([]);
+  const [rawCircles, setRawCircles] = useState<any[]>([]);
+  const [rawParticipants, setRawParticipants] = useState<any[]>([]);
+  const [rawAttendance, setRawAttendance] = useState<any[]>([]);
+  const [rawSessions, setRawSessions] = useState<any[]>([]);
   const [totalTopics, setTotalTopics] = useState(0);
   const [expandedUC, setExpandedUC] = useState<string | null>(null);
 
@@ -19,41 +26,108 @@ export default function UCStatus() {
       const { data: ucs } = await supabase.from('union_councils').select('id, name').order('name');
       const { data: circles } = await supabase.from('quran_circles').select('id, name, uc_id');
       const { data: participants } = await supabase.from('participants').select('id, circle_id, type');
-      const { data: attendance } = await supabase.from('attendance').select(`status, session_id, participants (circle_id)`);
-      const { data: sessions } = await supabase.from('sessions').select('id, circle_id, topic_id');
+      const { data: attendance } = await supabase.from('attendance').select(`status, session_id, participants (circle_id, type)`);
+      const { data: sessions } = await supabase.from('sessions').select('id, circle_id, topic_id, session_date');
       const { count: topicCount } = await supabase.from('syllabus_topics').select('*', { count: 'exact', head: true });
+
+      setRawUcs(ucs || []);
+      setRawCircles(circles || []);
+      setRawParticipants(participants || []);
+      setRawAttendance(attendance || []);
+      setRawSessions(sessions || []);
       setTotalTopics(topicCount || 0);
-
-      const stats = ucs?.map((uc: any) => {
-        const ucCircles = circles?.filter(c => c.uc_id === uc.id) || [];
-        const ucCircleIds = ucCircles.map(c => c.id);
-        const ucParticipants = participants?.filter(p => ucCircleIds.includes(p.circle_id)) || [];
-        const arkanCount = ucParticipants.filter(p => p.type === 'haazir_arkan').length;
-        const publicCount = ucParticipants.filter(p => p.type === 'aam_afraad').length;
-        const ucAttendance = attendance?.filter((a: any) => a.participants && ucCircleIds.includes(a.participants.circle_id)) || [];
-        const presentCount = ucAttendance.filter((a: any) => a.status).length;
-        const avgAtt = ucAttendance.length > 0 ? Math.round((presentCount / ucAttendance.length) * 100) : 0;
-        const ucSessions = sessions?.filter(s => ucCircleIds.includes(s.circle_id)) || [];
-        const uniqueTopics = new Set(ucSessions.filter(s => s.topic_id).map(s => s.topic_id)).size;
-        const progress = topicCount ? Math.round((uniqueTopics / topicCount) * 100) : 0;
-
-        const circleDetails = ucCircles.map(c => {
-          const cParticipants = ucParticipants.filter(p => p.circle_id === c.id);
-          const cAttendanceList = ucAttendance.filter((a: any) => a.participants?.circle_id === c.id);
-          const cPresent = cAttendanceList.filter((a: any) => a.status).length;
-          const cAvgAtt = cAttendanceList.length > 0 ? Math.round((cPresent / cAttendanceList.length) * 100) : 0;
-          const cSessions = sessions?.filter((s: any) => s.circle_id === c.id) || [];
-          const cUniqueTopics = new Set(cSessions.filter((s: any) => s.topic_id).map((s: any) => s.topic_id)).size;
-          const cProgress = topicCount ? Math.round((cUniqueTopics / topicCount) * 100) : 0;
-          return { id: c.id, name: c.name, participants: cParticipants.length, arkan: cParticipants.filter(p => p.type === 'haazir_arkan').length, public: cParticipants.filter(p => p.type === 'aam_afraad').length, avgAttendance: cAvgAtt, progress: cProgress };
-        });
-
-        return { id: uc.id, name: uc.name, circles: ucCircles.length, participants: ucParticipants.length, arkan: arkanCount, public: publicCount, avgAttendance: avgAtt, progress, uniqueTopics, circleDetails };
-      }) || [];
-
-      setUcStats(stats);
-    } catch (e) { console.error("Error fetching UC stats:", e); } finally { setLoading(false); }
+    } catch (e) {
+      console.error("Error fetching UC stats:", e);
+    } finally {
+      setLoading(false);
+    }
   }
+
+  const timeRangeFilter = (dateStr: string) => {
+    if (timeRange === "complete") return true;
+    const date = new Date(dateStr);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (timeRange === "week") return diffDays <= 7 && diffDays >= 0;
+    if (timeRange === "month") return diffDays <= 30 && diffDays >= 0;
+    if (timeRange === "3_months") return diffDays <= 90 && diffDays >= 0;
+    return true;
+  };
+
+  const memberTypeFilter = (type: string) => {
+    if (memberType === "all") return true;
+    return type === memberType;
+  };
+
+  const ucStats = useMemo(() => {
+    const sessionDateMap: Record<string, string> = {};
+    rawSessions.forEach((s: any) => {
+      sessionDateMap[s.id] = s.session_date;
+    });
+
+    const filteredSessions = rawSessions.filter(s => timeRangeFilter(s.session_date));
+
+    const filteredAttendance = rawAttendance.filter((a: any) => {
+      const sessionDate = sessionDateMap[a.session_id] || '';
+      const pType = a.participants?.type;
+      return timeRangeFilter(sessionDate) && memberTypeFilter(pType);
+    });
+
+    const filteredParticipants = rawParticipants.filter(p => memberTypeFilter(p.type));
+
+    return rawUcs.map((uc: any) => {
+      const ucCircles = rawCircles.filter(c => c.uc_id === uc.id) || [];
+      const ucCircleIds = ucCircles.map(c => c.id);
+      
+      const ucParticipants = filteredParticipants.filter(p => ucCircleIds.includes(p.circle_id)) || [];
+      const arkanCount = ucParticipants.filter(p => p.type === 'haazir_arkan').length;
+      const publicCount = ucParticipants.filter(p => p.type === 'aam_afraad').length;
+      
+      const ucAttendance = filteredAttendance.filter((a: any) => a.participants && ucCircleIds.includes(a.participants.circle_id)) || [];
+      const presentCount = ucAttendance.filter((a: any) => a.status).length;
+      const avgAtt = ucAttendance.length > 0 ? Math.round((presentCount / ucAttendance.length) * 100) : 0;
+      
+      const ucSessions = filteredSessions.filter(s => ucCircleIds.includes(s.circle_id)) || [];
+      const uniqueTopics = new Set(ucSessions.filter(s => s.topic_id).map(s => s.topic_id)).size;
+      const progress = totalTopics ? Math.round((uniqueTopics / totalTopics) * 100) : 0;
+
+      const circleDetails = ucCircles.map(c => {
+        const cParticipants = ucParticipants.filter(p => p.circle_id === c.id);
+        const cAttendanceList = ucAttendance.filter((a: any) => a.participants?.circle_id === c.id);
+        const cPresent = cAttendanceList.filter((a: any) => a.status).length;
+        const cAvgAtt = cAttendanceList.length > 0 ? Math.round((cPresent / cAttendanceList.length) * 100) : 0;
+        const cSessions = filteredSessions.filter((s: any) => s.circle_id === c.id) || [];
+        const cUniqueTopics = new Set(cSessions.filter((s: any) => s.topic_id).map((s: any) => s.topic_id)).size;
+        const cProgress = totalTopics ? Math.round((cUniqueTopics / totalTopics) * 100) : 0;
+        
+        return {
+          id: c.id,
+          name: c.name,
+          participants: cParticipants.length,
+          arkan: cParticipants.filter(p => p.type === 'haazir_arkan').length,
+          public: cParticipants.filter(p => p.type === 'aam_afraad').length,
+          avgAttendance: cAvgAtt,
+          progress: cProgress
+        };
+      });
+
+      return {
+        id: uc.id,
+        name: uc.name,
+        circles: ucCircles.length,
+        participants: ucParticipants.length,
+        arkan: arkanCount,
+        public: publicCount,
+        avgAttendance: avgAtt,
+        progress,
+        uniqueTopics,
+        circleDetails
+      };
+    }) || [];
+  }, [rawUcs, rawCircles, rawParticipants, rawAttendance, rawSessions, totalTopics, timeRange, memberType]);
 
   const attColor = (v: number) => v > 70 ? 'text-emerald-600' : v > 40 ? 'text-amber-500' : 'text-red-500';
   const attBg = (v: number) => v > 70 ? 'bg-emerald-500' : v > 40 ? 'bg-amber-400' : 'bg-red-400';
@@ -76,15 +150,44 @@ export default function UCStatus() {
   return (
     <div className="p-5 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
-      <header>
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm" />
-          <p className="section-label">Analytics</p>
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm" />
+            <p className="section-label">Analytics</p>
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Union Council Status</h2>
+          <p className="text-slate-500 mt-1 text-sm leading-relaxed max-w-2xl">
+            Comparative analytics across all Union Councils — attendance, participation, and curriculum progress.
+          </p>
         </div>
-        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Union Council Status</h2>
-        <p className="text-slate-500 mt-1 text-sm leading-relaxed max-w-2xl">
-          Comparative analytics across all Union Councils — attendance, participation, and curriculum progress.
-        </p>
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative">
+            <select
+              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
+              value={timeRange}
+              onChange={(e: any) => setTimeRange(e.target.value)}
+            >
+              <option value="complete">All Time</option>
+              <option value="week">Last Week</option>
+              <option value="month">Last Month</option>
+              <option value="3_months">Last 3 Months</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select
+              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
+              value={memberType}
+              onChange={(e: any) => setMemberType(e.target.value)}
+            >
+              <option value="all">All Participants</option>
+              <option value="haazir_arkan">Haazir Arkan</option>
+              <option value="aam_afraad">Aam Afraad</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+        </div>
       </header>
 
       {/* Charts */}

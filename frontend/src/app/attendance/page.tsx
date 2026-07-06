@@ -23,7 +23,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isAddingAttendee, setIsAddingAttendee] = useState(false);
-  const [newAttendee, setNewAttendee] = useState({ full_name: "", phone: "", remarks: "", type: "haazir_arkan" });
+  const [newAttendee, setNewAttendee] = useState({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
 
   useEffect(() => {
     async function loadInitialData() {
@@ -86,7 +86,7 @@ export default function AttendancePage() {
       if (error) throw error;
       setParticipants([...participants, { ...data, present: true }]);
       setIsAddingAttendee(false);
-      setNewAttendee({ full_name: "", phone: "", remarks: "", type: "haazir_arkan" });
+      setNewAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
     } catch (e: any) { alert("Error adding attendee: " + e.message); }
   }
 
@@ -270,13 +270,7 @@ export default function AttendancePage() {
                   </div>
                   <input type="text" placeholder="Full Name *" className="form-input" value={newAttendee.full_name} onChange={(e) => setNewAttendee({...newAttendee, full_name: e.target.value})} />
                   <input type="text" placeholder="Phone (optional)" className="form-input" value={newAttendee.phone} onChange={(e) => setNewAttendee({...newAttendee, phone: e.target.value})} />
-                  <div className="relative">
-                    <select className="form-input pr-8" value={newAttendee.type} onChange={(e) => setNewAttendee({...newAttendee, type: e.target.value})}>
-                      <option value="haazir_arkan">Haazir Arkan</option>
-                      <option value="aam_afraad">Aam Afraad</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
+
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => setIsAddingAttendee(false)} className="btn btn-secondary flex-1 text-xs py-2">Cancel</button>
                     <button onClick={handleAddAttendee} className="btn btn-primary flex-1 text-xs py-2">Add & Mark Present</button>
