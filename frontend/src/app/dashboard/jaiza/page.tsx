@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { ClipboardList, Search, Edit2, Trash2, Calendar, MapPin, Users, X, Save, Loader2, ChevronRight, ChevronDown } from "lucide-react";
+import { ClipboardList, Search, Edit2, Trash2, MapPin, Users, X, Save, Loader2, ChevronRight, ChevronDown, Plus, Sparkles } from "lucide-react";
 import React from "react";
 
 export default function JaizaReports() {
@@ -14,6 +14,15 @@ export default function JaizaReports() {
   const [sessionAttendance, setSessionAttendance] = useState<any[]>([]);
   const [topics, setTopics] = useState<any[]>([]);
   const [circles, setCircles] = useState<any[]>([]);
+
+  // Edit modal attendee state
+  const [editModalParticipants, setEditModalParticipants] = useState<any[]>([]);
+  const [editAttendanceMap, setEditAttendanceMap] = useState<{ [participantId: string]: boolean }>({});
+  const [loadingModalParticipants, setLoadingModalParticipants] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [isAddingEditAttendee, setIsAddingEditAttendee] = useState(false);
+  const [newEditAttendee, setNewEditAttendee] = useState({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
+  const [addingEditAttendee, setAddingEditAttendee] = useState(false);
 
   useEffect(() => { fetchReports(); fetchSupportData(); }, []);
 
@@ -51,13 +60,130 @@ export default function JaizaReports() {
     else fetchReports();
   }
 
+  async function loadParticipantsForModal(circleId: string, sessionId: string) {
+    if (!circleId) {
+      setEditModalParticipants([]);
+      setEditAttendanceMap({});
+      return;
+    }
+    setLoadingModalParticipants(true);
+    
+    // Fetch participants of the circle
+    const { data: pData } = await supabase
+      .from("participants")
+      .select("id, full_name, type")
+      .eq("circle_id", circleId)
+      .order("full_name");
+      
+    setEditModalParticipants(pData || []);
+
+    // Fetch existing attendance records for this session
+    const { data: attData } = await supabase
+      .from("attendance")
+      .select("participant_id, status")
+      .eq("session_id", sessionId);
+
+    const map: { [key: string]: boolean } = {};
+    (pData || []).forEach(p => {
+      map[p.id] = false;
+    });
+    (attData || []).forEach(a => {
+      if (a.participant_id) map[a.participant_id] = a.status;
+    });
+
+    setEditAttendanceMap(map);
+    setLoadingModalParticipants(false);
+  }
+
+  async function handleAddAttendeeInEditModal() {
+    if (!newEditAttendee.full_name.trim()) { alert("Please enter a participant name."); return; }
+    const circleId = editingReport?.circle_id;
+    if (!circleId) return;
+
+    setAddingEditAttendee(true);
+    try {
+      const { data, error } = await supabase.from("participants")
+        .insert({
+          full_name: newEditAttendee.full_name.trim(),
+          phone: newEditAttendee.phone,
+          remarks: newEditAttendee.remarks,
+          type: newEditAttendee.type,
+          circle_id: circleId,
+          is_active: true
+        })
+        .select().single();
+
+      if (error) throw error;
+
+      setEditModalParticipants(prev => [...prev, data]);
+      setEditAttendanceMap(prev => ({ ...prev, [data.id]: true }));
+      setIsAddingEditAttendee(false);
+      setNewEditAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
+    } catch (err: any) {
+      alert("Error adding attendee: " + err.message);
+    } finally {
+      setAddingEditAttendee(false);
+    }
+  }
+
+  async function startEditingReport(report: any) {
+    setEditingReport({
+      ...report,
+      session_date: report.session_date ? report.session_date.split('T')[0] : "",
+      topic_id: report.topic_id || "",
+      location: report.location || "",
+      notes: report.notes || ""
+    });
+
+    await loadParticipantsForModal(report.circle_id, report.id);
+  }
+
+  async function handleModalCircleChange(newCircleId: string) {
+    setEditingReport({ ...editingReport, circle_id: newCircleId });
+    if (editingReport?.id) {
+      await loadParticipantsForModal(newCircleId, editingReport.id);
+    }
+  }
+
   async function handleUpdateReport() {
     if (!editingReport) return;
-    const { error } = await supabase.from("sessions")
-      .update({ session_date: editingReport.session_date, location: editingReport.location, topic_id: editingReport.topic_id || null, notes: editingReport.notes, circle_id: editingReport.circle_id })
-      .eq("id", editingReport.id);
-    if (error) alert(error.message);
-    else { setEditingReport(null); fetchReports(); }
+    setSavingEdit(true);
+    try {
+      const { error: sessionErr } = await supabase.from("sessions")
+        .update({
+          session_date: editingReport.session_date,
+          location: editingReport.location,
+          topic_id: editingReport.topic_id || null,
+          notes: editingReport.notes,
+          circle_id: editingReport.circle_id
+        })
+        .eq("id", editingReport.id);
+
+      if (sessionErr) throw sessionErr;
+
+      const attRecords = Object.entries(editAttendanceMap).map(([participant_id, status]) => ({
+        session_id: editingReport.id,
+        participant_id,
+        status
+      }));
+
+      if (attRecords.length > 0) {
+        const { error: attErr } = await supabase
+          .from("attendance")
+          .upsert(attRecords, { onConflict: "session_id,participant_id" });
+        if (attErr) throw attErr;
+      }
+
+      setEditingReport(null);
+      await fetchReports();
+      if (viewingDetails === editingReport.id) {
+        await fetchAttendanceDetails(editingReport.id);
+      }
+    } catch (err: any) {
+      alert("Error updating report: " + err.message);
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   async function toggleAttendance(sessionId: string, participantId: string, currentStatus: boolean) {
@@ -135,7 +261,7 @@ export default function JaizaReports() {
                         className={`p-2 rounded-lg transition-all ${viewingDetails === report.id ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}>
                         {viewingDetails === report.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => setEditingReport(report)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => startEditingReport(report)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit Session & Attendees"><Edit2 className="w-4 h-4" /></button>
                       <button onClick={() => handleDelete(report.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
@@ -143,7 +269,7 @@ export default function JaizaReports() {
                 {viewingDetails === report.id && (
                   <div className="mt-3 pt-3 border-t border-slate-100 animate-fade-in">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-semibold text-slate-500 flex items-center gap-1"><Users className="w-3.5 h-3.5 text-emerald-600" /> Attendance</p>
+                      <p className="text-xs font-semibold text-slate-500 flex items-center gap-1"><Users className="w-3.5 h-3.5 text-emerald-600" /> Attendance Breakdown</p>
                       <span className="badge badge-emerald">{sessionAttendance.filter(a => a.status).length} / {sessionAttendance.length} present</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
@@ -220,14 +346,14 @@ export default function JaizaReports() {
                             else { setViewingDetails(report.id); fetchAttendanceDetails(report.id); }
                           }}
                           className={`p-2 rounded-lg transition-all ${viewingDetails === report.id ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
-                          title="View details"
+                          title="View attendance details"
                         >
                           {viewingDetails === report.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                         </button>
-                        <button onClick={() => setEditingReport(report)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit">
+                        <button onClick={() => startEditingReport(report)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit session & attendee roster">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(report.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Delete">
+                        <button onClick={() => handleDelete(report.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Delete session">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -241,7 +367,7 @@ export default function JaizaReports() {
                         <div className="card border border-emerald-100 p-5 animate-fade-in">
                           <div className="flex items-center justify-between mb-4">
                             <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                              <Users className="w-4 h-4 text-emerald-600" /> Attendance Details
+                              <Users className="w-4 h-4 text-emerald-600" /> Attendance Details (Tap to toggle status)
                             </h4>
                             <span className="badge badge-emerald">
                               {sessionAttendance.filter(a => a.status).length} / {sessionAttendance.length} present
@@ -254,15 +380,15 @@ export default function JaizaReports() {
                                 onClick={() => toggleAttendance(att.session_id, att.participant_id, att.status)}
                                 className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer text-left ${
                                   att.status
-                                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold'
                                     : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
                                 }`}
                               >
-                                <div className="min-w-0">
+                                <div className="min-w-0 pr-1">
                                   <p className="text-xs font-semibold truncate">{att.participants?.full_name}</p>
                                   <p className="text-xs capitalize opacity-60 mt-0.5">{att.participants?.type?.replace('_', ' ')}</p>
                                 </div>
-                                <div className={`w-5 h-5 rounded-full ml-2 flex-shrink-0 flex items-center justify-center ${att.status ? 'bg-emerald-500' : 'bg-slate-200'}`}>
+                                <div className={`w-5 h-5 rounded-full ml-1 flex-shrink-0 flex items-center justify-center ${att.status ? 'bg-emerald-500' : 'bg-slate-200'}`}>
                                   {att.status && <span className="text-white text-xs">✓</span>}
                                 </div>
                               </button>
@@ -296,16 +422,18 @@ export default function JaizaReports() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Session Modal */}
       {editingReport && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fade-in"
           onClick={(e) => { if (e.target === e.currentTarget) setEditingReport(null); }}
         >
-          <div className="w-full max-w-xl animate-float-up overflow-hidden" style={{ background: 'rgba(255,255,255,0.90)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', border: '1px solid rgba(255,255,255,0.95)', borderRadius: '1.75rem', boxShadow: '0 25px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,1)' }}>
-            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 px-6 py-5 flex items-center justify-between text-white">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-float-up overflow-hidden rounded-3xl" style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', border: '1px solid rgba(255,255,255,0.95)', boxShadow: '0 25px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,1)' }}>
+            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 px-6 py-5 flex items-center justify-between text-white sticky top-0 z-10">
               <div>
-                <h3 className="font-bold text-base">Edit Session</h3>
+                <h3 className="font-bold text-base flex items-center gap-2">
+                  <Edit2 className="w-4 h-4 text-emerald-400" /> Edit Session & Attendee Roster
+                </h3>
                 <p className="text-xs text-emerald-200/70 mt-0.5">{editingReport.quran_circles?.name}</p>
               </div>
               <button onClick={() => setEditingReport(null)} className="p-2 hover:bg-white/15 rounded-lg transition-colors">
@@ -313,44 +441,162 @@ export default function JaizaReports() {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="p-6 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="form-label">Date</label>
+                  <label className="form-label">Session Date</label>
                   <input type="date" className="form-input" value={editingReport.session_date} onChange={(e) => setEditingReport({...editingReport, session_date: e.target.value})} />
                 </div>
                 <div>
-                  <label className="form-label">Circle</label>
+                  <label className="form-label">Quran Circle</label>
                   <div className="relative">
-                    <select className="form-input pr-8" value={editingReport.circle_id} onChange={(e) => setEditingReport({...editingReport, circle_id: e.target.value})}>
+                    <select className="form-input pr-8" value={editingReport.circle_id} onChange={(e) => handleModalCircleChange(e.target.value)}>
                       {circles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                     <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
               </div>
+
               <div>
                 <label className="form-label">Topic</label>
                 <div className="relative">
                   <select className="form-input pr-8" value={editingReport.topic_id || ""} onChange={(e) => setEditingReport({...editingReport, topic_id: e.target.value})}>
-                    <option value="">No Topic</option>
+                    <option value="">No Topic / Custom Session</option>
                     {topics.map(t => <option key={t.id} value={t.id}>Topic {t.topic_number}: {t.title}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
               </div>
-              <div>
-                <label className="form-label">Location</label>
-                <input type="text" className="form-input" placeholder="e.g. Masjid, Residence..." value={editingReport.location || ""} onChange={(e) => setEditingReport({...editingReport, location: e.target.value})} />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">Location</label>
+                  <input type="text" className="form-input" placeholder="e.g. Masjid, Residence..." value={editingReport.location || ""} onChange={(e) => setEditingReport({...editingReport, location: e.target.value})} />
+                </div>
+                <div>
+                  <label className="form-label">Notes</label>
+                  <input type="text" className="form-input" placeholder="Session notes..." value={editingReport.notes || ""} onChange={(e) => setEditingReport({...editingReport, notes: e.target.value})} />
+                </div>
               </div>
-              <div>
-                <label className="form-label">Notes</label>
-                <textarea className="form-input h-24 resize-none" placeholder="Session notes..." value={editingReport.notes || ""} onChange={(e) => setEditingReport({...editingReport, notes: e.target.value})} />
+
+              {/* Attendee Roster & Attendance Statuses Section */}
+              <div className="space-y-3 pt-2 border-t border-slate-200/80">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <label className="form-label mb-0">
+                    Attendees ({Object.values(editAttendanceMap).filter(Boolean).length} / {editModalParticipants.length} Present)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingEditAttendee(!isAddingEditAttendee)}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 bg-emerald-100/80 hover:bg-emerald-200/80 px-2.5 py-1 rounded-xl transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" /> Add Attendee
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        const allTrue: { [k: string]: boolean } = {};
+                        editModalParticipants.forEach(p => allTrue[p.id] = true);
+                        setEditAttendanceMap(allTrue);
+                      }}
+                      className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800"
+                    >
+                      Mark All Present
+                    </button>
+                    <span className="text-slate-300">•</span>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const allFalse: { [k: string]: boolean } = {};
+                        editModalParticipants.forEach(p => allFalse[p.id] = false);
+                        setEditAttendanceMap(allFalse);
+                      }}
+                      className="text-[11px] font-bold text-slate-400 hover:text-slate-600"
+                    >
+                      Mark All Absent
+                    </button>
+                  </div>
+                </div>
+
+                {/* Inline form to add new attendee */}
+                {isAddingEditAttendee && (
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 space-y-2 animate-float-up">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> New Attendee for Circle
+                      </span>
+                      <button type="button" onClick={() => setIsAddingEditAttendee(false)} className="text-slate-400 hover:text-slate-600">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Full Name *" 
+                        className="form-input text-xs py-2" 
+                        value={newEditAttendee.full_name} 
+                        onChange={(e) => setNewEditAttendee({ ...newEditAttendee, full_name: e.target.value })} 
+                      />
+                      <input 
+                        type="text" 
+                        placeholder="Phone (optional)" 
+                        className="form-input text-xs py-2" 
+                        value={newEditAttendee.phone} 
+                        onChange={(e) => setNewEditAttendee({ ...newEditAttendee, phone: e.target.value })} 
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button type="button" onClick={() => setIsAddingEditAttendee(false)} className="btn btn-secondary text-xs py-1.5 px-3">
+                        Cancel
+                      </button>
+                      <button type="button" onClick={handleAddAttendeeInEditModal} disabled={addingEditAttendee} className="btn btn-primary text-xs py-1.5 px-3">
+                        {addingEditAttendee ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Add & Mark Present"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {loadingModalParticipants ? (
+                  <div className="flex items-center justify-center py-6 text-emerald-600 gap-2 text-xs font-semibold">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading circle attendees...
+                  </div>
+                ) : editModalParticipants.length === 0 ? (
+                  <p className="text-xs text-slate-400 italic">No participants found in this circle.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto p-1.5 border border-slate-200/80 rounded-2xl bg-slate-50/50">
+                    {editModalParticipants.map(p => {
+                      const isPresent = !!editAttendanceMap[p.id];
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: !isPresent })}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left ${
+                            isPresent
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                              : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <p className="truncate font-bold">{p.full_name}</p>
+                            <p className="text-[10px] font-normal capitalize opacity-60">{p.type?.replace('_', ' ')}</p>
+                          </div>
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${isPresent ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                            {isPresent ? '✓' : ''}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
+
               <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditingReport(null)} className="btn btn-secondary flex-1 py-2.5 text-sm">Cancel</button>
-                <button onClick={handleUpdateReport} className="btn btn-primary flex-[2] py-2.5 text-sm">
-                  <Save className="w-4 h-4" /> Save Changes
+                <button onClick={() => setEditingReport(null)} className="btn btn-secondary flex-1 py-3 text-sm">Cancel</button>
+                <button onClick={handleUpdateReport} disabled={savingEdit} className="btn btn-primary flex-[2] py-3 text-sm font-bold">
+                  {savingEdit ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Session & Attendance</>}
                 </button>
               </div>
             </div>
@@ -360,3 +606,4 @@ export default function JaizaReports() {
     </div>
   );
 }
+

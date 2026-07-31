@@ -132,7 +132,7 @@ export function getTafheemLink(reference: string): string | null {
   // This extracts the name and the verse numbers
   const nameMatch = reference.match(/([^\d\(\)]+).*?([\d-]+)$/);
   if (nameMatch) {
-    let name = nameMatch[1].trim();
+    const name = nameMatch[1].trim();
     const verse = nameMatch[2];
     
     // Look up surah number
