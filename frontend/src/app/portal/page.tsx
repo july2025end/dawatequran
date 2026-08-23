@@ -322,14 +322,14 @@ export default function AttendeePortal() {
                     style={{ color: 'rgba(196,181,253,0.9)' }} />
                 </div>
                 <h3 className="font-bold text-white mb-1.5" style={{ fontSize: '0.9375rem', letterSpacing: '-0.01em' }}>
-                  Find a Circle Near You
+                  Be in Touch with Your Circle Head
                 </h3>
                 <p className="mb-4 leading-relaxed" style={{ fontSize: '0.75rem', fontWeight: 500, color: 'rgba(196,181,253,0.6)' }}>
-                  View all active circles across Zone 5 Union Councils.
+                  Connect with circle heads & Union Council representatives across Zone 5.
                 </p>
-                <Link href="/" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold active:scale-95 transition-all hover:shadow-lg"
+                <Link href="/portal/representatives" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold active:scale-95 transition-all hover:shadow-lg hover:bg-white"
                   style={{ background: 'rgba(255,255,255,0.92)', color: '#4c1d95', fontSize: '0.75rem', letterSpacing: '0.04em', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-                  Explore <ChevronRight className="w-3.5 h-3.5" />
+                  Contact Us <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
             </div>
