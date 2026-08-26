@@ -9,6 +9,7 @@ export default function JaizaReports() {
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sessionCategoryFilter, setSessionCategoryFilter] = useState("all");
   const [editingReport, setEditingReport] = useState<any>(null);
   const [viewingDetails, setViewingDetails] = useState<string | null>(null);
   const [sessionAttendance, setSessionAttendance] = useState<any[]>([]);
@@ -192,12 +193,19 @@ export default function JaizaReports() {
     else fetchAttendanceDetails(viewingDetails!);
   }
 
-  const filteredReports = reports.filter(r =>
-    r.quran_circles?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.quran_circles?.union_councils?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.syllabus_topics?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.location?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredReports = reports.filter(r => {
+    const matchesSearch = 
+      r.quran_circles?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.quran_circles?.union_councils?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.syllabus_topics?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.location?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+    if (sessionCategoryFilter !== "all" && r.category !== sessionCategoryFilter) {
+      return false;
+    }
+    
+    return matchesSearch;
+  });
 
   return (
     <div className="p-5 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
@@ -213,16 +221,32 @@ export default function JaizaReports() {
         </p>
       </header>
 
-      {/* Search */}
-      <div className="relative max-w-lg">
-        <input
-          type="text"
-          placeholder="Search by circle, UC, topic, or location..."
-          className="form-input pl-9"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 max-w-2xl">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="Search by circle, UC, topic, or location..."
+            className="form-input pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        </div>
+        <div className="relative w-full sm:w-48">
+          <select 
+            className="form-input pr-10 bg-white"
+            value={sessionCategoryFilter}
+            onChange={(e) => setSessionCategoryFilter(e.target.value)}
+          >
+            <option value="all">All Sessions</option>
+            <option value="quran_circle">Quran Circle</option>
+            <option value="ijtima_arkan">Ijtima Arkan</option>
+            <option value="dars_e_quran">Dars-e-Quran</option>
+            <option value="other">Other</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        </div>
       </div>
 
       {loading ? (
@@ -248,7 +272,7 @@ export default function JaizaReports() {
                     <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                       <MapPin className="w-3 h-3" />{report.quran_circles?.union_councils?.name || 'Unknown UC'}
                     </p>
-                    {report.syllabus_topics && (
+                    {report.category !== "ijtima_arkan" && report.syllabus_topics && (
                       <p className="text-xs text-slate-500 mt-1.5">
                         <span className="font-semibold">Topic #{report.syllabus_topics.topic_number}:</span> {report.syllabus_topics.title}
                       </p>
@@ -324,13 +348,17 @@ export default function JaizaReports() {
                       </p>
                     </td>
                     <td className="px-5 md:px-6 py-4 hidden md:table-cell">
-                      {report.syllabus_topics ? (
-                        <div>
-                          <p className="text-sm font-medium text-slate-700 leading-snug">{report.syllabus_topics.title}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">Topic #{report.syllabus_topics.topic_number}</p>
-                        </div>
+                      {report.category !== "ijtima_arkan" ? (
+                        report.syllabus_topics ? (
+                          <div>
+                            <p className="text-sm font-medium text-slate-700 leading-snug">{report.syllabus_topics.title}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">Topic #{report.syllabus_topics.topic_number}</p>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-300 italic">General / Custom</span>
+                        )
                       ) : (
-                        <span className="text-xs text-slate-300 italic">General / Custom</span>
+                        <span className="text-xs text-slate-300 italic">N/A</span>
                       )}
                     </td>
                     <td className="px-5 md:px-6 py-4 text-center hidden sm:table-cell">
@@ -458,16 +486,18 @@ export default function JaizaReports() {
                 </div>
               </div>
 
-              <div>
-                <label className="form-label">Topic</label>
-                <div className="relative">
-                  <select className="form-input pr-8" value={editingReport.topic_id || ""} onChange={(e) => setEditingReport({...editingReport, topic_id: e.target.value})}>
-                    <option value="">No Topic / Custom Session</option>
-                    {topics.map(t => <option key={t.id} value={t.id}>Topic {t.topic_number}: {t.title}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              {editingReport.category !== "ijtima_arkan" && (
+                <div>
+                  <label className="form-label">Topic</label>
+                  <div className="relative">
+                    <select className="form-input pr-8" value={editingReport.topic_id || ""} onChange={(e) => setEditingReport({...editingReport, topic_id: e.target.value})}>
+                      <option value="">No Topic / Custom Session</option>
+                      {topics.map(t => <option key={t.id} value={t.id}>Topic {t.topic_number}: {t.title}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

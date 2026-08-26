@@ -9,6 +9,7 @@ export default function UCStatus() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<"complete" | "week" | "month" | "3_months">("complete");
   const [memberType, setMemberType] = useState<"all" | "haazir_arkan" | "aam_afraad">("all");
+  const [sessionCategory, setSessionCategory] = useState<"all" | "quran_circle" | "ijtima_arkan" | "dars_e_quran" | "other">("all");
 
   const [rawUcs, setRawUcs] = useState<any[]>([]);
   const [rawCircles, setRawCircles] = useState<any[]>([]);
@@ -26,8 +27,8 @@ export default function UCStatus() {
       const { data: ucs } = await supabase.from('union_councils').select('id, name').order('name');
       const { data: circles } = await supabase.from('quran_circles').select('id, name, uc_id');
       const { data: participants } = await supabase.from('participants').select('id, circle_id, type');
-      const { data: attendance } = await supabase.from('attendance').select(`status, session_id, participants (circle_id, type)`);
-      const { data: sessions } = await supabase.from('sessions').select('id, circle_id, topic_id, session_date');
+      const { data: attendance } = await supabase.from('attendance').select(`status, session_id, participants (circle_id, type), sessions!inner (category, session_date)`);
+      const { data: sessions } = await supabase.from('sessions').select('id, circle_id, topic_id, session_date, category');
       const { count: topicCount } = await supabase.from('syllabus_topics').select('*', { count: 'exact', head: true });
 
       setRawUcs(ucs || []);
@@ -68,12 +69,23 @@ export default function UCStatus() {
       sessionDateMap[s.id] = s.session_date;
     });
 
-    const filteredSessions = rawSessions.filter(s => timeRangeFilter(s.session_date));
+    const filteredSessions = rawSessions.filter(s => {
+      const matchTime = timeRangeFilter(s.session_date);
+      const matchCategory = sessionCategory === "all" || s.category === sessionCategory;
+      return matchTime && matchCategory;
+    });
 
-    const filteredAttendance = rawAttendance.filter((a: any) => {
-      const sessionDate = sessionDateMap[a.session_id] || '';
-      const pType = a.participants?.type;
-      return timeRangeFilter(sessionDate) && memberTypeFilter(pType);
+    const filteredAttendance = rawAttendance.filter(a => {
+      const session = a.sessions; // Assuming joined data
+      const sessionDate = session?.session_date;
+      const sessCategory = session?.category;
+      const partType = a.participants?.type;
+      
+      const matchTime = sessionDate ? timeRangeFilter(sessionDate) : true;
+      const matchType = memberTypeFilter(partType);
+      const matchCategory = sessionCategory === "all" || sessCategory === sessionCategory;
+      
+      return matchTime && matchType && matchCategory;
     });
 
     const filteredParticipants = rawParticipants.filter(p => memberTypeFilter(p.type));
@@ -127,7 +139,7 @@ export default function UCStatus() {
         circleDetails
       };
     }) || [];
-  }, [rawUcs, rawCircles, rawParticipants, rawAttendance, rawSessions, totalTopics, timeRange, memberType]);
+  }, [rawUcs, rawCircles, rawParticipants, rawAttendance, rawSessions, totalTopics, timeRange, memberType, sessionCategory]);
 
   const attColor = (v: number) => v > 70 ? 'text-emerald-600' : v > 40 ? 'text-amber-500' : 'text-red-500';
   const attBg = (v: number) => v > 70 ? 'bg-emerald-500' : v > 40 ? 'bg-amber-400' : 'bg-red-400';
@@ -172,6 +184,20 @@ export default function UCStatus() {
               <option value="week">Last Week</option>
               <option value="month">Last Month</option>
               <option value="3_months">Last 3 Months</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select
+              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
+              value={sessionCategory}
+              onChange={(e: any) => setSessionCategory(e.target.value)}
+            >
+              <option value="all">All Categories</option>
+              <option value="quran_circle">Quran Circle</option>
+              <option value="ijtima_arkan">Ijtima Arkan</option>
+              <option value="dars_e_quran">Dars-e-Quran</option>
+              <option value="other">Other</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>

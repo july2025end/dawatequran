@@ -10,6 +10,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<"complete" | "week" | "month" | "3_months">("complete");
   const [memberType, setMemberType] = useState<"all" | "haazir_arkan" | "aam_afraad">("all");
+  const [sessionCategory, setSessionCategory] = useState<"all" | "quran_circle" | "ijtima_arkan" | "dars_e_quran" | "other">("all");
 
   const [rawCircles, setRawCircles] = useState<any[]>([]);
   const [rawSessions, setRawSessions] = useState<any[]>([]);
@@ -26,7 +27,7 @@ export default function AdminDashboard() {
         const { data: circlesData } = await supabase.from('quran_circles').select('id, name');
         setRawCircles(circlesData || []);
 
-        const { data: sessionsData } = await supabase.from('sessions').select('id, session_date, topic_id');
+        const { data: sessionsData } = await supabase.from('sessions').select('id, session_date, topic_id, category');
         setRawSessions(sessionsData || []);
 
         const { data: syllabusData } = await supabase.from('syllabus_topics').select('id, topic_number, title');
@@ -39,7 +40,7 @@ export default function AdminDashboard() {
             session_id,
             participant_id,
             participants (type, quran_circles (union_councils (name))),
-            sessions (session_date)
+            sessions (session_date, category)
           `);
         setRawAttendance(attendanceData || []);
 
@@ -48,6 +49,7 @@ export default function AdminDashboard() {
           .select(`
             id,
             session_date,
+            category,
             quran_circles (name, murabbi_name, union_councils (name)),
             syllabus_topics (title, topic_number),
             attendance (status, participants (type))
@@ -81,12 +83,22 @@ export default function AdminDashboard() {
   };
 
   const computedData = useMemo(() => {
-    const filteredSessions = rawSessions.filter(s => timeRangeFilter(s.session_date));
+    const filteredSessions = rawSessions.filter(s => {
+      const matchTime = timeRangeFilter(s.session_date);
+      const matchCategory = sessionCategory === "all" || s.category === sessionCategory;
+      return matchTime && matchCategory;
+    });
 
     const filteredAttendance = rawAttendance.filter(a => {
       const sessionDate = a.sessions?.session_date || a.session_date;
+      const sessCategory = a.sessions?.category || a.category;
       const partType = a.participants?.type;
-      return timeRangeFilter(sessionDate) && memberTypeFilter(partType);
+      
+      const matchTime = timeRangeFilter(sessionDate);
+      const matchType = memberTypeFilter(partType);
+      const matchCategory = sessionCategory === "all" || sessCategory === sessionCategory;
+      
+      return matchTime && matchType && matchCategory;
     });
 
     const circleCount = rawCircles.length;
@@ -128,7 +140,11 @@ export default function AdminDashboard() {
     ];
 
     const reportsList = rawReports
-      .filter(r => timeRangeFilter(r.session_date))
+      .filter(r => {
+        const matchTime = timeRangeFilter(r.session_date);
+        const matchCategory = sessionCategory === "all" || r.category === sessionCategory;
+        return matchTime && matchCategory;
+      })
       .map((r: any) => {
         const sessionAtt = r.attendance || [];
         const filteredAtt = sessionAtt.filter((a: any) => memberTypeFilter(a.participants?.type));
@@ -138,7 +154,7 @@ export default function AdminDashboard() {
           circle:  r.quran_circles?.name || r.quran_circles?.[0]?.name,
           uc:      r.quran_circles?.union_councils?.name || r.quran_circles?.[0]?.union_councils?.name || 'N/A',
           murabbi: r.quran_circles?.murabbi_name || r.quran_circles?.[0]?.murabbi_name || 'Admin',
-          topic:   r.syllabus_topics ? `Topic ${r.syllabus_topics.topic_number || r.syllabus_topics[0]?.topic_number}: ${r.syllabus_topics.title || r.syllabus_topics[0]?.title}` : 'General',
+          topic:   r.category === 'ijtima_arkan' ? 'N/A' : (r.syllabus_topics ? `Topic ${r.syllabus_topics.topic_number || r.syllabus_topics[0]?.topic_number}: ${r.syllabus_topics.title || r.syllabus_topics[0]?.title}` : 'General'),
           date:    new Date(r.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }),
           att:     total > 0 ? `${present} / ${total}` : '0 / 0'
         };
@@ -151,7 +167,7 @@ export default function AdminDashboard() {
       topicProgress: topicProgressData,
       recentReports: reportsList
     };
-  }, [rawCircles, rawSessions, rawAttendance, rawSyllabus, rawReports, timeRange, memberType]);
+  }, [rawCircles, rawSessions, rawAttendance, rawSyllabus, rawReports, timeRange, memberType, sessionCategory]);
 
   const { stats, attendanceData, topicProgress, recentReports } = computedData;
 
@@ -193,6 +209,20 @@ export default function AdminDashboard() {
               <option value="week">Last Week</option>
               <option value="month">Last Month</option>
               <option value="3_months">Last 3 Months</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="relative">
+            <select
+              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
+              value={sessionCategory}
+              onChange={(e: any) => setSessionCategory(e.target.value)}
+            >
+              <option value="all">All Categories</option>
+              <option value="quran_circle">Quran Circle</option>
+              <option value="ijtima_arkan">Ijtima Arkan</option>
+              <option value="dars_e_quran">Dars-e-Quran</option>
+              <option value="other">Other</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>

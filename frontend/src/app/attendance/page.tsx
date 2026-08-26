@@ -106,7 +106,13 @@ export default function AttendancePage() {
 
   const currentCircles = circles.filter(c => c.uc_id === selectedUC);
   const activeCircle = circles.find(c => c.id === selectedCircle);
-  const filteredParticipants = participants.filter(p => p.full_name.toLowerCase().includes(search.toLowerCase()));
+  const filteredParticipants = participants.filter(p => {
+    const matchesSearch = p.full_name.toLowerCase().includes(search.toLowerCase());
+    if (category === 'ijtima_arkan') {
+      return matchesSearch && p.type === 'haazir_arkan';
+    }
+    return matchesSearch;
+  });
   const presentCount = filteredParticipants.filter(p => p.present).length;
 
   const filteredPastSessions = pastSessions.filter(s => {
@@ -116,7 +122,14 @@ export default function AttendancePage() {
     const loc = s.location ? s.location.toLowerCase() : "";
     const notesStr = s.notes ? s.notes.toLowerCase() : "";
     const attendeeNames = (s.attendance || []).map((a: any) => a.participants?.full_name?.toLowerCase() || "").join(" ");
-    return dateStr.includes(query) || topicTitle.includes(query) || loc.includes(query) || notesStr.includes(query) || attendeeNames.includes(query);
+    
+    const matchesSearch = dateStr.includes(query) || topicTitle.includes(query) || loc.includes(query) || notesStr.includes(query) || attendeeNames.includes(query);
+    
+    if (category === 'ijtima_arkan') {
+      return matchesSearch && s.category === 'ijtima_arkan';
+    } else {
+      return matchesSearch && s.category !== 'ijtima_arkan';
+    }
   });
 
   const toggleAttendance = (id: string) => {
@@ -462,30 +475,32 @@ export default function AttendancePage() {
                       </div>
                     </div>
 
-                    <div>
-                      <label className="form-label">Topic Covered</label>
-                      <div className="relative">
-                        <select className="form-input pr-8" value={topic} onChange={(e) => setTopic(e.target.value)}>
-                          <option value="">— Select topic (optional) —</option>
-                          {syllabus.map(t => <option key={t.id} value={t.id}>Topic {t.topic_number}: {t.title}</option>)}
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    {category !== "ijtima_arkan" && (
+                      <div>
+                        <label className="form-label">Topic Covered</label>
+                        <div className="relative">
+                          <select className="form-input pr-8" value={topic} onChange={(e) => setTopic(e.target.value)}>
+                            <option value="">— Select topic (optional) —</option>
+                            {syllabus.map(t => <option key={t.id} value={t.id}>Topic {t.topic_number}: {t.title}</option>)}
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
+                        {topic && (() => {
+                          const topicRef = syllabus.find(t => t.id === topic)?.reference;
+                          const link = getTafheemLink(topicRef);
+                          return topicRef ? (
+                            <div className="mt-3 flex items-center justify-between px-4 py-3 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(236,253,245,0.9), rgba(204,251,241,0.7))', border: '1px solid rgba(167,243,208,0.5)' }}>
+                              <span className="text-xs text-emerald-700 font-bold">Ref: {topicRef}</span>
+                              {link && (
+                                <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 font-bold flex items-center gap-1 hover:text-emerald-800 transition-colors">
+                                  Tafheem <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                          ) : null;
+                        })()}
                       </div>
-                      {topic && (() => {
-                        const topicRef = syllabus.find(t => t.id === topic)?.reference;
-                        const link = getTafheemLink(topicRef);
-                        return topicRef ? (
-                          <div className="mt-3 flex items-center justify-between px-4 py-3 rounded-2xl" style={{ background: 'linear-gradient(135deg, rgba(236,253,245,0.9), rgba(204,251,241,0.7))', border: '1px solid rgba(167,243,208,0.5)' }}>
-                            <span className="text-xs text-emerald-700 font-bold">Ref: {topicRef}</span>
-                            {link && (
-                              <a href={link} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 font-bold flex items-center gap-1 hover:text-emerald-800 transition-colors">
-                                Tafheem <ExternalLink className="w-3 h-3" />
-                              </a>
-                            )}
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
+                    )}
 
                     <div>
                       <label className="form-label"><MapPin className="w-3 h-3 inline mr-1" />Location</label>
@@ -636,12 +651,14 @@ export default function AttendancePage() {
                                   <span className="badge badge-emerald capitalize">{session.category?.replace('_', ' ')}</span>
                                 </div>
                                 
-                                {session.syllabus_topics ? (
-                                  <p className="text-sm font-bold text-slate-800 mt-1">
-                                    Topic #{session.syllabus_topics.topic_number}: {session.syllabus_topics.title}
-                                  </p>
-                                ) : (
-                                  <p className="text-sm font-semibold text-slate-500 italic mt-1">General Circle Session</p>
+                                {session.category !== "ijtima_arkan" && (
+                                  session.syllabus_topics ? (
+                                    <p className="text-sm font-bold text-slate-800 mt-1">
+                                      Topic #{session.syllabus_topics.topic_number}: {session.syllabus_topics.title}
+                                    </p>
+                                  ) : (
+                                    <p className="text-sm font-semibold text-slate-500 italic mt-1">General Circle Session</p>
+                                  )
                                 )}
 
                                 {session.location && (
@@ -810,19 +827,21 @@ export default function AttendancePage() {
                                   )}
                                 </div>
 
-                                {session.syllabus_topics ? (
-                                  <div>
-                                    <p className="text-base font-bold text-slate-900 mt-1">
-                                      Topic #{session.syllabus_topics.topic_number}: {session.syllabus_topics.title}
-                                    </p>
-                                    {session.syllabus_topics.reference && (
-                                      <p className="text-xs text-emerald-600 font-semibold mt-0.5">
-                                        Ref: {session.syllabus_topics.reference}
+                                {session.category !== "ijtima_arkan" && (
+                                  session.syllabus_topics ? (
+                                    <div>
+                                      <p className="text-base font-bold text-slate-900 mt-1">
+                                        Topic #{session.syllabus_topics.topic_number}: {session.syllabus_topics.title}
                                       </p>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm font-semibold text-slate-500 italic mt-1">General Circle Session</p>
+                                      {session.syllabus_topics.reference && (
+                                        <p className="text-xs text-emerald-600 font-semibold mt-0.5">
+                                          Ref: {session.syllabus_topics.reference}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm font-semibold text-slate-500 italic mt-1">General Circle Session</p>
+                                  )
                                 )}
                               </div>
 
@@ -1012,20 +1031,22 @@ export default function AttendancePage() {
                 </div>
               </div>
 
-              <div>
-                <label className="form-label">Topic Covered</label>
-                <div className="relative">
-                  <select 
-                    className="form-input pr-8" 
-                    value={editingSession.topic_id || ""} 
-                    onChange={(e) => setEditingSession({ ...editingSession, topic_id: e.target.value })}
-                  >
-                    <option value="">— Select topic (optional) —</option>
-                    {syllabus.map(t => <option key={t.id} value={t.id}>Topic {t.topic_number}: {t.title}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              {editingSession.category !== "ijtima_arkan" && (
+                <div>
+                  <label className="form-label">Topic Covered</label>
+                  <div className="relative">
+                    <select 
+                      className="form-input pr-8" 
+                      value={editingSession.topic_id || ""} 
+                      onChange={(e) => setEditingSession({ ...editingSession, topic_id: e.target.value })}
+                    >
+                      <option value="">— Select topic (optional) —</option>
+                      {syllabus.map(t => <option key={t.id} value={t.id}>Topic {t.topic_number}: {t.title}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
