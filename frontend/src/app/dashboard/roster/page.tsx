@@ -46,7 +46,7 @@ export default function RosterManagement() {
             attMap[a.participant_id] = { present: 0, total: 0 };
           }
           attMap[a.participant_id].total += 1;
-          if (a.status) {
+          if (a.status === 'present') {
             attMap[a.participant_id].present += 1;
           }
         });

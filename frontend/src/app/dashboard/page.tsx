@@ -105,7 +105,7 @@ export default function AdminDashboard() {
     const sessionCount = filteredSessions.length;
     
     const totalAttendanceRecords = filteredAttendance.length;
-    const presentCount = filteredAttendance.filter(r => r.status).length;
+    const presentCount = filteredAttendance.filter(r => r.status === 'present').length;
     const avgAtt = totalAttendanceRecords > 0 ? Math.round((presentCount / totalAttendanceRecords) * 100) : 0;
 
     const totalSyllabus = rawSyllabus.length;
@@ -125,7 +125,7 @@ export default function AdminDashboard() {
 
     const ucMap: Record<string, { name: string, members: number, public: number }> = {};
     filteredAttendance.forEach((record: any) => {
-      if (!record.status) return;
+      if (record.status !== 'present') return;
       const ucName = record.participants?.quran_circles?.union_councils?.name || 'Unknown';
       const type = record.participants?.type;
       if (!ucMap[ucName]) ucMap[ucName] = { name: ucName, members: 0, public: 0 };
@@ -148,7 +148,7 @@ export default function AdminDashboard() {
       .map((r: any) => {
         const sessionAtt = r.attendance || [];
         const filteredAtt = sessionAtt.filter((a: any) => memberTypeFilter(a.participants?.type));
-        const present = filteredAtt.filter((a: any) => a.status).length;
+        const present = filteredAtt.filter((a: any) => a.status === 'present').length;
         const total = filteredAtt.length;
         return {
           circle:  r.quran_circles?.name || r.quran_circles?.[0]?.name,

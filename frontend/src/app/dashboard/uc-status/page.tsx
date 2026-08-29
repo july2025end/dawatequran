@@ -99,7 +99,7 @@ export default function UCStatus() {
       const publicCount = ucParticipants.filter(p => p.type === 'aam_afraad').length;
       
       const ucAttendance = filteredAttendance.filter((a: any) => a.participants && ucCircleIds.includes(a.participants.circle_id)) || [];
-      const presentCount = ucAttendance.filter((a: any) => a.status).length;
+      const presentCount = ucAttendance.filter((a: any) => a.status === 'present').length;
       const avgAtt = ucAttendance.length > 0 ? Math.round((presentCount / ucAttendance.length) * 100) : 0;
       
       const ucSessions = filteredSessions.filter(s => ucCircleIds.includes(s.circle_id)) || [];
@@ -109,7 +109,7 @@ export default function UCStatus() {
       const circleDetails = ucCircles.map(c => {
         const cParticipants = ucParticipants.filter(p => p.circle_id === c.id);
         const cAttendanceList = ucAttendance.filter((a: any) => a.participants?.circle_id === c.id);
-        const cPresent = cAttendanceList.filter((a: any) => a.status).length;
+        const cPresent = cAttendanceList.filter((a: any) => a.status === 'present').length;
         const cAvgAtt = cAttendanceList.length > 0 ? Math.round((cPresent / cAttendanceList.length) * 100) : 0;
         const cSessions = filteredSessions.filter((s: any) => s.circle_id === c.id) || [];
         const cUniqueTopics = new Set(cSessions.filter((s: any) => s.topic_id).map((s: any) => s.topic_id)).size;

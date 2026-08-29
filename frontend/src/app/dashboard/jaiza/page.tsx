@@ -18,7 +18,7 @@ export default function JaizaReports() {
 
   // Edit modal attendee state
   const [editModalParticipants, setEditModalParticipants] = useState<any[]>([]);
-  const [editAttendanceMap, setEditAttendanceMap] = useState<{ [participantId: string]: boolean }>({});
+  const [editAttendanceMap, setEditAttendanceMap] = useState<{ [participantId: string]: string }>({});
   const [loadingModalParticipants, setLoadingModalParticipants] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [isAddingEditAttendee, setIsAddingEditAttendee] = useState(false);
@@ -38,7 +38,7 @@ export default function JaizaReports() {
     setLoading(true);
     const { data, error } = await supabase
       .from("sessions")
-      .select(`*, quran_circles (id, name, murabbi_name, union_councils (name)), syllabus_topics (id, title, topic_number), attendance (status)`)
+      .select(`*, quran_circles (id, name, murabbi_name, union_councils (name)), union_councils (name), syllabus_topics (id, title, topic_number), attendance (status)`)
       .order("session_date", { ascending: false });
     if (error) console.error("Error fetching reports:", error);
     else setReports(data || []);
@@ -61,32 +61,39 @@ export default function JaizaReports() {
     else fetchReports();
   }
 
-  async function loadParticipantsForModal(circleId: string, sessionId: string) {
-    if (!circleId) {
+  async function loadParticipantsForModal(report: any) {
+    const isIjtima = report.category === 'ijtima_arkan';
+    if (isIjtima && !report.uc_id) return;
+    if (!isIjtima && !report.circle_id) {
       setEditModalParticipants([]);
       setEditAttendanceMap({});
       return;
     }
     setLoadingModalParticipants(true);
     
-    // Fetch participants of the circle
-    const { data: pData } = await supabase
-      .from("participants")
-      .select("id, full_name, type")
-      .eq("circle_id", circleId)
-      .order("full_name");
+    let pData: any[] = [];
+    if (isIjtima) {
+      const { data: cData } = await supabase.from('quran_circles').select('id').eq('uc_id', report.uc_id);
+      const circleIds = (cData || []).map(c => c.id);
+      if (circleIds.length > 0) {
+        const { data } = await supabase.from("participants").select("id, full_name, type").in("circle_id", circleIds).eq('type', 'haazir_arkan').order("full_name");
+        pData = data || [];
+      }
+    } else {
+      const { data } = await supabase.from("participants").select("id, full_name, type").eq("circle_id", report.circle_id).order("full_name");
+      pData = data || [];
+    }
       
     setEditModalParticipants(pData || []);
 
-    // Fetch existing attendance records for this session
     const { data: attData } = await supabase
       .from("attendance")
       .select("participant_id, status")
-      .eq("session_id", sessionId);
+      .eq("session_id", report.id);
 
-    const map: { [key: string]: boolean } = {};
+    const map: { [key: string]: string } = {};
     (pData || []).forEach(p => {
-      map[p.id] = false;
+      map[p.id] = 'absent';
     });
     (attData || []).forEach(a => {
       if (a.participant_id) map[a.participant_id] = a.status;
@@ -117,7 +124,7 @@ export default function JaizaReports() {
       if (error) throw error;
 
       setEditModalParticipants(prev => [...prev, data]);
-      setEditAttendanceMap(prev => ({ ...prev, [data.id]: true }));
+      setEditAttendanceMap(prev => ({ ...prev, [data.id]: 'present' }));
       setIsAddingEditAttendee(false);
       setNewEditAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
     } catch (err: any) {
@@ -133,16 +140,17 @@ export default function JaizaReports() {
       session_date: report.session_date ? report.session_date.split('T')[0] : "",
       topic_id: report.topic_id || "",
       location: report.location || "",
-      notes: report.notes || ""
+      notes: report.notes || "",
+      attendance_month: report.attendance_month || ""
     });
 
-    await loadParticipantsForModal(report.circle_id, report.id);
+    await loadParticipantsForModal(report);
   }
 
   async function handleModalCircleChange(newCircleId: string) {
     setEditingReport({ ...editingReport, circle_id: newCircleId });
     if (editingReport?.id) {
-      await loadParticipantsForModal(newCircleId, editingReport.id);
+      await loadParticipantsForModal({ ...editingReport, circle_id: newCircleId });
     }
   }
 
@@ -156,7 +164,8 @@ export default function JaizaReports() {
           location: editingReport.location,
           topic_id: editingReport.topic_id || null,
           notes: editingReport.notes,
-          circle_id: editingReport.circle_id
+          circle_id: editingReport.circle_id,
+          attendance_month: editingReport.attendance_month
         })
         .eq("id", editingReport.id);
 
@@ -187,8 +196,9 @@ export default function JaizaReports() {
     }
   }
 
-  async function toggleAttendance(sessionId: string, participantId: string, currentStatus: boolean) {
-    const { error } = await supabase.from("attendance").update({ status: !currentStatus }).eq("session_id", sessionId).eq("participant_id", participantId);
+  async function toggleAttendance(sessionId: string, participantId: string, currentStatus: string, category: string = 'quran_circle') {
+    const nextStatus = currentStatus === 'present' ? 'absent' : (currentStatus === 'absent' && category === 'ijtima_arkan' ? 'leave' : (currentStatus === 'leave' ? 'present' : 'present'));
+    const { error } = await supabase.from("attendance").update({ status: nextStatus }).eq("session_id", sessionId).eq("participant_id", participantId);
     if (error) alert(error.message);
     else fetchAttendanceDetails(viewingDetails!);
   }
@@ -264,13 +274,13 @@ export default function JaizaReports() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
                       <span className="text-xs font-bold text-slate-500">
-                        {new Date(report.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(report.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })} {report.category === 'ijtima_arkan' && report.attendance_month ? `(${report.attendance_month})` : ''}
                       </span>
                       <span className="badge badge-emerald">{report.category.replace('_', ' ')}</span>
                     </div>
-                    <p className="font-bold text-slate-800 text-sm">{report.quran_circles?.name}</p>
+                    <p className="font-bold text-slate-800 text-sm">{report.category === 'ijtima_arkan' ? (report.union_councils?.name || 'Unknown UC') : report.quran_circles?.name}</p>
                     <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />{report.quran_circles?.union_councils?.name || 'Unknown UC'}
+                      <MapPin className="w-3 h-3" />{report.category === 'ijtima_arkan' ? 'Ijtima Arkan' : (report.quran_circles?.union_councils?.name || 'Unknown UC')}
                     </p>
                     {report.category !== "ijtima_arkan" && report.syllabus_topics && (
                       <p className="text-xs text-slate-500 mt-1.5">
@@ -279,7 +289,7 @@ export default function JaizaReports() {
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <span className="badge badge-emerald">{report.attendance?.filter((a: any) => a.status).length || 0} present</span>
+                    <span className="badge badge-emerald">{report.attendance?.filter((a: any) => a.status === 'present').length || 0} present</span>
                     <div className="flex items-center gap-1">
                       <button onClick={() => { if (viewingDetails === report.id) setViewingDetails(null); else { setViewingDetails(report.id); fetchAttendanceDetails(report.id); } }}
                         className={`p-2 rounded-lg transition-all ${viewingDetails === report.id ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}>
@@ -294,16 +304,17 @@ export default function JaizaReports() {
                   <div className="mt-3 pt-3 border-t border-slate-100 animate-fade-in">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-semibold text-slate-500 flex items-center gap-1"><Users className="w-3.5 h-3.5 text-emerald-600" /> Attendance Breakdown</p>
-                      <span className="badge badge-emerald">{sessionAttendance.filter(a => a.status).length} / {sessionAttendance.length} present</span>
+                      <span className="badge badge-emerald">{sessionAttendance.filter(a => a.status === 'present').length} / {sessionAttendance.length} present</span>
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
                       {sessionAttendance.map(att => (
                         <button key={`m-${att.session_id}-${att.participant_id}`}
-                          onClick={() => toggleAttendance(att.session_id, att.participant_id, att.status)}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border-2 transition-all text-left text-xs ${att.status ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-slate-100 text-slate-400'}`}>
+                          onClick={() => toggleAttendance(att.session_id, att.participant_id, att.status, report.category)}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border-2 transition-all text-left text-xs ${att.status === 'present' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : (att.status === 'leave' ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-white border-slate-100 text-slate-400')}`}>
                           <span className="font-semibold truncate">{att.participants?.full_name}</span>
-                          <div className={`w-4 h-4 rounded-full flex-shrink-0 ml-1 flex items-center justify-center ${att.status ? 'bg-emerald-500' : 'bg-slate-200'}`}>
-                            {att.status && <span className="text-white text-[10px]">✓</span>}
+                          <div className={`w-4 h-4 rounded-full flex-shrink-0 ml-1 flex items-center justify-center ${att.status === 'present' ? 'bg-emerald-500' : (att.status === 'leave' ? 'bg-amber-500' : 'bg-slate-200')}`}>
+                            {att.status === 'present' && <span className="text-white text-[10px]">P</span>}
+                            {att.status === 'leave' && <span className="text-white text-[10px]">L</span>}
                           </div>
                         </button>
                       ))}
@@ -340,11 +351,14 @@ export default function JaizaReports() {
                         {new Date(report.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                       <span className="badge badge-emerald mt-1.5">{report.category.replace('_', ' ')}</span>
+                      {report.category === 'ijtima_arkan' && report.attendance_month && (
+                        <span className="badge badge-amber mt-1.5 ml-1.5">{report.attendance_month}</span>
+                      )}
                     </td>
                     <td className="px-5 md:px-6 py-4">
-                      <p className="text-sm font-semibold text-slate-800">{report.quran_circles?.name}</p>
+                      <p className="text-sm font-semibold text-slate-800">{report.category === 'ijtima_arkan' ? (report.union_councils?.name || 'Unknown UC') : report.quran_circles?.name}</p>
                       <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />{report.quran_circles?.union_councils?.name || 'Unknown UC'}
+                        <MapPin className="w-3 h-3" />{report.category === 'ijtima_arkan' ? 'Ijtima Arkan' : (report.quran_circles?.union_councils?.name || 'Unknown UC')}
                       </p>
                     </td>
                     <td className="px-5 md:px-6 py-4 hidden md:table-cell">
@@ -363,7 +377,7 @@ export default function JaizaReports() {
                     </td>
                     <td className="px-5 md:px-6 py-4 text-center hidden sm:table-cell">
                       <span className="badge badge-emerald">
-                        {report.attendance?.filter((a: any) => a.status).length || 0} present
+                        {report.attendance?.filter((a: any) => a.status === 'present').length || 0} present
                       </span>
                     </td>
                     <td className="px-5 md:px-6 py-4">
@@ -398,26 +412,27 @@ export default function JaizaReports() {
                               <Users className="w-4 h-4 text-emerald-600" /> Attendance Details (Tap to toggle status)
                             </h4>
                             <span className="badge badge-emerald">
-                              {sessionAttendance.filter(a => a.status).length} / {sessionAttendance.length} present
+                              {sessionAttendance.filter(a => a.status === 'present').length} / {sessionAttendance.length} present
                             </span>
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
                             {sessionAttendance.map(att => (
                               <button
                                 key={`${att.session_id}-${att.participant_id}`}
-                                onClick={() => toggleAttendance(att.session_id, att.participant_id, att.status)}
+                                onClick={() => toggleAttendance(att.session_id, att.participant_id, att.status, report.category)}
                                 className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer text-left ${
-                                  att.status
+                                  att.status === 'present'
                                     ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold'
-                                    : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                                    : (att.status === 'leave' ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200')
                                 }`}
                               >
                                 <div className="min-w-0 pr-1">
                                   <p className="text-xs font-semibold truncate">{att.participants?.full_name}</p>
                                   <p className="text-xs capitalize opacity-60 mt-0.5">{att.participants?.type?.replace('_', ' ')}</p>
                                 </div>
-                                <div className={`w-5 h-5 rounded-full ml-1 flex-shrink-0 flex items-center justify-center ${att.status ? 'bg-emerald-500' : 'bg-slate-200'}`}>
-                                  {att.status && <span className="text-white text-xs">✓</span>}
+                                <div className={`w-5 h-5 rounded-full ml-1 flex-shrink-0 flex items-center justify-center ${att.status === 'present' ? 'bg-emerald-500' : (att.status === 'leave' ? 'bg-amber-500' : 'bg-slate-200')}`}>
+                                  {att.status === 'present' && <span className="text-white text-xs">P</span>}
+                                  {att.status === 'leave' && <span className="text-white text-xs">L</span>}
                                 </div>
                               </button>
                             ))}
@@ -475,15 +490,29 @@ export default function JaizaReports() {
                   <label className="form-label">Session Date</label>
                   <input type="date" className="form-input" value={editingReport.session_date} onChange={(e) => setEditingReport({...editingReport, session_date: e.target.value})} />
                 </div>
-                <div>
-                  <label className="form-label">Quran Circle</label>
-                  <div className="relative">
-                    <select className="form-input pr-8" value={editingReport.circle_id} onChange={(e) => handleModalCircleChange(e.target.value)}>
-                      {circles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                {editingReport.category === 'ijtima_arkan' ? (
+                  <div>
+                    <label className="form-label">Attendance Month</label>
+                    <div className="relative">
+                      <select className="form-input pr-8" value={editingReport.attendance_month || ''} onChange={(e) => setEditingReport({...editingReport, attendance_month: e.target.value})}>
+                        <option value="">— Select Month —</option>
+                        {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <label className="form-label">Quran Circle</label>
+                    <div className="relative">
+                      <select className="form-input pr-8" value={editingReport.circle_id || ''} onChange={(e) => handleModalCircleChange(e.target.value)}>
+                        <option value="">— N/A —</option>
+                        {circles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {editingReport.category !== "ijtima_arkan" && (
@@ -527,8 +556,8 @@ export default function JaizaReports() {
                     <button 
                       type="button" 
                       onClick={() => {
-                        const allTrue: { [k: string]: boolean } = {};
-                        editModalParticipants.forEach(p => allTrue[p.id] = true);
+                        const allTrue: { [k: string]: string } = {};
+                        editModalParticipants.forEach(p => allTrue[p.id] = 'present');
                         setEditAttendanceMap(allTrue);
                       }}
                       className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800"
@@ -539,8 +568,8 @@ export default function JaizaReports() {
                     <button 
                       type="button"
                       onClick={() => {
-                        const allFalse: { [k: string]: boolean } = {};
-                        editModalParticipants.forEach(p => allFalse[p.id] = false);
+                        const allFalse: { [k: string]: string } = {};
+                        editModalParticipants.forEach(p => allFalse[p.id] = 'absent');
                         setEditAttendanceMap(allFalse);
                       }}
                       className="text-[11px] font-bold text-slate-400 hover:text-slate-600"
@@ -597,12 +626,31 @@ export default function JaizaReports() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto p-1.5 border border-slate-200/80 rounded-2xl bg-slate-50/50">
                     {editModalParticipants.map(p => {
-                      const isPresent = !!editAttendanceMap[p.id];
+                      const currentStatus = editAttendanceMap[p.id] || 'absent';
+                      const isPresent = currentStatus === 'present';
+                      const isLeave = currentStatus === 'leave';
+                      
+                      if (editingReport?.category === 'ijtima_arkan') {
+                        return (
+                          <div key={p.id} className="flex flex-col gap-2 p-2.5 rounded-xl border bg-white border-slate-200">
+                            <div className="min-w-0 pr-2">
+                              <p className="truncate font-bold text-slate-700">{p.full_name}</p>
+                              <p className="text-[10px] font-normal capitalize opacity-60 text-slate-500">{p.type?.replace('_', ' ')}</p>
+                            </div>
+                            <div className="flex gap-1">
+                              <button type="button" onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: 'present' })} className={`flex-1 py-1 text-[10px] rounded-lg font-bold ${isPresent ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>P</button>
+                              <button type="button" onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: 'leave' })} className={`flex-1 py-1 text-[10px] rounded-lg font-bold ${isLeave ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}`}>L</button>
+                              <button type="button" onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: 'absent' })} className={`flex-1 py-1 text-[10px] rounded-lg font-bold ${currentStatus === 'absent' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-500'}`}>A</button>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <button
                           key={p.id}
                           type="button"
-                          onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: !isPresent })}
+                          onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: isPresent ? 'absent' : 'present' })}
                           className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left ${
                             isPresent
                               ? 'bg-emerald-50 border-emerald-300 text-emerald-900'

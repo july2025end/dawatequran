@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { 
-  CheckCircle2, Search, Save, Loader2, Plus, X, 
-  Calendar, MapPin, ChevronDown, Users, Sparkles, History, ChevronRight, 
+import {
+  CheckCircle2, Search, Save, Loader2, Plus, X,
+  Calendar, MapPin, ChevronDown, Users, Sparkles, History, ChevronRight,
   FileText, UserCheck, CalendarDays, Edit2, Trash2, LogOut, ExternalLink,
   CheckCircle, XCircle
 } from "lucide-react";
@@ -17,6 +17,9 @@ export default function AttendancePage() {
   const [selectedCircle, setSelectedCircle] = useState("");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
   const [category, setCategory] = useState("quran_circle");
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const currentMonth = months[new Date().getMonth()];
+  const [attendanceMonth, setAttendanceMonth] = useState(currentMonth);
   const [topic, setTopic] = useState("");
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("");
@@ -39,7 +42,7 @@ export default function AttendancePage() {
 
   // Editing state for Old Attendances
   const [editingSession, setEditingSession] = useState<any | null>(null);
-  const [editingAttendance, setEditingAttendance] = useState<{ [participantId: string]: boolean }>({});
+  const [editingAttendance, setEditingAttendance] = useState<{ [participantId: string]: string }>({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [isAddingEditAttendee, setIsAddingEditAttendee] = useState(false);
   const [newEditAttendee, setNewEditAttendee] = useState({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
@@ -59,50 +62,72 @@ export default function AttendancePage() {
 
   useEffect(() => {
     async function loadCircleData() {
-      if (!selectedCircle) { 
-        setParticipants([]); 
-        setPastSessions([]);
-        setExpandedSessionId(null);
-        setEditingSession(null);
-        return; 
+      if (category === 'ijtima_arkan') {
+        if (!selectedUC) {
+          setParticipants([]);
+          setPastSessions([]);
+          setExpandedSessionId(null);
+          setEditingSession(null);
+          return;
+        }
+        setLoadingCircleData(true);
+        const currentUcCircles = circles.filter(c => c.uc_id === selectedUC).map(c => c.id);
+        if (currentUcCircles.length > 0) {
+          const { data: pData } = await supabase
+            .from('participants')
+            .select('*')
+            .in('circle_id', currentUcCircles)
+            .eq('type', 'haazir_arkan')
+            .order('full_name');
+          setParticipants((pData || []).map(p => ({ ...p, status: 'absent' })));
+        } else {
+          setParticipants([]);
+        }
+
+        const { data: sData } = await supabase
+          .from('sessions')
+          .select(`
+            id, session_date, category, location, notes, circle_id, uc_id, topic_id, created_at,
+            syllabus_topics (id, title, topic_number, reference),
+            attendance ( status, participant_id, participants (id, full_name, type) )
+          `)
+          .eq('uc_id', selectedUC)
+          .eq('category', 'ijtima_arkan')
+          .order('session_date', { ascending: false });
+        setPastSessions(sData || []);
+        setLoadingCircleData(false);
+      } else {
+        if (!selectedCircle) {
+          setParticipants([]);
+          setPastSessions([]);
+          setExpandedSessionId(null);
+          setEditingSession(null);
+          return;
+        }
+        setLoadingCircleData(true);
+        const { data: pData } = await supabase
+          .from('participants')
+          .select('*')
+          .eq('circle_id', selectedCircle)
+          .order('full_name');
+        setParticipants((pData || []).map(p => ({ ...p, status: 'absent' })));
+
+        const { data: sData } = await supabase
+          .from('sessions')
+          .select(`
+            id, session_date, category, location, notes, circle_id, uc_id, topic_id, created_at,
+            syllabus_topics (id, title, topic_number, reference),
+            attendance ( status, participant_id, participants (id, full_name, type) )
+          `)
+          .eq('circle_id', selectedCircle)
+          .neq('category', 'ijtima_arkan')
+          .order('session_date', { ascending: false });
+        setPastSessions(sData || []);
+        setLoadingCircleData(false);
       }
-      setLoadingCircleData(true);
-      
-      // Load participants for marking new attendance
-      const { data: pData } = await supabase
-        .from('participants')
-        .select('*')
-        .eq('circle_id', selectedCircle)
-        .order('full_name');
-      setParticipants((pData || []).map(p => ({ ...p, present: false })));
-
-      // Load past sessions & attendance records for this circle
-      const { data: sData } = await supabase
-        .from('sessions')
-        .select(`
-          id,
-          session_date,
-          category,
-          location,
-          notes,
-          circle_id,
-          topic_id,
-          created_at,
-          syllabus_topics (id, title, topic_number, reference),
-          attendance (
-            status,
-            participant_id,
-            participants (id, full_name, type)
-          )
-        `)
-        .eq('circle_id', selectedCircle)
-        .order('session_date', { ascending: false });
-
-      setPastSessions(sData || []);
-      setLoadingCircleData(false);
     }
     loadCircleData();
-  }, [selectedCircle]);
+  }, [selectedCircle, selectedUC, category, circles]);
 
   const currentCircles = circles.filter(c => c.uc_id === selectedUC);
   const activeCircle = circles.find(c => c.id === selectedCircle);
@@ -113,7 +138,7 @@ export default function AttendancePage() {
     }
     return matchesSearch;
   });
-  const presentCount = filteredParticipants.filter(p => p.present).length;
+  const presentCount = filteredParticipants.filter(p => p.status === 'present').length;
 
   const filteredPastSessions = pastSessions.filter(s => {
     const query = historySearch.toLowerCase();
@@ -122,9 +147,9 @@ export default function AttendancePage() {
     const loc = s.location ? s.location.toLowerCase() : "";
     const notesStr = s.notes ? s.notes.toLowerCase() : "";
     const attendeeNames = (s.attendance || []).map((a: any) => a.participants?.full_name?.toLowerCase() || "").join(" ");
-    
+
     const matchesSearch = dateStr.includes(query) || topicTitle.includes(query) || loc.includes(query) || notesStr.includes(query) || attendeeNames.includes(query);
-    
+
     if (category === 'ijtima_arkan') {
       return matchesSearch && s.category === 'ijtima_arkan';
     } else {
@@ -132,52 +157,71 @@ export default function AttendancePage() {
     }
   });
 
-  const toggleAttendance = (id: string) => {
-    setParticipants(participants.map(p => p.id === id ? { ...p, present: !p.present } : p));
+  const toggleAttendance = (id: string, newStatus?: string) => {
+    setParticipants(participants.map(p => {
+      if (p.id === id) {
+        if (newStatus) return { ...p, status: newStatus };
+        return { ...p, status: p.status === 'present' ? 'absent' : 'present' };
+      }
+      return p;
+    }));
   };
 
   async function refreshPastSessions() {
-    if (!selectedCircle) return;
-    const { data: sData } = await supabase
-      .from('sessions')
-      .select(`
-        id,
-        session_date,
-        category,
-        location,
-        notes,
-        circle_id,
-        topic_id,
-        created_at,
-        syllabus_topics (id, title, topic_number, reference),
-        attendance (
-          status,
-          participant_id,
-          participants (id, full_name, type)
-        )
-      `)
-      .eq('circle_id', selectedCircle)
-      .order('session_date', { ascending: false });
-    setPastSessions(sData || []);
+    if (category === 'ijtima_arkan') {
+      if (!selectedUC) return;
+      const { data: sData } = await supabase
+        .from('sessions')
+        .select(`
+          id, session_date, category, location, notes, circle_id, uc_id, topic_id, created_at,
+          syllabus_topics (id, title, topic_number, reference),
+          attendance ( status, participant_id, participants (id, full_name, type) )
+        `)
+        .eq('uc_id', selectedUC)
+        .eq('category', 'ijtima_arkan')
+        .order('session_date', { ascending: false });
+      setPastSessions(sData || []);
+    } else {
+      if (!selectedCircle) return;
+      const { data: sData } = await supabase
+        .from('sessions')
+        .select(`
+          id, session_date, category, location, notes, circle_id, uc_id, topic_id, created_at,
+          syllabus_topics (id, title, topic_number, reference),
+          attendance ( status, participant_id, participants (id, full_name, type) )
+        `)
+        .eq('circle_id', selectedCircle)
+        .neq('category', 'ijtima_arkan')
+        .order('session_date', { ascending: false });
+      setPastSessions(sData || []);
+    }
   }
 
   async function handleSubmit() {
-    if (!selectedCircle || !sessionDate) { alert("Please select a circle and date."); return; }
+    if (category === 'ijtima_arkan' ? !selectedUC : !selectedCircle) { alert("Please select required fields."); return; }
+    if (!sessionDate) { alert("Please select a date."); return; }
     setSubmitting(true);
     try {
       const { data: session, error: sessionError } = await supabase
         .from('sessions')
-        .insert({ session_date: sessionDate, category, location, notes, circle_id: selectedCircle, topic_id: topic || null })
+        .insert({
+          session_date: sessionDate,
+          category, location, notes,
+          circle_id: category === 'ijtima_arkan' ? null : selectedCircle,
+          uc_id: selectedUC,
+          topic_id: topic || null,
+          attendance_month: category === 'ijtima_arkan' ? attendanceMonth : null
+        })
         .select().single();
       if (sessionError) throw sessionError;
-      const attendanceRecords = participants.map(p => ({ session_id: session.id, participant_id: p.id, status: p.present }));
+      const attendanceRecords = participants.map(p => ({ session_id: session.id, participant_id: p.id, status: p.status }));
       if (attendanceRecords.length > 0) {
         const { error: attError } = await supabase.from('attendance').insert(attendanceRecords);
         if (attError) throw attError;
       }
       alert("Session submitted successfully.");
       setTopic(""); setLocation(""); setNotes("");
-      setParticipants(participants.map(p => ({ ...p, present: false })));
+      setParticipants(participants.map(p => ({ ...p, status: 'absent' })));
       await refreshPastSessions();
     } catch (e: any) {
       alert("Error: " + e.message);
@@ -191,18 +235,19 @@ export default function AttendancePage() {
         .insert({ full_name: newAttendee.full_name, phone: newAttendee.phone, remarks: newAttendee.remarks, type: newAttendee.type, circle_id: selectedCircle, is_active: true })
         .select().single();
       if (error) throw error;
-      setParticipants([...participants, { ...data, present: true }]);
+      setParticipants([...participants, { ...data, status: 'present' }]);
       setIsAddingAttendee(false);
       setNewAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
     } catch (e: any) { alert("Error adding attendee: " + e.message); }
   }
 
   // Quick 1-click toggle for past attendance in expanded details
-  async function togglePastAttendance(sessionId: string, participantId: string, currentStatus: boolean) {
+  async function togglePastAttendance(sessionId: string, participantId: string, currentStatus: string) {
     try {
+      const nextStatus = currentStatus === 'present' ? 'absent' : (currentStatus === 'absent' && category === 'ijtima_arkan' ? 'leave' : (currentStatus === 'leave' ? 'present' : 'present'));
       const { error } = await supabase
         .from('attendance')
-        .upsert({ session_id: sessionId, participant_id: participantId, status: !currentStatus }, { onConflict: 'session_id,participant_id' });
+        .upsert({ session_id: sessionId, participant_id: participantId, status: nextStatus }, { onConflict: 'session_id,participant_id' });
       if (error) throw error;
       await refreshPastSessions();
     } catch (err: any) {
@@ -221,8 +266,8 @@ export default function AttendancePage() {
       notes: session.notes || ""
     });
 
-    const attMap: { [key: string]: boolean } = {};
-    participants.forEach(p => { attMap[p.id] = false; });
+    const attMap: { [key: string]: string } = {};
+    participants.forEach(p => { attMap[p.id] = 'absent'; });
     (session.attendance || []).forEach((a: any) => {
       if (a.participant_id) attMap[a.participant_id] = a.status;
     });
@@ -305,7 +350,7 @@ export default function AttendancePage() {
       if (error) throw error;
 
       setParticipants(prev => [...prev, data]);
-      setEditingAttendance(prev => ({ ...prev, [data.id]: true }));
+      setEditingAttendance(prev => ({ ...prev, [data.id]: 'present' }));
       setIsAddingEditAttendee(false);
       setNewEditAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
     } catch (err: any) {
@@ -319,12 +364,12 @@ export default function AttendancePage() {
   const totalPastSessions = pastSessions.length;
   const avgAttendancePct = totalPastSessions > 0
     ? Math.round(
-        (pastSessions.reduce((acc, s) => {
-          const present = (s.attendance || []).filter((a: any) => a.status).length;
-          const total = (s.attendance || []).length;
-          return acc + (total > 0 ? present / total : 0);
-        }, 0) / totalPastSessions) * 100
-      )
+      (pastSessions.reduce((acc, s) => {
+        const present = (s.attendance || []).filter((a: any) => a.status === 'present').length;
+        const total = (s.attendance || []).length;
+        return acc + (total > 0 ? present / total : 0);
+      }, 0) / totalPastSessions) * 100
+    )
     : 0;
 
   return (
@@ -349,7 +394,7 @@ export default function AttendancePage() {
               <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(110,231,183,0.7)' }}>Attendance Portal</p>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight pr-4">
-              {activeCircle ? activeCircle.name : 'Mark Attendance'}
+              {category === 'ijtima_arkan' ? (ucs.find(u => u.id === selectedUC)?.name || 'Mark Attendance') : (activeCircle ? activeCircle.name : 'Mark Attendance')}
             </h1>
             {activeCircle?.murabbi_name && (
               <p className="text-sm font-medium mt-1" style={{ color: 'rgba(110,231,183,0.6)' }}>
@@ -378,7 +423,19 @@ export default function AttendancePage() {
               <Loader2 className="animate-spin w-4 h-4" /> Loading data...
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="form-label">Category</label>
+                <div className="relative">
+                  <select className="form-input pr-10" value={category} onChange={(e) => { setCategory(e.target.value); if (e.target.value === 'ijtima_arkan') setSelectedCircle(""); }}>
+                    <option value="quran_circle">Quran Circle</option>
+                    <option value="ijtima_arkan">Ijtima Arkan</option>
+                    <option value="dars_e_quran">Dars-e-Quran</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
               <div>
                 <label className="form-label">Union Council</label>
                 <div className="relative">
@@ -389,31 +446,32 @@ export default function AttendancePage() {
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 </div>
               </div>
-              <div>
-                <label className="form-label">Quran Circle</label>
-                <div className="relative">
-                  <select className="form-input pr-10" value={selectedCircle} onChange={(e) => setSelectedCircle(e.target.value)} disabled={!selectedUC}>
-                    <option value="">— Select Circle —</option>
-                    {currentCircles.map(c => <option key={c.id} value={c.id}>{c.name}{c.murabbi_name ? ` (${c.murabbi_name})` : ''}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              {category !== 'ijtima_arkan' && (
+                <div>
+                  <label className="form-label">Quran Circle</label>
+                  <div className="relative">
+                    <select className="form-input pr-10" value={selectedCircle} onChange={(e) => setSelectedCircle(e.target.value)} disabled={!selectedUC}>
+                      <option value="">— Select Circle —</option>
+                      {currentCircles.map(c => <option key={c.id} value={c.id}>{c.name}{c.murabbi_name ? ` (${c.murabbi_name})` : ''}</option>)}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
 
-        {selectedCircle ? (
+        {selectedCircle || (category === 'ijtima_arkan' && selectedUC) ? (
           <div>
             {/* View Switcher Tabs */}
             <div className="flex items-center gap-2 border-b border-slate-200/80 pb-3 mb-5 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setActiveTab('new')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all cursor-pointer ${
-                  activeTab === 'new'
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-200'
-                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-emerald-700'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all cursor-pointer ${activeTab === 'new'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-200'
+                  : 'bg-white/80 text-slate-600 hover:bg-white hover:text-emerald-700'
+                  }`}
               >
                 <Plus className="w-4 h-4" />
                 Mark New Attendance
@@ -421,18 +479,16 @@ export default function AttendancePage() {
 
               <button
                 onClick={() => setActiveTab('history')}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all cursor-pointer relative ${
-                  activeTab === 'history'
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-200'
-                    : 'bg-white/80 text-slate-600 hover:bg-white hover:text-emerald-700'
-                }`}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all cursor-pointer relative ${activeTab === 'history'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-200'
+                  : 'bg-white/80 text-slate-600 hover:bg-white hover:text-emerald-700'
+                  }`}
               >
                 <History className="w-4 h-4" />
                 Old Attendances
                 {pastSessions.length > 0 && (
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                    activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
+                    }`}>
                     {pastSessions.length}
                   </span>
                 )}
@@ -461,18 +517,17 @@ export default function AttendancePage() {
                         <label className="form-label">Date</label>
                         <input type="date" className="form-input" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)} />
                       </div>
-                      <div>
-                        <label className="form-label">Category</label>
-                        <div className="relative">
-                          <select className="form-input pr-8" value={category} onChange={(e) => setCategory(e.target.value)}>
-                            <option value="quran_circle">Quran Circle</option>
-                            <option value="ijtima_arkan">Ijtima Arkan</option>
-                            <option value="dars_e_quran">Dars-e-Quran</option>
-                            <option value="other">Other</option>
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      {category === 'ijtima_arkan' && (
+                        <div>
+                          <label className="form-label">Ijtima Month</label>
+                          <div className="relative">
+                            <select className="form-input pr-10" value={attendanceMonth} onChange={(e) => setAttendanceMonth(e.target.value)}>
+                              {months.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     {category !== "ijtima_arkan" && (
@@ -549,8 +604,8 @@ export default function AttendancePage() {
                             <X className="w-4 h-4" />
                           </button>
                         </div>
-                        <input type="text" placeholder="Full Name *" className="form-input" value={newAttendee.full_name} onChange={(e) => setNewAttendee({...newAttendee, full_name: e.target.value})} />
-                        <input type="text" placeholder="Phone (optional)" className="form-input" value={newAttendee.phone} onChange={(e) => setNewAttendee({...newAttendee, phone: e.target.value})} />
+                        <input type="text" placeholder="Full Name *" className="form-input" value={newAttendee.full_name} onChange={(e) => setNewAttendee({ ...newAttendee, full_name: e.target.value })} />
+                        <input type="text" placeholder="Phone (optional)" className="form-input" value={newAttendee.phone} onChange={(e) => setNewAttendee({ ...newAttendee, phone: e.target.value })} />
 
                         <div className="flex gap-2 pt-1">
                           <button onClick={() => setIsAddingAttendee(false)} className="btn btn-secondary flex-1 text-xs py-2">Cancel</button>
@@ -561,39 +616,54 @@ export default function AttendancePage() {
 
                     {/* Participant Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2.5 pb-4">
-                      {filteredParticipants.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => toggleAttendance(p.id)}
-                          className={`w-full flex items-center justify-between p-3.5 rounded-2xl border-2 transition-all duration-200 cursor-pointer text-left active:scale-97 ${
-                            p.present
+                      {filteredParticipants.map((p) => {
+                        const isPresent = p.status === 'present';
+                        const isLeave = p.status === 'leave';
+                        const isAbsent = p.status === 'absent';
+                        return category === 'ijtima_arkan' ? (
+                          <div key={p.id} className="w-full flex flex-col items-start justify-between p-3.5 rounded-2xl border-2 transition-all duration-200 bg-white/70 backdrop-blur-md border-white shadow-sm gap-2.5">
+                            <div className="flex-1 min-w-0 w-full">
+                              <p className="font-bold text-sm leading-tight truncate text-slate-800">{p.full_name}</p>
+                              <p className="text-xs mt-0.5 capitalize font-medium text-slate-500">{p.type?.replace('_', ' ')}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 w-full">
+                              <button onClick={() => toggleAttendance(p.id, 'present')} className={`flex-1 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${isPresent ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Present</button>
+                              <button onClick={() => toggleAttendance(p.id, 'leave')} className={`flex-1 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${isLeave ? 'bg-amber-500 text-white shadow-md shadow-amber-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Leave</button>
+                              <button onClick={() => toggleAttendance(p.id, 'absent')} className={`flex-1 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${isAbsent ? 'bg-red-500 text-white shadow-md shadow-red-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Absent</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => toggleAttendance(p.id)}
+                            className={`w-full flex items-center justify-between p-3.5 rounded-2xl border-2 transition-all duration-200 cursor-pointer text-left active:scale-97 ${isPresent
                               ? 'border-emerald-300'
                               : 'border-transparent hover:border-white'
-                          }`}
-                          style={p.present ? {
-                            background: 'linear-gradient(135deg, rgba(236,253,245,0.95), rgba(204,251,241,0.85))',
-                            boxShadow: '0 4px 16px rgba(5,150,105,0.12), inset 0 1px 0 rgba(255,255,255,0.8)'
-                          } : {
-                            background: 'rgba(255,255,255,0.70)',
-                            backdropFilter: 'blur(12px)',
-                            border: '1px solid rgba(255,255,255,0.85)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9)'
-                          }}
-                        >
-                          <div className="flex-1 min-w-0 pr-3">
-                            <p className={`font-bold text-sm leading-tight truncate ${p.present ? 'text-emerald-900' : 'text-slate-700'}`}>{p.full_name}</p>
-                            <p className={`text-xs mt-0.5 capitalize font-medium ${p.present ? 'text-emerald-600' : 'text-slate-400'}`}>{p.type?.replace('_', ' ')}</p>
-                          </div>
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
-                            p.present
+                              }`}
+                            style={isPresent ? {
+                              background: 'linear-gradient(135deg, rgba(236,253,245,0.95), rgba(204,251,241,0.85))',
+                              boxShadow: '0 4px 16px rgba(5,150,105,0.12), inset 0 1px 0 rgba(255,255,255,0.8)'
+                            } : {
+                              background: 'rgba(255,255,255,0.70)',
+                              backdropFilter: 'blur(12px)',
+                              border: '1px solid rgba(255,255,255,0.85)',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9)'
+                            }}
+                          >
+                            <div className="flex-1 min-w-0 pr-3">
+                              <p className={`font-bold text-sm leading-tight truncate ${isPresent ? 'text-emerald-900' : 'text-slate-700'}`}>{p.full_name}</p>
+                              <p className={`text-xs mt-0.5 capitalize font-medium ${isPresent ? 'text-emerald-600' : 'text-slate-400'}`}>{p.type?.replace('_', ' ')}</p>
+                            </div>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${isPresent
                               ? 'bg-gradient-to-br from-emerald-400 to-teal-500 text-white shadow-lg shadow-emerald-200'
                               : 'text-slate-300'
-                          }`} style={!p.present ? { background: 'rgba(255,255,255,0.8)', border: '1.5px solid rgba(226,232,240,0.8)' } : {}}>
-                            <CheckCircle2 className="w-4.5 h-4.5" />
-                          </div>
-                        </button>
-                      ))}
+                              }`} style={!isPresent ? { background: 'rgba(255,255,255,0.8)', border: '1.5px solid rgba(226,232,240,0.8)' } : {}}>
+                              <CheckCircle2 className="w-4.5 h-4.5" />
+                            </div>
+                          </button>
+                        );
+                      })}
                       {filteredParticipants.length === 0 && (
                         <div className="col-span-full text-center py-12 rounded-3xl border-2 border-dashed" style={{ borderColor: 'rgba(226,232,240,0.6)', background: 'rgba(255,255,255,0.4)' }}>
                           <Users className="w-8 h-8 text-slate-200 mx-auto mb-2" />
@@ -617,8 +687,8 @@ export default function AttendancePage() {
                       </div>
                     </div>
                     {pastSessions.length > 0 && (
-                      <button 
-                        onClick={() => setActiveTab('history')} 
+                      <button
+                        onClick={() => setActiveTab('history')}
                         className="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl transition-colors"
                       >
                         View All <ChevronRight className="w-3.5 h-3.5" />
@@ -635,7 +705,7 @@ export default function AttendancePage() {
                   ) : (
                     <div className="space-y-3">
                       {pastSessions.slice(0, 3).map((session) => {
-                        const presentAtt = (session.attendance || []).filter((a: any) => a.status);
+                        const presentAtt = (session.attendance || []).filter((a: any) => a.status === 'present');
                         const totalAtt = (session.attendance || []).length;
                         const isExpanded = expandedSessionId === session.id;
 
@@ -650,7 +720,7 @@ export default function AttendancePage() {
                                   </span>
                                   <span className="badge badge-emerald capitalize">{session.category?.replace('_', ' ')}</span>
                                 </div>
-                                
+
                                 {session.category !== "ijtima_arkan" && (
                                   session.syllabus_topics ? (
                                     <p className="text-sm font-bold text-slate-800 mt-1">
@@ -712,14 +782,13 @@ export default function AttendancePage() {
                                 )}
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                   {(session.attendance || []).map((att: any) => (
-                                    <button 
-                                      key={att.participant_id} 
+                                    <button
+                                      key={att.participant_id}
                                       onClick={() => togglePastAttendance(session.id, att.participant_id, att.status)}
-                                      className={`p-2 rounded-xl text-xs flex items-center justify-between border cursor-pointer transition-all active:scale-97 text-left ${
-                                        att.status 
-                                          ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900 font-bold hover:bg-emerald-100' 
-                                          : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
-                                      }`}
+                                      className={`p-2 rounded-xl text-xs flex items-center justify-between border cursor-pointer transition-all active:scale-97 text-left ${att.status
+                                        ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900 font-bold hover:bg-emerald-100'
+                                        : 'bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300'
+                                        }`}
                                       title="Click to toggle attendance status"
                                     >
                                       <span className="truncate pr-1">{att.participants?.full_name || 'Participant'}</span>
@@ -805,8 +874,8 @@ export default function AttendancePage() {
                   ) : (
                     <div className="space-y-3 pt-1">
                       {filteredPastSessions.map((session) => {
-                        const presentAtt = (session.attendance || []).filter((a: any) => a.status);
-                        const absentAtt = (session.attendance || []).filter((a: any) => !a.status);
+                        const presentAtt = (session.attendance || []).filter((a: any) => a.status === 'present');
+                        const absentAtt = (session.attendance || []).filter((a: any) => a.status === 'absent');
                         const totalAtt = (session.attendance || []).length;
                         const isExpanded = expandedSessionId === session.id;
 
@@ -896,8 +965,8 @@ export default function AttendancePage() {
                                   </h4>
                                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                     {presentAtt.map((att: any) => (
-                                      <button 
-                                        key={att.participant_id} 
+                                      <button
+                                        key={att.participant_id}
                                         onClick={() => togglePastAttendance(session.id, att.participant_id, att.status)}
                                         className="p-2.5 rounded-xl text-xs bg-emerald-50 border border-emerald-300 text-emerald-900 font-bold flex items-center justify-between hover:bg-emerald-100 cursor-pointer transition-all active:scale-97 text-left"
                                         title="Click to mark absent"
@@ -919,8 +988,8 @@ export default function AttendancePage() {
                                     </h4>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                                       {absentAtt.map((att: any) => (
-                                        <button 
-                                          key={att.participant_id} 
+                                        <button
+                                          key={att.participant_id}
                                           onClick={() => togglePastAttendance(session.id, att.participant_id, att.status)}
                                           className="p-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 text-slate-400 font-medium flex items-center justify-between line-through hover:border-emerald-300 hover:text-emerald-700 hover:no-underline cursor-pointer transition-all active:scale-97 text-left"
                                           title="Click to mark present"
@@ -956,7 +1025,7 @@ export default function AttendancePage() {
       </div>
 
       {/* Fixed Submit Bar (only active when on 'new' tab and circle selected) */}
-      {selectedCircle && activeTab === 'new' && (
+      {(selectedCircle || (category === 'ijtima_arkan' && selectedUC)) && activeTab === 'new' && (
         <div className="fixed bottom-0 left-0 right-0 p-4 z-50" style={{ background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(24px)', borderTop: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 -4px 24px rgba(0,0,0,0.06)' }}>
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
             <div className="hidden sm:block">
@@ -965,7 +1034,7 @@ export default function AttendancePage() {
             </div>
             <button
               onClick={handleSubmit}
-              disabled={!selectedCircle || submitting}
+              disabled={(category === 'ijtima_arkan' ? !selectedUC : !selectedCircle) || submitting}
               className="btn btn-primary w-full sm:w-auto px-8 py-3.5 text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</> : <><Save className="w-4 h-4" /> Submit Session Report</>}
@@ -980,12 +1049,12 @@ export default function AttendancePage() {
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fade-in"
           onClick={(e) => { if (e.target === e.currentTarget) setEditingSession(null); }}
         >
-          <div 
-            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-float-up rounded-3xl shadow-2xl" 
-            style={{ 
-              background: 'rgba(255,255,255,0.95)', 
-              backdropFilter: 'blur(40px)', 
-              border: '1px solid rgba(255,255,255,0.95)' 
+          <div
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-float-up rounded-3xl shadow-2xl"
+            style={{
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(40px)',
+              border: '1px solid rgba(255,255,255,0.95)'
             }}
           >
             {/* Modal Header */}
@@ -1006,19 +1075,19 @@ export default function AttendancePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Session Date</label>
-                  <input 
-                    type="date" 
-                    className="form-input" 
-                    value={editingSession.session_date} 
-                    onChange={(e) => setEditingSession({ ...editingSession, session_date: e.target.value })} 
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={editingSession.session_date}
+                    onChange={(e) => setEditingSession({ ...editingSession, session_date: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="form-label">Category</label>
                   <div className="relative">
-                    <select 
-                      className="form-input pr-8" 
-                      value={editingSession.category} 
+                    <select
+                      className="form-input pr-8"
+                      value={editingSession.category}
                       onChange={(e) => setEditingSession({ ...editingSession, category: e.target.value })}
                     >
                       <option value="quran_circle">Quran Circle</option>
@@ -1035,9 +1104,9 @@ export default function AttendancePage() {
                 <div>
                   <label className="form-label">Topic Covered</label>
                   <div className="relative">
-                    <select 
-                      className="form-input pr-8" 
-                      value={editingSession.topic_id || ""} 
+                    <select
+                      className="form-input pr-8"
+                      value={editingSession.topic_id || ""}
                       onChange={(e) => setEditingSession({ ...editingSession, topic_id: e.target.value })}
                     >
                       <option value="">— Select topic (optional) —</option>
@@ -1051,22 +1120,22 @@ export default function AttendancePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="form-label">Location</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="e.g. Masjid, Residence..." 
-                    value={editingSession.location || ""} 
-                    onChange={(e) => setEditingSession({ ...editingSession, location: e.target.value })} 
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Masjid, Residence..."
+                    value={editingSession.location || ""}
+                    onChange={(e) => setEditingSession({ ...editingSession, location: e.target.value })}
                   />
                 </div>
                 <div>
                   <label className="form-label">Notes</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="Session observations..." 
-                    value={editingSession.notes || ""} 
-                    onChange={(e) => setEditingSession({ ...editingSession, notes: e.target.value })} 
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Session observations..."
+                    value={editingSession.notes || ""}
+                    onChange={(e) => setEditingSession({ ...editingSession, notes: e.target.value })}
                   />
                 </div>
               </div>
@@ -1083,11 +1152,11 @@ export default function AttendancePage() {
                     >
                       <Plus className="w-3 h-3" /> Add Attendee
                     </button>
-                    <button 
+                    <button
                       type="button"
                       onClick={() => {
-                        const allTrue: { [k: string]: boolean } = {};
-                        participants.forEach(p => allTrue[p.id] = true);
+                        const allTrue: { [k: string]: string } = {};
+                        participants.forEach(p => allTrue[p.id] = 'present');
                         setEditingAttendance(allTrue);
                       }}
                       className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800"
@@ -1095,11 +1164,11 @@ export default function AttendancePage() {
                       Mark All Present
                     </button>
                     <span className="text-slate-300">•</span>
-                    <button 
+                    <button
                       type="button"
                       onClick={() => {
-                        const allFalse: { [k: string]: boolean } = {};
-                        participants.forEach(p => allFalse[p.id] = false);
+                        const allFalse: { [k: string]: string } = {};
+                        participants.forEach(p => allFalse[p.id] = 'absent');
                         setEditingAttendance(allFalse);
                       }}
                       className="text-[11px] font-bold text-slate-400 hover:text-slate-600"
@@ -1121,19 +1190,19 @@ export default function AttendancePage() {
                       </button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input 
-                        type="text" 
-                        placeholder="Full Name *" 
-                        className="form-input text-xs py-2" 
-                        value={newEditAttendee.full_name} 
-                        onChange={(e) => setNewEditAttendee({ ...newEditAttendee, full_name: e.target.value })} 
+                      <input
+                        type="text"
+                        placeholder="Full Name *"
+                        className="form-input text-xs py-2"
+                        value={newEditAttendee.full_name}
+                        onChange={(e) => setNewEditAttendee({ ...newEditAttendee, full_name: e.target.value })}
                       />
-                      <input 
-                        type="text" 
-                        placeholder="Phone (optional)" 
-                        className="form-input text-xs py-2" 
-                        value={newEditAttendee.phone} 
-                        onChange={(e) => setNewEditAttendee({ ...newEditAttendee, phone: e.target.value })} 
+                      <input
+                        type="text"
+                        placeholder="Phone (optional)"
+                        className="form-input text-xs py-2"
+                        value={newEditAttendee.phone}
+                        onChange={(e) => setNewEditAttendee({ ...newEditAttendee, phone: e.target.value })}
                       />
                     </div>
                     <div className="flex justify-end gap-2 pt-1">
@@ -1149,17 +1218,32 @@ export default function AttendancePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1 border border-slate-200/80 rounded-2xl bg-slate-50/50">
                   {participants.map((p) => {
-                    const isPresent = !!editingAttendance[p.id];
+                    const currentStatus = editingAttendance[p.id] || 'absent';
+                    const isPresent = currentStatus === 'present';
+                    const isLeave = currentStatus === 'leave';
+
+                    if (editingSession.category === 'ijtima_arkan') {
+                      return (
+                        <div key={p.id} className="flex flex-col gap-2 p-3 rounded-xl border bg-white border-slate-200">
+                          <span className="text-xs font-bold text-slate-700 truncate">{p.full_name}</span>
+                          <div className="flex gap-1">
+                            <button type="button" onClick={() => setEditingAttendance({ ...editingAttendance, [p.id]: 'present' })} className={`flex-1 py-1 text-[10px] rounded-lg font-bold ${isPresent ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>P</button>
+                            <button type="button" onClick={() => setEditingAttendance({ ...editingAttendance, [p.id]: 'leave' })} className={`flex-1 py-1 text-[10px] rounded-lg font-bold ${isLeave ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}`}>L</button>
+                            <button type="button" onClick={() => setEditingAttendance({ ...editingAttendance, [p.id]: 'absent' })} className={`flex-1 py-1 text-[10px] rounded-lg font-bold ${currentStatus === 'absent' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-500'}`}>A</button>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <button
                         key={p.id}
                         type="button"
-                        onClick={() => setEditingAttendance({ ...editingAttendance, [p.id]: !isPresent })}
-                        className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left ${
-                          isPresent
-                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                            : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
-                        }`}
+                        onClick={() => setEditingAttendance({ ...editingAttendance, [p.id]: isPresent ? 'absent' : 'present' })}
+                        className={`flex items-center justify-between p-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left ${isPresent
+                          ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                          : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                          }`}
                       >
                         <span className="truncate pr-2">{p.full_name}</span>
                         <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${isPresent ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
@@ -1173,14 +1257,14 @@ export default function AttendancePage() {
 
               {/* Action buttons */}
               <div className="flex gap-3 pt-3">
-                <button 
-                  onClick={() => setEditingSession(null)} 
+                <button
+                  onClick={() => setEditingSession(null)}
                   className="btn btn-secondary flex-1 py-3 text-sm"
                 >
                   Cancel
                 </button>
-                <button 
-                  onClick={handleSaveEditedSession} 
+                <button
+                  onClick={handleSaveEditedSession}
                   disabled={savingEdit}
                   className="btn btn-primary flex-[2] py-3 text-sm font-bold"
                 >
