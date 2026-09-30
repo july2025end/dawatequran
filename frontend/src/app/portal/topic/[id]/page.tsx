@@ -278,9 +278,16 @@ interface TopicData {
   end_date?: string;
 }
 
-/* ─── AlQuran.cloud helpers ─────────────────────────────── */
+/* ─── Audio helpers ─────────────────────────────────────── */
 const QURAN_BASE = "https://api.alquran.cloud/v1";
-const AUDIO_BASE = "https://cdn.alquran.cloud/media/audio/ayah/ar.alafasy";
+// verses.quran.com CDN — zero-padded surah + ayah, e.g. 001001.mp3
+const AUDIO_CDN = "https://verses.quran.com/Alafasy/mp3";
+
+function ayahAudioUrl(surahNum: number, ayahInSurah: number): string {
+  const s = String(surahNum).padStart(3, "0");
+  const a = String(ayahInSurah).padStart(3, "0");
+  return `${AUDIO_CDN}/${s}${a}.mp3`;
+}
 
 const TAFSEER_BASE =
   typeof window === "undefined"
@@ -372,7 +379,7 @@ function AyahCard({
 }: {
   ayah: AyahData;
   activeAyah: number | null;
-  onPlay: (num: number) => void;
+  onPlay: (surahNum: number, ayahInSurah: number, globalNum: number) => void;
   onPause: () => void;
   isPlaying: boolean;
   surahNum: number;
@@ -439,7 +446,7 @@ function AyahCard({
           </div>
 
           <button
-            onClick={() => (isActive && isPlaying ? onPause() : onPlay(ayah.number))}
+            onClick={() => (isActive && isPlaying ? onPause() : onPlay(surahNum, ayah.numberInSurah, ayah.number))}
             className="flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs font-urdu transition-all active:scale-95 hover:scale-105"
             style={{
               background:
@@ -574,7 +581,12 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
   const [activeAyah, setActiveAyah] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Store surahNum in a ref so onEnded can access it without stale closure
+  const surahNumRef = useRef<number>(0);
+  // Lazily create Audio element on client only (safe for SSR / Next.js)
+  const audioRef = useRef<HTMLAudioElement | null>(
+    typeof window !== "undefined" ? new Audio() : null
+  );
 
   useEffect(() => {
     async function load() {
@@ -602,6 +614,8 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
           return;
         }
 
+        surahNumRef.current = parsed.surahNum;
+
         const ayaatData = await fetchAyatRange(parsed.surahNum, parsed.startAyah, parsed.endAyah);
         setAyaat(ayaatData);
 
@@ -624,15 +638,21 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
   }, [id]);
 
   const handlePlay = useCallback(
-    (globalNum: number) => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = `${AUDIO_BASE}/${globalNum}`;
-        audioRef.current.muted = isMuted;
-        audioRef.current.play();
-        setActiveAyah(globalNum);
-        setIsPlaying(true);
-      }
+    (surahNum: number, ayahInSurah: number, globalNum: number) => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      audio.pause();
+      audio.src = ayahAudioUrl(surahNum, ayahInSurah);
+      audio.muted = isMuted;
+      setActiveAyah(globalNum);
+      setIsPlaying(true);
+      audio.play().catch((err: Error) => {
+        // AbortError fires when src changes mid-play — safe to ignore.
+        // NotAllowedError means browser blocked autoplay before user gesture.
+        if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
+          console.error("Audio play error:", err);
+        }
+      });
     },
     [isMuted]
   );
@@ -645,7 +665,8 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
   const handlePlayAll = useCallback(() => {
     if (ayaat.length === 0) return;
     if (isPlaying) { handlePause(); return; }
-    handlePlay(ayaat[0].number);
+    const first = ayaat[0];
+    handlePlay(surahNumRef.current, first.numberInSurah, first.number);
   }, [ayaat, isPlaying, handlePlay, handlePause]);
 
   useEffect(() => {
@@ -654,7 +675,8 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
     const onEnded = () => {
       const idx = ayaat.findIndex((a) => a.number === activeAyah);
       if (idx !== -1 && idx < ayaat.length - 1) {
-        handlePlay(ayaat[idx + 1].number);
+        const next = ayaat[idx + 1];
+        handlePlay(surahNumRef.current, next.numberInSurah, next.number);
       } else {
         setIsPlaying(false);
         setActiveAyah(null);
@@ -704,7 +726,7 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
       className="min-h-screen"
       style={{ background: "linear-gradient(160deg, #f5f3ff 0%, #eef2ff 50%, #fdf4ff 100%)" }}
     >
-      <audio ref={audioRef} preload="none" />
+      {/* Audio is created imperatively via useEffect to avoid ref timing issues */}
 
       {/* ── Hero ─────────────────────────────────────────── */}
       <div
