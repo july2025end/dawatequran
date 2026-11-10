@@ -6,7 +6,8 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.env.VERCEL ? undefined : path.resolve(__dirname),
   },
-  allowedDevOrigins: ["192.168.18.135:3000", "192.168.18.135"],
+  // Development only: devices on the local network (phones, iPads, this Mac by IP) may load the dev server.
+  allowedDevOrigins: ["192.168.18.104", "192.168.18.135", "192.168.*.*", "*.local"],
   // The admin and attendance portals are reached by address only; keep them out of search results.
   async headers() {
     const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
