@@ -31,5 +31,8 @@ order by session_date desc, place, copy_no;
 --   ) r where copy_no > 1
 -- );
 
--- STEP 3 (optional, after STEP 2): stop the same report being saved twice in future.
+-- STEP 3: do NOT run this for now.
+-- A rule allowing only one session per circle, type and day would also block a murabbi from
+-- submitting a report for a class the admin already put on the Schedule (same circle, type and date),
+-- and the app's "Save another anyway" option would fail. The app already warns before duplicates.
 -- create unique index if not exists sessions_one_per_day on sessions (category, coalesce(circle_id, uc_id), session_date);
