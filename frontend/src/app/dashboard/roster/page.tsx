@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Phone, UserPlus, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAll } from "@/lib/data";
-import { BiText, EmptyState, PageHeader, RateBar, SearchField, Segmented, Sheet, SkeletonRows, toast } from "@/components/ui";
+import { BiText, EmptyState, PageHeader, RateBar, SearchField, Segmented, Sheet, SkeletonRows, toast, useSearchParam } from "@/components/ui";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase joins */
 
@@ -20,6 +20,10 @@ export default function Directory() {
   const [uc, setUc] = useState("all");
   const [type, setType] = useState<"all" | "haazir_arkan" | "aam_afraad">("all");
   const [showInactive, setShowInactive] = useState(false);
+  // ?duplicates=1 (from the Overview's Data quality panel) lists members whose name appears twice in one circle.
+  const dupParam = useSearchParam("duplicates");
+  const [chosenDup, setOnlyDuplicates] = useState<boolean | null>(null);
+  const onlyDuplicates = chosenDup ?? dupParam === "1";
   const [sort, setSort] = useState<"name" | "attendance_low" | "attendance_high" | "uc">("name");
   const [editing, setEditing] = useState<{ id: string | null; form: Form } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -56,7 +60,11 @@ export default function Directory() {
 
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const key = (p: any) => `${p.circle_id}|${p.full_name.trim().toLowerCase()}`;
+    const seen = new Map<string, number>();
+    for (const p of people) if (p.is_active !== false) seen.set(key(p), (seen.get(key(p)) ?? 0) + 1);
     const list = people.filter((p) =>
+      (!onlyDuplicates || (seen.get(key(p)) ?? 0) > 1) &&
       (showInactive || p.is_active !== false) &&
       (type === "all" || p.type === type) &&
       (uc === "all" || p.quran_circles?.union_councils?.name === uc) &&
@@ -68,7 +76,7 @@ export default function Directory() {
       : sort === "attendance_high" ? pct(b) - pct(a)
       : sort === "uc" ? (a.quran_circles?.union_councils?.name ?? "").localeCompare(b.quran_circles?.union_councils?.name ?? "") || a.full_name.localeCompare(b.full_name)
       : a.full_name.localeCompare(b.full_name));
-  }, [people, query, uc, type, showInactive, sort]);
+  }, [people, query, uc, type, showInactive, sort, onlyDuplicates]);
 
   const inactiveCount = people.filter((p) => p.is_active === false).length;
 
@@ -135,6 +143,9 @@ export default function Directory() {
             <option value="attendance_high">Sort: Highest attendance</option>
             <option value="uc">Sort: Council</option>
           </select>
+          <label className="inline-flex items-center gap-2 text-[14px] text-label-2 cursor-pointer select-none">
+            <input type="checkbox" className="h-4 w-4 accent-[#0071e3]" checked={onlyDuplicates} onChange={(e) => setOnlyDuplicates(e.target.checked)} /> Possible duplicates
+          </label>
           {inactiveCount > 0 && (
             <label className="inline-flex items-center gap-2 text-[14px] text-label-2 cursor-pointer select-none">
               <input type="checkbox" className="h-4 w-4 accent-[#0071e3]" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> Show inactive

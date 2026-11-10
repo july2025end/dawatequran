@@ -3,51 +3,55 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, ChevronRight, ClipboardList, RefreshCw } from "lucide-react";
-import { BiText, EmptyState, PageHeader, RateBar, Segmented, SkeletonRows, Stat, useChartColors } from "@/components/ui";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, ChevronRight, ClipboardList, RefreshCw, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { CATEGORY_LABEL, Period, attendanceRate, cleanTitle, daysAgo, fetchAll, formatDate, inPeriod, localDate } from "@/lib/data";
+import { CATEGORY_LABEL, Period, cleanTitle, daysAgo, fetchAll, formatDate, inPeriod, localDate } from "@/lib/data";
+import { SessionCounts, Tally, addTally, loadMemberSummaries, loadSessionCounts, rateOf, tallyOf } from "@/lib/queries";
+import { BiText, EmptyState, PageHeader, RateBar, Segmented, Stat, useChartColors } from "@/components/ui";
 
 type UC = { id: string; name: string };
 type Circle = { id: string; name: string; uc_id: string; murabbi_name: string | null };
 type Session = { id: string; session_date: string; category: string; circle_id: string | null; uc_id: string | null; topic_id: string | null };
-type Att = { session_id: string; participant_id: string; status: string };
-type Participant = { id: string; type: string; circle_id: string; is_active: boolean };
-type Topic = { id: string; topic_number: number; title: string };
+type Participant = { id: string; full_name: string; type: string; circle_id: string; is_active: boolean };
+type Topic = { id: string; topic_number: number; title: string; start_date: string | null };
 
 const QUIET_AFTER_DAYS = 14;
 const WEEKS = 12;
-
-const PERIODS: { value: Period; label: string; long: string }[] = [
-  { value: "week", label: "7 days", long: "last 7 days" },
-  { value: "month", label: "30 days", long: "last 30 days" },
-  { value: "3_months", label: "3 months", long: "last 3 months" },
-  { value: "complete", label: "All time", long: "all time" },
+const PERIODS: { value: Period; label: string; long: string; days: number }[] = [
+  { value: "week", label: "7 days", long: "last 7 days", days: 7 },
+  { value: "month", label: "30 days", long: "last 30 days", days: 30 },
+  { value: "3_months", label: "3 months", long: "last 3 months", days: 90 },
+  { value: "complete", label: "All time", long: "all time", days: 0 },
 ];
+const ZERO: Tally = { present: 0, absent: 0, leave: 0 };
 
 export default function DashboardOverview() {
-  const [data, setData] = useState<{ ucs: UC[]; circles: Circle[]; sessions: Session[]; attendance: Att[]; participants: Participant[]; topics: Topic[] } | null>(null);
+  const [data, setData] = useState<{ ucs: UC[]; circles: Circle[]; sessions: Session[]; participants: Participant[]; topics: Topic[]; counts: SessionCounts; followUp: number } | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("month");
   const [category, setCategory] = useState("all");
-  const [memberType, setMemberType] = useState("all");
+  const [memberType, setMemberType] = useState<"all" | "haazir_arkan" | "aam_afraad">("all");
   const chart = useChartColors();
 
   // No synchronous state updates before the first await, so this is safe to call from an effect.
   const fetchData = useCallback(async () => {
     try {
-      const [ucs, circles, topics, sessions, attendance, participants] = await Promise.all([
+      const [ucs, circles, topics, sessions, participants, counts] = await Promise.all([
         supabase.from("union_councils").select("id, name").order("name"),
         supabase.from("quran_circles").select("id, name, uc_id, murabbi_name").order("name"),
-        supabase.from("syllabus_topics").select("id, topic_number, title").order("topic_number"),
+        supabase.from("syllabus_topics").select("id, topic_number, title, start_date").order("topic_number"),
         fetchAll<Session>((f, t) => supabase.from("sessions").select("id, session_date, category, circle_id, uc_id, topic_id").order("id").range(f, t)),
-        fetchAll<Att>((f, t) => supabase.from("attendance").select("session_id, participant_id, status").order("session_id").order("participant_id").range(f, t)),
-        fetchAll<Participant>((f, t) => supabase.from("participants").select("id, type, circle_id, is_active").order("id").range(f, t)),
+        fetchAll<Participant>((f, t) => supabase.from("participants").select("id, full_name, type, circle_id, is_active").order("id").range(f, t)),
+        loadSessionCounts(),
       ]);
       const firstError = [ucs, circles, topics].find((r) => r.error)?.error;
       if (firstError) throw new Error(firstError.message);
-      setData({ ucs: ucs.data ?? [], circles: circles.data ?? [], topics: topics.data ?? [], sessions, attendance, participants });
+      const today = localDate();
+      const summaries = await loadMemberSummaries(new Map(sessions.map((s) => [s.id, s.session_date])), today);
+      const active = new Set(participants.filter((p) => p.is_active).map((p) => p.id));
+      const followUp = [...summaries].filter(([id, m]) => active.has(id) && m.recent.length >= 3 && m.recent.every((s) => s === "absent")).length;
+      setData({ ucs: ucs.data ?? [], circles: circles.data ?? [], topics: topics.data ?? [], sessions, participants, counts, followUp });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load the dashboard.");
     } finally {
@@ -56,34 +60,29 @@ export default function DashboardOverview() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-
   const retry = () => { setLoading(true); setError(""); fetchData(); };
 
   const view = useMemo(() => {
     if (!data) return null;
     const today = localDate();
+    const days = PERIODS.find((p) => p.value === period)!.days;
     const circleById = new Map(data.circles.map((c) => [c.id, c]));
+    const ucName = new Map(data.ucs.map((u) => [u.id, u.name]));
     const ucOf = (s: Session) => s.uc_id ?? (s.circle_id ? circleById.get(s.circle_id)?.uc_id ?? null : null);
-    const typeOf = new Map(data.participants.map((p) => [p.id, p.type]));
     const matchCategory = (s: Session) => category === "all" || s.category === category;
     // Future-dated rows are scheduled classes, not classes held.
     const held = data.sessions.filter((s) => s.session_date <= today);
+    const sum = (list: Session[]) => list.reduce((t, s) => addTally(t, tallyOf(data.counts, s.id, memberType)), ZERO);
 
-    const attBySession = new Map<string, Att[]>();
-    for (const a of data.attendance) {
-      if (memberType !== "all" && typeOf.get(a.participant_id) !== memberType) continue;
-      const list = attBySession.get(a.session_id);
-      if (list) list.push(a); else attBySession.set(a.session_id, [a]);
-    }
-    const statusesFor = (sessions: Session[]) => sessions.flatMap((s) => (attBySession.get(s.id) ?? []).map((a) => a.status));
+    const figures = (list: Session[]) => {
+      const t = sum(list);
+      return { sessions: list.length, rate: rateOf(t), tally: t, active: new Set(list.map((s) => s.circle_id).filter(Boolean)).size, topics: new Set(list.map((s) => s.topic_id).filter(Boolean)).size };
+    };
+    const current = held.filter((s) => matchCategory(s) && inPeriod(s.session_date, period));
+    const now = figures(current);
+    // The same length of time just before, for the arrows.
+    const prev = days ? figures(held.filter((s) => { const d = daysAgo(s.session_date); return matchCategory(s) && d > days && d <= days * 2; })) : null;
 
-    const periodSessions = held.filter((s) => matchCategory(s) && inPeriod(s.session_date, period));
-    const statuses = statusesFor(periodSessions);
-    const activeCircleIds = new Set(periodSessions.map((s) => s.circle_id).filter(Boolean));
-    const topicsTaught = new Set(periodSessions.map((s) => s.topic_id).filter(Boolean)).size;
-    const members = data.participants.filter((p) => p.is_active);
-
-    // Weekly trend for the last 12 weeks (Monday-start), independent of the period filter.
     const monday = new Date();
     monday.setHours(0, 0, 0, 0);
     monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
@@ -92,100 +91,61 @@ export default function DashboardOverview() {
       start.setDate(start.getDate() - (WEEKS - 1 - i) * 7);
       const end = new Date(start);
       end.setDate(end.getDate() + 6);
-      const from = localDate(start);
-      const to = localDate(end);
-      const inWeek = held.filter((s) => matchCategory(s) && s.session_date >= from && s.session_date <= to);
-      const st = statusesFor(inWeek);
-      return {
-        label: start.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
-        sessions: inWeek.length,
-        rate: attendanceRate(st),
-        present: st.filter((x) => x === "present").length,
-        marked: st.filter((x) => x !== "leave").length,
-      };
+      const inWeek = held.filter((s) => matchCategory(s) && s.session_date >= localDate(start) && s.session_date <= localDate(end));
+      const t = sum(inWeek);
+      return { label: start.toLocaleDateString("en-GB", { day: "numeric", month: "short" }), sessions: inWeek.length, rate: rateOf(t), present: t.present, marked: t.present + t.absent };
     });
 
-    // Per-UC summary for the selected period.
+    const activeCircleIds = new Set(current.map((s) => s.circle_id));
     const ucRows = data.ucs.map((uc) => {
       const circles = data.circles.filter((c) => c.uc_id === uc.id);
-      const sessions = periodSessions.filter((s) => ucOf(s) === uc.id);
+      const list = current.filter((s) => ucOf(s) === uc.id);
       const lastHeld = held.filter((s) => ucOf(s) === uc.id).reduce<string | null>((m, s) => (!m || s.session_date > m ? s.session_date : m), null);
-      return {
-        ...uc,
-        circles: circles.length,
-        activeCircles: circles.filter((c) => activeCircleIds.has(c.id)).length,
-        sessions: sessions.length,
-        rate: attendanceRate(statusesFor(sessions)),
-        lastHeld,
-      };
+      return { ...uc, circles: circles.length, activeCircles: circles.filter((c) => activeCircleIds.has(c.id)).length, sessions: list.length, rate: rateOf(sum(list)), lastHeld };
     }).sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1) || a.name.localeCompare(b.name));
 
-    // Circles that have gone quiet: no Quran Circle class in the last two weeks (or ever).
     const lastByCircle = new Map<string, string>();
-    for (const s of held) {
-      if (s.category !== "quran_circle" || !s.circle_id) continue;
-      const prev = lastByCircle.get(s.circle_id);
-      if (!prev || s.session_date > prev) lastByCircle.set(s.circle_id, s.session_date);
-    }
-    const ucName = new Map(data.ucs.map((u) => [u.id, u.name]));
+    for (const s of held) if (s.category === "quran_circle" && s.circle_id && s.session_date > (lastByCircle.get(s.circle_id) ?? "")) lastByCircle.set(s.circle_id, s.session_date);
     const quiet = data.circles
-      .map((c) => {
-        const last = lastByCircle.get(c.id) ?? null;
-        return { ...c, ucName: ucName.get(c.uc_id) ?? "", last, days: last ? daysAgo(last) : Infinity };
-      })
+      .map((c) => { const last = lastByCircle.get(c.id) ?? null; return { ...c, ucName: ucName.get(c.uc_id) ?? "", last, days: last ? daysAgo(last) : Infinity }; })
       .filter((c) => c.days > QUIET_AFTER_DAYS)
       .sort((a, b) => b.days - a.days);
 
-    // Data health: same circle/UC, same type, same day = probably submitted twice.
+    // Data quality
     const seen = new Map<string, number>();
-    for (const s of data.sessions) {
-      const k = `${s.category}|${s.circle_id ?? s.uc_id}|${s.session_date}`;
-      seen.set(k, (seen.get(k) ?? 0) + 1);
-    }
-    const duplicates = [...seen.values()].reduce((n, v) => n + (v > 1 ? v - 1 : 0), 0);
-    const allAttBySession = new Set(data.attendance.map((a) => a.session_id));
-    const empty = held.filter((s) => !allAttBySession.has(s.id)).length;
+    for (const s of data.sessions) { const k = `${s.category}|${s.circle_id ?? s.uc_id}|${s.session_date}`; seen.set(k, (seen.get(k) ?? 0) + 1); }
+    const memberCount = new Map<string, number>();
+    for (const p of data.participants) if (p.is_active) memberCount.set(p.circle_id, (memberCount.get(p.circle_id) ?? 0) + 1);
+    const names = new Map<string, number>();
+    for (const p of data.participants) if (p.is_active) { const k = `${p.circle_id}|${p.full_name.trim().toLowerCase()}`; names.set(k, (names.get(k) ?? 0) + 1); }
+    const quality = [
+      { label: "Possible duplicate reports", count: [...seen.values()].reduce((n, v) => n + (v > 1 ? v - 1 : 0), 0), href: "/dashboard/jaiza?duplicates=1" },
+      { label: "Past sessions with no attendance", count: held.filter((s) => !data.counts.has(s.id)).length, href: "/dashboard/jaiza?empty=1" },
+      { label: "Quran Circle reports with no topic", count: held.filter((s) => s.category === "quran_circle" && !s.topic_id).length, href: "/dashboard/jaiza?notopic=1" },
+      { label: "Circles with no members", count: data.circles.filter((c) => !memberCount.get(c.id)).length, href: "/dashboard/circles?show=empty" },
+      { label: "Circles without a murabbi name", count: data.circles.filter((c) => !c.murabbi_name?.trim() || /^pending$/i.test(c.murabbi_name.trim())).length, href: "/dashboard/circles?show=nomurabbi" },
+      { label: "Possible duplicate members", count: [...names.values()].reduce((n, v) => n + (v > 1 ? v - 1 : 0), 0), href: "/dashboard/roster?duplicates=1" },
+      { label: "Syllabus topics without dates", count: data.topics.filter((t) => !t.start_date).length, href: "/dashboard/syllabus" },
+    ];
 
     const topicById = new Map(data.topics.map((t) => [t.id, t]));
-    const recent = [...held]
-      .filter(matchCategory)
-      .sort((a, b) => b.session_date.localeCompare(a.session_date))
-      .slice(0, 8)
-      .map((s) => {
-        const st = (attBySession.get(s.id) ?? []).map((a) => a.status);
-        const circle = s.circle_id ? circleById.get(s.circle_id) : undefined;
-        return {
-          ...s,
-          place: circle?.name ?? ucName.get(ucOf(s) ?? "") ?? "—",
-          ucName: ucName.get(ucOf(s) ?? "") ?? "",
-          topic: s.topic_id ? topicById.get(s.topic_id) : undefined,
-          present: st.filter((x) => x === "present").length,
-          marked: st.length,
-        };
-      });
+    const recent = [...held].filter(matchCategory).sort((a, b) => b.session_date.localeCompare(a.session_date)).slice(0, 8).map((s) => {
+      const t = tallyOf(data.counts, s.id, memberType);
+      return { ...s, place: (s.circle_id ? circleById.get(s.circle_id)?.name : undefined) ?? ucName.get(ucOf(s) ?? "") ?? "—", ucName: ucName.get(ucOf(s) ?? "") ?? "", topic: s.topic_id ? topicById.get(s.topic_id) : undefined, present: t.present, marked: t.present + t.absent + t.leave };
+    });
 
+    const members = data.participants.filter((p) => p.is_active);
     return {
-      sessions: periodSessions.length,
-      rate: attendanceRate(statuses),
-      present: statuses.filter((x) => x === "present").length,
-      marked: statuses.filter((x) => x !== "leave").length,
-      activeCircles: activeCircleIds.size,
-      totalCircles: data.circles.length,
-      topicsTaught,
-      totalTopics: data.topics.length,
-      arkan: members.filter((p) => p.type === "haazir_arkan").length,
-      public: members.filter((p) => p.type === "aam_afraad").length,
-      weeks,
-      ucRows,
-      quiet,
-      duplicates,
-      empty,
-      recent,
+      now, prev, weeks, ucRows, quiet, quality, recent,
+      totalCircles: data.circles.length, totalTopics: data.topics.length,
+      arkan: members.filter((p) => p.type === "haazir_arkan").length, public: members.filter((p) => p.type === "aam_afraad").length,
+      followUp: data.followUp,
     };
   }, [data, period, category, memberType]);
 
-  const periodLabel = PERIODS.find((p) => p.value === period)!.long;
+  const periodInfo = PERIODS.find((p) => p.value === period)!;
   const axis = { fontSize: 11, fill: chart.axis };
+  const vs = periodInfo.days ? `vs previous ${periodInfo.label}` : "";
 
   return (
     <div className="px-4 sm:px-6 lg:px-10 pt-6 md:pt-10 max-w-[1200px] mx-auto space-y-6">
@@ -193,9 +153,9 @@ export default function DashboardOverview() {
         eyebrow="Zone 5 overview"
         title="How the circles are doing"
         subtitle={view ? `${view.totalCircles} circles · ${view.arkan + view.public} members (${view.arkan} Arkan, ${view.public} Public)` : "Loading the latest reports…"}
+        actions={<Link href="/dashboard/report" className="btn btn-secondary btn-sm">Monthly report</Link>}
       />
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 animate-rise">
         <Segmented label="Time period" options={PERIODS.map(({ value, label }) => ({ value, label }))} value={period} onChange={setPeriod} />
         <div className="grid grid-cols-2 gap-2 sm:flex">
@@ -203,7 +163,7 @@ export default function DashboardOverview() {
             <option value="all">All session types</option>
             {Object.entries(CATEGORY_LABEL).filter(([k]) => k !== "other").map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <select aria-label="Members" className="form-input !min-h-[36px] !py-1 !text-[14px] sm:w-40" value={memberType} onChange={(e) => setMemberType(e.target.value)}>
+          <select aria-label="Members" className="form-input !min-h-[36px] !py-1 !text-[14px] sm:w-40" value={memberType} onChange={(e) => setMemberType(e.target.value as typeof memberType)}>
             <option value="all">All members</option>
             <option value="haazir_arkan">Arkan only</option>
             <option value="aam_afraad">Public only</option>
@@ -227,15 +187,15 @@ export default function DashboardOverview() {
       {view && (
         <>
           <section aria-label="Key figures" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger">
-            <Stat label="Sessions held" value={view.sessions} note={periodLabel} />
+            <Stat label="Sessions held" value={view.now.sessions} note={<Delta now={view.now.sessions} prev={view.prev?.sessions} vs={vs} fallback={periodInfo.long} />} />
             <Stat
               label="Attendance"
-              value={view.rate === null ? "—" : `${view.rate}%`}
-              note={view.marked ? `${view.present} of ${view.marked} present` : "nothing marked yet"}
-              tone={view.rate === null ? undefined : view.rate >= 60 ? "good" : view.rate >= 35 ? "warn" : "bad"}
+              value={view.now.rate === null ? "—" : `${view.now.rate}%`}
+              tone={view.now.rate === null ? undefined : view.now.rate >= 60 ? "good" : view.now.rate >= 35 ? "warn" : "bad"}
+              note={<Delta now={view.now.rate} prev={view.prev?.rate} unit=" pts" vs={vs} fallback={`${view.now.tally.present} of ${view.now.tally.present + view.now.tally.absent} present`} />}
             />
-            <Stat label="Circles active" value={<>{view.activeCircles}<span className="text-label-3 text-[0.6em] font-semibold"> / {view.totalCircles}</span></>} note={period === "complete" ? "held at least one class" : `held a class, ${periodLabel}`} />
-            <Stat label="Topics taught" value={<>{view.topicsTaught}<span className="text-label-3 text-[0.6em] font-semibold"> / {view.totalTopics}</span></>} note="syllabus topics covered" />
+            <Stat label="Circles active" value={<>{view.now.active}<span className="text-label-3 text-[0.6em] font-semibold"> / {view.totalCircles}</span></>} note={<Delta now={view.now.active} prev={view.prev?.active} vs={vs} fallback="held at least one class" />} />
+            <Stat label="Topics taught" value={<>{view.now.topics}<span className="text-label-3 text-[0.6em] font-semibold"> / {view.totalTopics}</span></>} note={<Delta now={view.now.topics} prev={view.prev?.topics} vs={vs} fallback="syllabus topics covered" />} />
           </section>
 
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
@@ -263,17 +223,15 @@ export default function DashboardOverview() {
             </ChartCard>
           </section>
 
-          <section className="grid grid-cols-1 xl:grid-cols-5 gap-3 sm:gap-4">
+          <section className="grid grid-cols-1 xl:grid-cols-5 gap-3 sm:gap-4 items-start">
             <div className="card xl:col-span-3 overflow-hidden">
-              <SectionTitle title="Union councils" subtitle={`Best attendance first · ${periodLabel}`} href="/dashboard/uc-status" link="Details" />
+              <SectionTitle title="Union councils" subtitle={`Best attendance first · ${periodInfo.long}`} href="/dashboard/uc-status" link="Details" />
               <ul className="list-inset border-t border-separator">
                 {view.ucRows.map((u) => (
                   <li key={u.id} className="px-4 sm:px-5 py-3 grid grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_3rem] items-center gap-x-4 gap-y-2">
                     <div className="min-w-0">
                       <p className="text-[15px] font-semibold truncate">{u.name}</p>
-                      <p className="text-[13px] text-label-2">
-                        {u.activeCircles}/{u.circles} circles active · {u.sessions} sessions{u.lastHeld && <> · {relative(u.lastHeld)}</>}
-                      </p>
+                      <p className="text-[13px] text-label-2">{u.activeCircles}/{u.circles} circles active · {u.sessions} sessions{u.lastHeld && <> · {relative(u.lastHeld)}</>}</p>
                     </div>
                     <RateBar rate={u.rate} className="col-span-2 sm:col-span-1 row-start-2 sm:row-start-auto" />
                     <p className="text-[15px] font-semibold tabular text-right col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto">{u.rate === null ? "—" : `${u.rate}%`}</p>
@@ -282,34 +240,27 @@ export default function DashboardOverview() {
               </ul>
             </div>
 
-            <div className="card xl:col-span-2 overflow-hidden flex flex-col">
-              <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-3">
-                <h2 className="text-[17px] font-semibold flex items-center gap-2"><AlertTriangle className="h-[18px] w-[18px] text-warning" aria-hidden /> Needs attention</h2>
-                <p className="text-[13px] text-label-2 mt-0.5">No Quran Circle class in {QUIET_AFTER_DAYS}+ days</p>
-              </div>
-              {view.quiet.length === 0 ? (
-                <p className="px-5 pb-5 text-[15px] text-success">Every circle held a class in the last {QUIET_AFTER_DAYS} days.</p>
-              ) : (
-                <ul className="list-inset border-t border-separator max-h-[23rem] overflow-y-auto">
-                  {view.quiet.map((c) => (
-                    <li key={c.id} className="px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[15px] font-medium truncate">{c.name}</p>
-                        <p className="text-[13px] text-label-2 truncate">{c.ucName}{c.murabbi_name ? ` · ${c.murabbi_name}` : ""}</p>
-                      </div>
-                      <span className={`badge ${c.last ? "badge-amber" : "badge-red"}`}>{c.last ? `${c.days} days` : "No class yet"}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {(view.duplicates > 0 || view.empty > 0) && (
-                <div className="mt-auto m-3 sm:m-4 p-3.5 rounded-2xl bg-warning-tint text-[13px] text-warning-ink space-y-1">
-                  <p className="font-semibold">Data to tidy up</p>
-                  {view.duplicates > 0 && <p>{view.duplicates} sessions look like duplicates (same circle, type and date).</p>}
-                  {view.empty > 0 && <p>{view.empty} past sessions have no attendance marked.</p>}
-                  <Link href={view.duplicates > 0 ? "/dashboard/jaiza?duplicates=1" : "/dashboard/jaiza"} className="inline-flex items-center gap-0.5 font-semibold text-link">Review reports <ChevronRight className="w-3.5 h-3.5" /></Link>
+            <div className="xl:col-span-2 space-y-3 sm:space-y-4">
+              <div className="card overflow-hidden">
+                <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-3">
+                  <h2 className="text-[17px] font-semibold flex items-center gap-2"><AlertTriangle className="h-[18px] w-[18px] text-warning" aria-hidden /> Needs attention</h2>
                 </div>
-              )}
+                <ul className="list-inset border-t border-separator">
+                  <AttentionRow href="/dashboard/follow-up" label="Members absent 3 times in a row" count={view.followUp} />
+                  <AttentionRow href="/dashboard/circles?show=quiet" label={`Circles with no class in ${QUIET_AFTER_DAYS}+ days`} count={view.quiet.filter((c) => c.last).length} />
+                  <AttentionRow href="/dashboard/circles?show=never" label="Circles that have never reported" count={view.quiet.filter((c) => !c.last).length} />
+                </ul>
+              </div>
+
+              <div className="card overflow-hidden">
+                <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-3">
+                  <h2 className="text-[17px] font-semibold flex items-center gap-2"><ShieldCheck className="h-[18px] w-[18px] text-accent" aria-hidden /> Data quality</h2>
+                  <p className="text-[13px] text-label-2 mt-0.5">Gaps that make the numbers less reliable</p>
+                </div>
+                <ul className="list-inset border-t border-separator">
+                  {view.quality.map((q) => <AttentionRow key={q.label} href={q.href} label={q.label} count={q.count} quiet />)}
+                </ul>
+              </div>
             </div>
           </section>
 
@@ -328,9 +279,9 @@ export default function DashboardOverview() {
                       </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[15px] font-semibold truncate">{s.place}</p>
+                      <p className="text-[15px] font-semibold truncate">{s.place}{s.category !== "ijtima_arkan" && s.ucName ? <span className="font-normal text-label-2"> · {s.ucName}</span> : null}</p>
                       <p className="text-[13px] text-label-2 truncate">
-                        {CATEGORY_LABEL[s.category] ?? s.category}{s.topic ? <> · Topic {s.topic.topic_number}: <BiText text={cleanTitle(s.topic.title)} /></> : s.ucName ? ` · ${s.ucName}` : ""}
+                        {CATEGORY_LABEL[s.category] ?? s.category}{s.topic ? <> · Topic {s.topic.topic_number}: <BiText text={cleanTitle(s.topic.title)} /></> : null}
                       </p>
                     </div>
                     <p className="text-right leading-tight">
@@ -352,6 +303,34 @@ export default function DashboardOverview() {
 function relative(iso: string) {
   const d = daysAgo(iso);
   return d === 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
+}
+
+/** Change against the previous period of the same length, with an arrow and a word (not colour alone). */
+function Delta({ now, prev, unit = "", vs, fallback }: { now: number | null; prev: number | null | undefined; unit?: string; vs: string; fallback: string }) {
+  if (prev === undefined || prev === null || now === null) return <>{fallback}</>;
+  const diff = now - prev;
+  if (diff === 0) return <>No change {vs}</>;
+  const up = diff > 0;
+  return (
+    <span className={`inline-flex items-center gap-0.5 font-medium ${up ? "text-success" : "text-danger"}`}>
+      {up ? <ArrowUpRight className="h-3.5 w-3.5" aria-hidden /> : <ArrowDownRight className="h-3.5 w-3.5" aria-hidden />}
+      {up ? "Up" : "Down"} {Math.abs(diff)}{unit} <span className="text-label-2 font-normal">{vs}</span>
+    </span>
+  );
+}
+
+function AttentionRow({ href, label, count, quiet }: { href: string; label: string; count: number; quiet?: boolean }) {
+  return (
+    <li>
+      <Link href={href} className="px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3 hover:bg-grouped transition-colors">
+        <span className={`text-[14px] ${count ? "" : "text-label-2"}`}>{label}</span>
+        <span className="flex items-center gap-1.5">
+          <span className={`badge ${count === 0 ? "badge-green" : quiet ? "badge-gray" : "badge-amber"} tabular`}>{count === 0 ? "None" : count}</span>
+          <ChevronRight className="h-4 w-4 text-label-3" aria-hidden />
+        </span>
+      </Link>
+    </li>
+  );
 }
 
 function SectionTitle({ title, subtitle, href, link }: { title: string; subtitle?: string; href: string; link: string }) {
@@ -384,9 +363,7 @@ function WeekTip({ active, payload, kind }: { active?: boolean; payload?: { payl
   return (
     <div className="pill-container !rounded-xl px-3 py-2 text-[12px]">
       <p className="font-semibold">Week of {w.label}</p>
-      <p className="text-label-2">
-        {kind === "sessions" ? `${w.sessions} session${w.sessions === 1 ? "" : "s"} held` : w.rate === null ? "No attendance marked" : `${w.rate}% · ${w.present} of ${w.marked} present`}
-      </p>
+      <p className="text-label-2">{kind === "sessions" ? `${w.sessions} session${w.sessions === 1 ? "" : "s"} held` : w.rate === null ? "No attendance marked" : `${w.rate}% · ${w.present} of ${w.marked} present`}</p>
     </div>
   );
 }

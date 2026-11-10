@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, ClipboardList, Edit2, Loader2, MapPin, Plus, Trash2, UserPlus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { CATEGORY_LABEL, cleanTitle, fetchAll, formatDate } from "@/lib/data";
-import { BiText, EmptyState, PageHeader, SearchField, Segmented, Sheet, SkeletonRows, toast } from "@/components/ui";
+import { CATEGORY_LABEL, cleanTitle, fetchAll, formatDate, localDate } from "@/lib/data";
+import { BiText, EmptyState, PageHeader, SearchField, Segmented, Sheet, SkeletonRows, toast, useSearchParam } from "@/components/ui";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase joins */
 
@@ -20,7 +20,10 @@ const nextStatus = (s: string, category: string) => (s === "present" ? "absent" 
 
 export default function Reports() {
   // The dashboard's "Data to tidy up" link opens this page with ?duplicates=1. The list renders only after loading, so SSR and client agree.
-  const [onlyDuplicates, setOnlyDuplicates] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("duplicates") === "1");
+  // Links from the Overview's Data quality panel open this page pre-filtered (?duplicates=1, ?empty=1, ?notopic=1).
+  const pDup = useSearchParam("duplicates"), pEmpty = useSearchParam("empty"), pNoTopic = useSearchParam("notopic");
+  const [chosenIssue, setIssue] = useState<"all" | "dup" | "empty" | "notopic" | null>(null);
+  const issue = chosenIssue ?? (pDup === "1" ? "dup" : pEmpty === "1" ? "empty" : pNoTopic === "1" ? "notopic" : "all");
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -195,7 +198,9 @@ export default function Reports() {
   const months = useMemo(() => {
     const q = query.trim().toLowerCase();
     const shown = reports.filter((r) => {
-      if (onlyDuplicates && !dupIds.has(r.id)) return false;
+      if (issue === "dup" && !dupIds.has(r.id)) return false;
+      if (issue === "empty" && (r.attendance?.length || r.session_date > localDate())) return false;
+      if (issue === "notopic" && (r.category !== "quran_circle" || r.topic_id || r.session_date > localDate())) return false;
       if (category !== "all" && r.category !== category) return false;
       if (!q) return true;
       return [placeOf(r), ucOf(r), r.syllabus_topics?.title, r.location, r.quran_circles?.murabbi_name].some((v) => v?.toLowerCase().includes(q));
@@ -207,7 +212,7 @@ export default function Reports() {
       groups.get(key)!.push(r);
     }
     return [...groups.entries()].map(([key, rows]) => ({ label: `${MONTHS[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`, rows, count: shown.length }));
-  }, [reports, query, category, onlyDuplicates, dupIds]);
+  }, [reports, query, category, issue, dupIds]);
   const shownCount = months.reduce((n, m) => n + m.rows.length, 0);
 
   const presentOf = (r: any) => (r.attendance ?? []).filter((a: any) => a.status === "present").length;
@@ -223,14 +228,17 @@ export default function Reports() {
             <option value="all">All session types</option>
             {Object.entries(CATEGORY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          {dupIds.size > 0 && (
-            <Segmented
-              label="Show"
-              value={onlyDuplicates ? "dup" : "all"}
-              onChange={(v) => setOnlyDuplicates(v === "dup")}
-              options={[{ value: "all", label: "All reports" }, { value: "dup", label: `Possible duplicates (${dupIds.size})` }]}
-            />
-          )}
+          <Segmented
+            label="Show"
+            value={issue}
+            onChange={setIssue}
+            options={[
+              { value: "all", label: "All reports" },
+              { value: "dup", label: `Possible duplicates (${dupIds.size})` },
+              { value: "empty", label: "No attendance" },
+              { value: "notopic", label: "No topic" },
+            ]}
+          />
           {!loading && <span className="text-[13px] text-label-2 ml-auto">{shownCount} report{shownCount === 1 ? "" : "s"}</span>}
         </div>
       </div>
@@ -238,7 +246,7 @@ export default function Reports() {
       {loading ? (
         <div className="card"><SkeletonRows rows={7} /></div>
       ) : shownCount === 0 ? (
-        <div className="card"><EmptyState icon={ClipboardList} title="No reports found" text={query || category !== "all" || onlyDuplicates ? "Try a different search or filter." : "Reports appear here when murabbis submit attendance."} /></div>
+        <div className="card"><EmptyState icon={ClipboardList} title="No reports found" text={query || category !== "all" || issue !== "all" ? "Try a different search or filter." : "Reports appear here when murabbis submit attendance."} /></div>
       ) : (
         months.map((m) => (
           <section key={m.label} className="space-y-2">

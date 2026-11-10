@@ -253,3 +253,9 @@ export function Brand({ subtitle, href = "/portal", size = "md" }: { subtitle?: 
     </Link>
   );
 }
+
+/** A URL query parameter, read so the server render and the first client render match (no hydration warning). */
+const noSubscribe = () => () => {};
+export function useSearchParam(name: string): string | null {
+  return useSyncExternalStore(noSubscribe, () => new URLSearchParams(window.location.search).get(name), () => null);
+}

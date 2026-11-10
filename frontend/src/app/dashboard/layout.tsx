@@ -3,16 +3,21 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, CalendarDays, CheckSquare, ClipboardList, Globe, LayoutGrid, LogOut, Map, MoreHorizontal, Users } from "lucide-react";
+import { BookOpen, CalendarDays, CheckSquare, CircleDot, ClipboardList, Contact, FileText, Globe, HeartHandshake, LayoutGrid, LogOut, Map, MoreHorizontal, Users, UsersRound } from "lucide-react";
 import { Brand, Sheet, ThemeToggle } from "@/components/ui";
 
 const NAV = [
   { name: "Overview", href: "/dashboard", icon: LayoutGrid },
-  { name: "Union Councils", short: "UCs", href: "/dashboard/uc-status", icon: Map },
+  { name: "Follow-up", href: "/dashboard/follow-up", icon: HeartHandshake },
+  { name: "Circles", href: "/dashboard/circles", icon: CircleDot },
   { name: "Reports", href: "/dashboard/jaiza", icon: ClipboardList },
-  { name: "Directory", short: "People", href: "/dashboard/roster", icon: Users },
+  { name: "Union Councils", short: "UCs", href: "/dashboard/uc-status", icon: Map },
+  { name: "Members", href: "/dashboard/roster", icon: Users },
+  { name: "Ijtima Arkan", href: "/dashboard/ijtima", icon: UsersRound },
+  { name: "Monthly report", href: "/dashboard/report", icon: FileText },
   { name: "Schedule", href: "/dashboard/schedule", icon: CalendarDays },
   { name: "Syllabus", href: "/dashboard/syllabus", icon: BookOpen },
+  { name: "Representatives", href: "/dashboard/representatives", icon: Contact },
 ];
 // No sign-in: each portal has its own address. These are just shortcuts between them.
 const PORTALS = [
@@ -31,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-dvh md:flex">
       {/* Sidebar: iPad and desktop */}
-      <aside className="hidden md:flex md:w-[232px] lg:w-[260px] flex-shrink-0 flex-col sticky top-0 h-dvh material border-r border-separator">
+      <aside className="print:hidden hidden md:flex md:w-[232px] lg:w-[260px] flex-shrink-0 flex-col sticky top-0 h-dvh material border-r border-separator">
         <div className="px-5 pt-6 pb-5 flex items-center justify-between gap-2">
           <Brand href="/dashboard" subtitle="Admin · Zone 5" />
           <ThemeToggle />
@@ -52,7 +57,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <div className="flex-1 min-w-0">
         {/* Phone top bar */}
-        <div className="md:hidden sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
+        <div className="print:hidden md:hidden sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
           <div className="h-12 px-4 flex items-center justify-between">
             <Brand href="/dashboard" size="sm" subtitle="Admin" />
             <div className="flex items-center gap-2">
@@ -62,11 +67,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </div>
 
-        <main className="pb-28 md:pb-12">{children}</main>
+        <main className="pb-28 md:pb-12 print:pb-0">{children}</main>
       </div>
 
       {/* Phone tab bar */}
-      <nav aria-label="Admin" className="md:hidden fixed inset-x-0 bottom-0 z-40 material border-t border-separator safe-bottom">
+      <nav aria-label="Admin" className="print:hidden md:hidden fixed inset-x-0 bottom-0 z-40 material border-t border-separator safe-bottom">
         <div className="grid grid-cols-5 h-[56px]">
           {TABS.map((t) => (
             <TabLink key={t.href} href={t.href} icon={t.icon} label={t.short ?? t.name} active={isActive(t.href)} />
