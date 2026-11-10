@@ -51,7 +51,7 @@ export default function PublicPortal() {
       {/* Frosted nav */}
       <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
-          <Brand size="sm" />
+          <Brand size="sm" href="/" />
           <nav className="flex items-center gap-4 sm:gap-5 text-[13px] text-label-2">
             <a href="#syllabus" className="hover:text-label hidden sm:inline">Syllabus</a>
             <a href="#upcoming" className="hover:text-label hidden sm:inline">Upcoming</a>

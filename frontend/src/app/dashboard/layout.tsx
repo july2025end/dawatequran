@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, CalendarDays, CheckSquare, ClipboardList, Globe, LayoutGrid, Map, MoreHorizontal, Users } from "lucide-react";
+import { BookOpen, CalendarDays, CheckSquare, ClipboardList, Globe, LayoutGrid, LogOut, Map, MoreHorizontal, Users } from "lucide-react";
 import { Brand, Sheet, ThemeToggle } from "@/components/ui";
 
 const NAV = [
@@ -44,6 +44,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="px-3 pb-5 pt-3 border-t border-separator space-y-0.5">
           <p className="px-3 pb-1 text-[12px] font-semibold text-label-3">Other portals</p>
           {PORTALS.map((p) => <SideLink key={p.href} {...p} active={false} />)}
+          <Link href="/" className="flex items-center gap-3 rounded-[10px] px-3 py-2 text-[15px] text-danger hover:bg-danger-tint transition-colors">
+            <LogOut className="h-[18px] w-[18px]" /> Sign out
+          </Link>
         </div>
       </aside>
 
@@ -82,6 +85,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <m.icon className="h-5 w-5 text-accent" /> {m.name}
             </Link>
           ))}
+          <Link href="/" onClick={() => setMoreOpen(false)} className="flex items-center gap-3 px-4 py-3.5 bg-surface text-[16px] text-danger active:bg-fill">
+            <LogOut className="h-5 w-5" /> Sign out
+          </Link>
         </div>
       </Sheet>
     </div>

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { BookOpen, Check, ChevronRight, ExternalLink, History, Loader2, MapPin, Search, Trash2, UserPlus, Users } from "lucide-react";
+import { Check, ChevronRight, ExternalLink, History, Loader2, LogOut, MapPin, Search, Trash2, UserPlus, Users } from "lucide-react";
+import Link from "next/link";
 import { BiText, Brand, EmptyState, QuranRef, Segmented, Sheet, ThemeToggle, toast } from "@/components/ui";
 import { getTafheemLink } from "@/lib/quran_utils";
 import { CATEGORY_LABEL, cleanTitle, localDate } from "@/lib/data";
@@ -407,7 +408,12 @@ export default function AttendancePage() {
             size="sm"
             subtitle={ready ? `${isIjtima ? ucName : activeCircle?.name ?? ""} · ${CATEGORY_LABEL[category]}${!isIjtima && ucName ? ` · ${ucName}` : ""}` : "Mark attendance · Zone 5"}
           />
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link href="/" className="btn btn-secondary btn-sm !text-danger" aria-label="Sign out">
+              <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Sign out</span>
+            </Link>
+          </div>
         </div>
       </header>
 
