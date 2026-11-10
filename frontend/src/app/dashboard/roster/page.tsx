@@ -1,388 +1,234 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Phone, UserPlus, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { fetchAll } from "@/lib/data";
-import { Users, Plus, Edit2, Trash2, Save, X, Search, Filter, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
+import { BiText, EmptyState, PageHeader, RateBar, SearchField, Segmented, Sheet, SkeletonRows, toast } from "@/components/ui";
 
-export default function RosterManagement() {
-  const [participants, setParticipants] = useState<any[]>([]);
+/* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase joins */
+
+type Form = { full_name: string; phone: string; remarks: string; circle_id: string; type: string; is_active: boolean };
+const blank: Form = { full_name: "", phone: "", remarks: "", circle_id: "", type: "haazir_arkan", is_active: true };
+const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+
+export default function Directory() {
+  const [people, setPeople] = useState<any[]>([]);
   const [circles, setCircles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUC, setSelectedUC] = useState("All");
-  const [sortConfig, setSortConfig] = useState<{ key: string | null; direction: 'asc' | 'desc' }>({ key: null, direction: 'asc' });
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
-
-  const [formData, setFormData] = useState({
-    full_name: "", phone: "", remarks: "", circle_id: "", type: "haazir_arkan", is_active: true
-  });
+  const [query, setQuery] = useState("");
+  const [uc, setUc] = useState("all");
+  const [type, setType] = useState<"all" | "haazir_arkan" | "aam_afraad">("all");
+  const [showInactive, setShowInactive] = useState(false);
+  const [sort, setSort] = useState<"name" | "attendance_low" | "attendance_high" | "uc">("name");
+  const [editing, setEditing] = useState<{ id: string | null; form: Form } | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
-  const attColor = (v: number) => v > 70 ? 'text-emerald-600' : v > 40 ? 'text-amber-500' : 'text-red-500';
-  const attBg = (v: number) => v > 70 ? 'bg-emerald-500' : v > 40 ? 'bg-amber-500' : 'bg-red-500';
-
   async function fetchData() {
-    setLoading(true);
-    const { data: pData, error: pError } = await supabase
-      .from("participants")
-      .select(`*, quran_circles (id, name, union_councils (id, name))`)
-      .order("full_name", { ascending: true });
-    const { data: cData } = await supabase
-      .from("quran_circles")
-      .select(`id, name, union_councils (name)`);
-    // All attendance rows, not just the first 1,000, so every member's percentage is right.
-    const attData = await fetchAll<{ status: string; participant_id: string }>((f, t) =>
-      supabase.from("attendance").select("status, participant_id, session_id").order("session_id").order("participant_id").range(f, t));
-
-    if (pError) {
-      console.error("Error fetching participants:", pError);
-    } else {
-      const attMap: Record<string, { present: number; total: number }> = {};
-      if (attData) {
-        attData.forEach((a: any) => {
-          if (!attMap[a.participant_id]) {
-            attMap[a.participant_id] = { present: 0, total: 0 };
-          }
-          // Leave is excused: it neither helps nor hurts the percentage.
-          if (a.status === 'leave') return;
-          attMap[a.participant_id].total += 1;
-          if (a.status === 'present') {
-            attMap[a.participant_id].present += 1;
-          }
-        });
+    try {
+      const [p, c, att] = await Promise.all([
+        fetchAll<any>((f, t) => supabase.from("participants").select("*, quran_circles (id, name, union_councils (id, name))").order("full_name").order("id").range(f, t)),
+        supabase.from("quran_circles").select("id, name, union_councils (name)").order("name"),
+        // Every attendance row, so each member's percentage is right.
+        fetchAll<{ status: string; participant_id: string }>((f, t) => supabase.from("attendance").select("status, participant_id, session_id").order("session_id").order("participant_id").range(f, t)),
+      ]);
+      const stats: Record<string, { present: number; total: number }> = {};
+      for (const a of att) {
+        if (a.status === "leave") continue; // leave is excused
+        const s = (stats[a.participant_id] ??= { present: 0, total: 0 });
+        s.total++;
+        if (a.status === "present") s.present++;
       }
-
-      const enrichedParticipants = (pData || []).map((p: any) => {
-        const stats = attMap[p.id] || { present: 0, total: 0 };
-        const pct = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
-        return {
-          ...p,
-          attendance_pct: pct,
-          attendance_present: stats.present,
-          attendance_total: stats.total
-        };
-      });
-
-      setParticipants(enrichedParticipants);
+      setPeople(p.map((x) => {
+        const s = stats[x.id];
+        return { ...x, attendance_total: s?.total ?? 0, attendance_present: s?.present ?? 0, attendance_pct: s?.total ? Math.round((s.present / s.total) * 100) : null };
+      }));
+      setCircles(c.data ?? []);
+    } catch (e) {
+      toast("Couldn’t load members: " + (e instanceof Error ? e.message : String(e)), "error");
     }
-    setCircles(cData || []);
     setLoading(false);
   }
 
-  async function handleSave() {
-    if (!formData.full_name || !formData.circle_id) { alert("Please fill in name and circle."); return; }
-    if (editingId) {
-      const { error } = await supabase.from("participants").update(formData).eq("id", editingId);
-      if (error) alert(error.message); else { setEditingId(null); fetchData(); }
-    } else {
-      const { error } = await supabase.from("participants").insert([formData]);
-      if (error) alert(error.message); else { setIsAdding(false); fetchData(); }
-    }
+  const ucs = useMemo(() => [...new Set(circles.map((c) => c.union_councils?.name).filter(Boolean))].sort() as string[], [circles]);
+
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = people.filter((p) =>
+      (showInactive || p.is_active !== false) &&
+      (type === "all" || p.type === type) &&
+      (uc === "all" || p.quran_circles?.union_councils?.name === uc) &&
+      (!q || p.full_name.toLowerCase().includes(q) || p.phone?.includes(q) || p.remarks?.toLowerCase().includes(q) || p.quran_circles?.name?.toLowerCase().includes(q)),
+    );
+    const pct = (p: any) => p.attendance_pct ?? -1;
+    return list.sort((a, b) =>
+      sort === "attendance_low" ? pct(a) - pct(b)
+      : sort === "attendance_high" ? pct(b) - pct(a)
+      : sort === "uc" ? (a.quran_circles?.union_councils?.name ?? "").localeCompare(b.quran_circles?.union_councils?.name ?? "") || a.full_name.localeCompare(b.full_name)
+      : a.full_name.localeCompare(b.full_name));
+  }, [people, query, uc, type, showInactive, sort]);
+
+  const inactiveCount = people.filter((p) => p.is_active === false).length;
+
+  function openEdit(p: any) {
+    setEditing({ id: p.id, form: { full_name: p.full_name, phone: p.phone ?? "", remarks: p.remarks ?? "", circle_id: p.circle_id ?? "", type: p.type, is_active: p.is_active !== false } });
   }
 
-  async function handleDelete(id: string) {
-    const p = participants.find((x) => x.id === id);
+  async function save() {
+    if (!editing) return;
+    const { id, form } = editing;
+    if (!form.full_name.trim() || !form.circle_id) { toast("Enter a name and choose a circle.", "error"); return; }
+    setSaving(true);
+    const payload = { ...form, full_name: form.full_name.trim() };
+    const { error } = id ? await supabase.from("participants").update(payload).eq("id", id) : await supabase.from("participants").insert([payload]);
+    setSaving(false);
+    if (error) { toast("Couldn’t save: " + error.message, "error"); return; }
+    toast(id ? "Member updated" : `${payload.full_name} added`);
+    setEditing(null);
+    fetchData();
+  }
+
+  async function remove() {
+    if (!editing?.id) return;
+    const p = people.find((x) => x.id === editing.id);
     const name = p?.full_name ?? "this member";
-    if (p?.is_active !== false && confirm(`Mark ${name} as inactive?\n\nThey disappear from attendance sheets, but their attendance history is kept. (Recommended)`)) {
-      const { error } = await supabase.from("participants").update({ is_active: false }).eq("id", id);
-      if (error) alert(error.message); else fetchData();
-      return;
+    // Deleting also deletes the member's attendance history, so offer the safe option first.
+    if (p?.is_active !== false && confirm(`Mark ${name} as inactive?\n\nThey leave the attendance sheets but their history is kept. (Recommended)`)) {
+      const { error } = await supabase.from("participants").update({ is_active: false }).eq("id", editing.id);
+      if (error) { toast(error.message, "error"); return; }
+      toast(`${name} marked inactive`);
+    } else {
+      if (!confirm(`Permanently delete ${name}${p?.attendance_total ? ` and their ${p.attendance_total} attendance records` : ""}?\n\nThis cannot be undone.`)) return;
+      const { error } = await supabase.from("participants").delete().eq("id", editing.id);
+      if (error) { toast(error.message, "error"); return; }
+      toast(`${name} deleted`);
     }
-    const records = p?.attendance_total ?? 0;
-    if (!confirm(`Permanently delete ${name}${records ? ` and ${records} attendance records` : ""}?\n\nThis cannot be undone.`)) return;
-    const { error } = await supabase.from("participants").delete().eq("id", id);
-    if (error) alert(error.message); else fetchData();
+    setEditing(null);
+    fetchData();
   }
 
-
-  function startEdit(p: any) {
-    setEditingId(p.id);
-    setFormData({ full_name: p.full_name, phone: p.phone || "", remarks: p.remarks || "", circle_id: p.circle_id, type: p.type, is_active: p.is_active });
-    setIsAdding(false);
-  }
-
-  function startAdd() {
-    setIsAdding(true); setEditingId(null);
-    setFormData({ full_name: "", phone: "", remarks: "", circle_id: circles[0]?.id || "", type: "haazir_arkan", is_active: true });
-  }
-
-  const ucs = ["All", ...Array.from(new Set(circles.map(c => c.union_councils?.name).filter(Boolean)))];
-
-  const handleSort = (key: string) => {
-    setSortConfig({ key, direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc' });
-  };
-
-  const sortedParticipants = [...participants].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-    const aValue = sortConfig.key === 'uc' 
-      ? a.quran_circles?.union_councils?.name || '' 
-      : sortConfig.key === 'attendance'
-      ? a.attendance_pct || 0
-      : a[sortConfig.key];
-    const bValue = sortConfig.key === 'uc' 
-      ? b.quran_circles?.union_councils?.name || '' 
-      : sortConfig.key === 'attendance'
-      ? b.attendance_pct || 0
-      : b[sortConfig.key];
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const filteredParticipants = sortedParticipants.filter(p => {
-    const matchesSearch = p.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.phone?.includes(searchQuery) || p.remarks?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesUC = selectedUC === "All" || p.quran_circles?.union_councils?.name === selectedUC;
-    return matchesSearch && matchesUC;
-  });
-
-  const sortIcon = (columnKey: string) => {
-    if (sortConfig.key !== columnKey) return <ChevronUp className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />;
-    return sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 text-emerald-600" /> : <ChevronDown className="w-3 h-3 text-emerald-600" />;
-  };
+  const f = editing?.form;
+  const setF = (patch: Partial<Form>) => editing && setEditing({ ...editing, form: { ...editing.form, ...patch } });
 
   return (
-    <div className="p-5 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <header>
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm" />
-          <p className="section-label">Directory</p>
-        </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Participant Registry</h2>
-          <p className="text-slate-500 mt-1 text-sm leading-relaxed max-w-xl">
-            Manage participant records, circle assignments, and contact details.
-          </p>
-        </header>
-        <button onClick={startAdd} className="btn btn-primary text-sm py-2.5 px-5 flex-shrink-0">
-          <Plus className="w-4 h-4" /> Add Participant
-        </button>
-      </div>
+    <div className="px-4 sm:px-6 lg:px-10 pt-6 md:pt-10 max-w-[1100px] mx-auto space-y-5">
+      <PageHeader
+        eyebrow="Directory"
+        title="Members"
+        subtitle={loading ? "Loading members…" : `${people.length - inactiveCount} active members${inactiveCount ? ` · ${inactiveCount} inactive` : ""}`}
+        actions={<button type="button" onClick={() => setEditing({ id: null, form: { ...blank, circle_id: circles[0]?.id ?? "" } })} className="btn btn-primary"><UserPlus className="h-4 w-4" /> Add member</button>}
+      />
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 max-w-2xl">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            placeholder="Search by name, phone..."
-            className="form-input pl-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-        </div>
-        <div className="relative sm:w-52">
-          <select className="form-input pl-9 pr-8" value={selectedUC} onChange={(e) => setSelectedUC(e.target.value)}>
-            {ucs.map(uc => <option key={uc} value={uc}>{uc}</option>)}
+      <div className="space-y-2.5 animate-rise">
+        <SearchField value={query} onChange={setQuery} placeholder="Search name, phone, circle or remarks" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Segmented label="Member type" value={type} onChange={setType} options={[{ value: "all", label: "All" }, { value: "haazir_arkan", label: "Arkan" }, { value: "aam_afraad", label: "Public" }]} />
+          <select aria-label="Union council" className="form-input !min-h-[36px] !py-1 !text-[14px] !w-auto max-w-[11rem]" value={uc} onChange={(e) => setUc(e.target.value)}>
+            <option value="all">All councils</option>
+            {ucs.map((u) => <option key={u} value={u}>{u}</option>)}
           </select>
-          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <select aria-label="Sort by" className="form-input !min-h-[36px] !py-1 !text-[14px] !w-auto" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+            <option value="name">Sort: Name</option>
+            <option value="attendance_low">Sort: Lowest attendance</option>
+            <option value="attendance_high">Sort: Highest attendance</option>
+            <option value="uc">Sort: Council</option>
+          </select>
+          {inactiveCount > 0 && (
+            <label className="inline-flex items-center gap-2 text-[14px] text-label-2 cursor-pointer select-none">
+              <input type="checkbox" className="h-4 w-4 accent-[#0071e3]" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> Show inactive
+            </label>
+          )}
+          {!loading && <span className="text-[13px] text-label-2 ml-auto">{shown.length} shown</span>}
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="badge badge-slate">{filteredParticipants.length} participant{filteredParticipants.length !== 1 ? 's' : ''}</span>
-        {selectedUC !== 'All' && <span className="badge badge-emerald">{selectedUC}</span>}
-      </div>
-
-      {/* Table */}
-      <div className="glass-table">
-        {loading ? (
-          <div className="flex items-center justify-center gap-2.5 py-16 text-emerald-600">
-            <Loader2 className="w-5 h-5 animate-spin opacity-50" />
-            <span className="text-sm text-slate-400">Loading registry...</span>
-          </div>
-        ) : (
-          <>
-            {/* Mobile / Tablet card view */}
-            <div className="lg:hidden divide-y divide-slate-100">
-              {filteredParticipants.length > 0 ? filteredParticipants.map((p, index) => (
-                <div key={p.id} className="p-4 hover:bg-slate-50/60 transition-colors">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-bold text-slate-800 text-sm">{p.full_name}</p>
-                        <span className={`badge ${p.type === 'haazir_arkan' ? 'badge-blue' : 'badge-slate'}`}>
-                          {p.type.replace('_', ' ')}
-                        </span>
-                        {!p.is_active && <span className="badge badge-slate">Inactive</span>}
-                      </div>
-                      <p className="text-xs font-semibold text-slate-500 mt-0.5">{p.quran_circles?.union_councils?.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <p className="text-xs text-emerald-600 font-medium">{p.quran_circles?.name}</p>
-                        <span className={`text-[10px] font-bold ${attColor(p.attendance_pct)} bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded`}>
-                          {p.attendance_pct}% Att.
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => startEdit(p)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(p.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  {p.phone && (
-                    <p className="text-xs text-slate-400 mt-2">{p.phone}</p>
-                  )}
-                </div>
-              )) : (
-                <div className="py-16 text-center">
-                  <Users className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-slate-400">No participants found</p>
-                  {searchQuery && <p className="text-xs text-slate-300 mt-1">Try adjusting your search</p>}
-                </div>
+      {loading ? (
+        <div className="card"><SkeletonRows rows={8} /></div>
+      ) : shown.length === 0 ? (
+        <div className="card"><EmptyState icon={Users} title="No members found" text="Try a different search or filter." /></div>
+      ) : (
+        <ul className="card overflow-hidden list-inset">
+          {shown.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-grouped transition-colors">
+              <button type="button" onClick={() => openEdit(p)} className="flex flex-1 min-w-0 items-center gap-3 text-left" aria-label={`Edit ${p.full_name}`}>
+                <span className={`h-10 w-10 flex-shrink-0 rounded-full grid place-items-center text-[14px] font-semibold ${p.type === "haazir_arkan" ? "bg-accent text-white" : "bg-fill text-label"}`}>{initials(p.full_name)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="text-[15px] font-semibold truncate"><BiText text={p.full_name} /></span>
+                    {p.is_active === false && <span className="badge badge-gray">Inactive</span>}
+                  </span>
+                  <span className="block text-[13px] text-label-2 truncate">
+                    {p.type === "haazir_arkan" ? "Arkan" : "Public"} · {p.quran_circles?.name ?? "No circle"}{p.quran_circles?.union_councils?.name ? ` · ${p.quran_circles.union_councils.name}` : ""}
+                  </span>
+                  {p.remarks && p.remarks.trim().replace(/^[-–—.\s]+$/, "") && <span className="block text-[12px] text-label-3 truncate">{p.remarks}</span>}
+                </span>
+                <span className="hidden sm:block w-28">
+                  <RateBar rate={p.attendance_pct} />
+                </span>
+                <span className="w-14 text-right">
+                  <span className="block text-[15px] font-semibold tabular">{p.attendance_pct === null ? "—" : `${p.attendance_pct}%`}</span>
+                  <span className="block text-[11px] text-label-2 tabular">{p.attendance_present}/{p.attendance_total}</span>
+                </span>
+              </button>
+              {p.phone && (
+                <a href={`tel:${p.phone.replace(/[^\d+]/g, "")}`} className="btn btn-tinted btn-icon flex-shrink-0" aria-label={`Call ${p.full_name}`}>
+                  <Phone className="h-4 w-4" />
+                </a>
               )}
-            </div>
+            </li>
+          ))}
+        </ul>
+      )}
 
-            {/* Desktop table view */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full text-left border-separate border-spacing-0 min-w-[600px]">
-                <thead>
-                  <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider w-8">#</th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('uc')}>
-                      <div className="flex items-center gap-1.5">Circle / UC {sortIcon("uc")}</div>
-                    </th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('full_name')}>
-                      <div className="flex items-center gap-1.5">Name {sortIcon("full_name")}</div>
-                    </th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider" onClick={() => handleSort('phone')}>
-                      <div className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors group">Phone {sortIcon("phone")}</div>
-                    </th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('attendance')}>
-                      <div className="flex items-center gap-1.5">Attendance {sortIcon("attendance")}</div>
-                    </th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Remarks</th>
-                    <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredParticipants.map((p, index) => (
-                    <tr key={p.id} className="hover:bg-slate-50/60 transition-colors group">
-                      <td className="px-6 py-3.5 text-xs font-medium text-slate-300 group-hover:text-emerald-500 transition-colors">{index + 1}</td>
-                      <td className="px-6 py-3.5">
-                        <p className="text-xs font-semibold text-slate-500 truncate">{p.quran_circles?.union_councils?.name}</p>
-                        <p className="text-xs text-emerald-600 font-medium mt-0.5 truncate">{p.quran_circles?.name}</p>
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <p className="text-sm font-semibold text-slate-800 group-hover:text-emerald-700 transition-colors">{p.full_name}</p>
-                        <span className={`badge mt-1 ${p.type === 'haazir_arkan' ? 'badge-blue' : 'badge-slate'}`}>{p.type.replace('_', ' ')}</span>
-                      </td>
-                      <td className="px-6 py-3.5 text-sm text-slate-500">{p.phone || <span className="text-slate-200">—</span>}</td>
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-xs font-bold ${attColor(p.attendance_pct)}`}>
-                            {p.attendance_pct}%
-                          </span>
-                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${attBg(p.attendance_pct)}`} style={{ width: `${p.attendance_pct}%` }} />
-                          </div>
-                        </div>
-                        {p.attendance_total > 0 && (
-                          <span className="text-[10px] text-slate-400 block mt-0.5">
-                            {p.attendance_present} of {p.attendance_total} sessions
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-3.5 text-xs text-slate-400 max-w-xs">
-                        <span className="line-clamp-2">{p.remarks || <span className="text-slate-200">—</span>}</span>
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button onClick={() => startEdit(p)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit">
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => handleDelete(p.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Delete">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredParticipants.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="py-16 text-center">
-                        <Users className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                        <p className="text-sm font-semibold text-slate-400">No participants found</p>
-                        {searchQuery && <p className="text-xs text-slate-300 mt-1">Try adjusting your search</p>}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+      <Sheet
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        title={editing?.id ? "Edit member" : "Add member"}
+        footer={editing && (
+          <>
+            {editing.id && <button type="button" onClick={remove} className="btn btn-danger mr-auto">Remove</button>}
+            <button type="button" onClick={() => setEditing(null)} className="btn btn-secondary">Cancel</button>
+            <button type="button" onClick={save} disabled={saving} className="btn btn-primary">{editing.id ? "Save" : "Add member"}</button>
           </>
         )}
-      </div>
-
-      {/* Add/Edit Modal */}
-      {(isAdding || editingId) && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fade-in"
-          onClick={(e) => { if (e.target === e.currentTarget) { setEditingId(null); setIsAdding(false); } }}
-        >
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-fade-in-up">
-            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 px-6 py-5 flex items-center justify-between text-white">
-              <div>
-                <h3 className="font-bold text-base">{editingId ? "Edit Participant" : "Add Participant"}</h3>
-                <p className="text-xs text-emerald-200/70 mt-0.5">Registry Management</p>
-              </div>
-              <button onClick={() => { setEditingId(null); setIsAdding(false); }} className="p-2 hover:bg-white/15 rounded-lg transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="form-label">Full Name *</label>
-                <input type="text" className="form-input" placeholder="Enter full name..." value={formData.full_name} onChange={(e) => setFormData({...formData, full_name: e.target.value})} />
-              </div>
-              <div>
-                <label className="form-label">Phone</label>
-                <input type="text" className="form-input" placeholder="03xx-xxxxxxx" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
-              </div>
-              <div>
-                <label className="form-label">Circle *</label>
-                <div className="relative">
-                  <select className="form-input pr-8" value={formData.circle_id} onChange={(e) => setFormData({...formData, circle_id: e.target.value})}>
-                    <option value="">— Select Circle —</option>
-                    {circles.map(c => <option key={c.id} value={c.id}>{c.union_councils?.name} — {c.name}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Type</label>
-                <div className="relative">
-                  <select className="form-input pr-8" value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})}>
-                    <option value="haazir_arkan">Haazir Arkan</option>
-                    <option value="aam_afraad">Aam Afraad</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Remarks</label>
-                <textarea className="form-input h-24 resize-none" placeholder="Optional notes..." value={formData.remarks} onChange={(e) => setFormData({...formData, remarks: e.target.value})} />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => { setEditingId(null); setIsAdding(false); }} className="btn btn-secondary flex-1 py-2.5 text-sm">Cancel</button>
-                <button onClick={handleSave} className="btn btn-primary flex-[2] py-2.5 text-sm">
-                  <Save className="w-4 h-4" /> {editingId ? "Save Changes" : "Add Participant"}
-                </button>
-              </div>
-            </div>
+      >
+        {f && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="block sm:col-span-2"><span className="form-label">Full name</span>
+              <input className="form-input" value={f.full_name} onChange={(e) => setF({ full_name: e.target.value })} autoComplete="off" />
+            </label>
+            <label className="block"><span className="form-label">Phone</span>
+              <input className="form-input" type="tel" inputMode="tel" placeholder="03xx xxxxxxx" value={f.phone} onChange={(e) => setF({ phone: e.target.value })} />
+            </label>
+            <label className="block"><span className="form-label">Member type</span>
+              <select className="form-input" value={f.type} onChange={(e) => setF({ type: e.target.value })}>
+                <option value="haazir_arkan">Arkan (Haazir Arkan)</option>
+                <option value="aam_afraad">Public (Aam Afraad)</option>
+              </select>
+            </label>
+            <label className="block sm:col-span-2"><span className="form-label">Circle</span>
+              <select className="form-input" value={f.circle_id} onChange={(e) => setF({ circle_id: e.target.value })}>
+                <option value="">Choose a circle</option>
+                {circles.map((c) => <option key={c.id} value={c.id}>{c.union_councils?.name} · {c.name}</option>)}
+              </select>
+            </label>
+            <label className="block sm:col-span-2"><span className="form-label">Remarks</span>
+              <textarea rows={3} className="form-input resize-none" value={f.remarks} onChange={(e) => setF({ remarks: e.target.value })} />
+            </label>
+            {editing?.id && (
+              <label className="sm:col-span-2 flex items-center justify-between gap-3 rounded-xl bg-fill px-3.5 py-3 cursor-pointer">
+                <span>
+                  <span className="block text-[15px] font-medium">Active</span>
+                  <span className="block text-[13px] text-label-2">Inactive members don’t appear on attendance sheets.</span>
+                </span>
+                <input type="checkbox" role="switch" className="h-5 w-5 accent-[#0071e3]" checked={f.is_active} onChange={(e) => setF({ is_active: e.target.checked })} />
+              </label>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </Sheet>
     </div>
   );
 }

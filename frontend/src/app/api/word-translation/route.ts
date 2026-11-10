@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
   const surah = searchParams.get("surah");
   const ayah = searchParams.get("ayah");
 
-  if (!surah || !ayah) {
+  // Only numbers reach the upstream URL.
+  if (!surah || !ayah || !/^\d{1,3}$/.test(surah) || !/^\d{1,3}$/.test(ayah)) {
     return NextResponse.json(
       { error: "Missing surah or ayah parameters" },
       { status: 400 }

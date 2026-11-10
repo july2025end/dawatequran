@@ -1,712 +1,429 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronRight, ClipboardList, Edit2, Loader2, MapPin, Plus, Trash2, UserPlus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { fetchAll } from "@/lib/data";
-import { ClipboardList, Search, Edit2, Trash2, MapPin, Users, X, Save, Loader2, ChevronRight, ChevronDown, Plus, Sparkles } from "lucide-react";
-import React from "react";
+import { CATEGORY_LABEL, cleanTitle, fetchAll, formatDate } from "@/lib/data";
+import { BiText, EmptyState, PageHeader, SearchField, Segmented, Sheet, SkeletonRows, toast } from "@/components/ui";
 
-export default function JaizaReports() {
-  // The dashboard's "Data to tidy up" link opens this page with ?duplicates=1. The list only renders after loading, so SSR and client agree.
+/* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase joins */
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const STATUS_LABEL: Record<string, string> = { present: "Present", absent: "Absent", leave: "Leave" };
+const STATUS_CLASS: Record<string, string> = { present: "badge-green", absent: "badge-red", leave: "badge-amber" };
+const emptyMember = { full_name: "", phone: "", type: "aam_afraad", circle_id: "" };
+
+const placeOf = (r: any) => (r.category === "ijtima_arkan" ? r.union_councils?.name ?? "Union council" : r.quran_circles?.name ?? "Circle");
+const ucOf = (r: any) => (r.category === "ijtima_arkan" ? "Ijtima Arkan" : r.quran_circles?.union_councils?.name ?? "");
+/** Present → Absent → (Leave, Ijtima only) → Present */
+const nextStatus = (s: string, category: string) => (s === "present" ? "absent" : s === "absent" && category === "ijtima_arkan" ? "leave" : "present");
+
+export default function Reports() {
+  // The dashboard's "Data to tidy up" link opens this page with ?duplicates=1. The list renders only after loading, so SSR and client agree.
   const [onlyDuplicates, setOnlyDuplicates] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("duplicates") === "1");
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sessionCategoryFilter, setSessionCategoryFilter] = useState("all");
-  const [editingReport, setEditingReport] = useState<any>(null);
-  const [viewingDetails, setViewingDetails] = useState<string | null>(null);
-  const [sessionAttendance, setSessionAttendance] = useState<any[]>([]);
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("all");
   const [topics, setTopics] = useState<any[]>([]);
   const [circles, setCircles] = useState<any[]>([]);
 
-  // Edit modal attendee state
-  const [editModalParticipants, setEditModalParticipants] = useState<any[]>([]);
-  const [editAttendanceMap, setEditAttendanceMap] = useState<{ [participantId: string]: string }>({});
-  const [loadingModalParticipants, setLoadingModalParticipants] = useState(false);
-  const [savingEdit, setSavingEdit] = useState(false);
-  const [isAddingEditAttendee, setIsAddingEditAttendee] = useState(false);
-  const [newEditAttendee, setNewEditAttendee] = useState({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
-  const [addingEditAttendee, setAddingEditAttendee] = useState(false);
+  // Details sheet
+  const [viewing, setViewing] = useState<any | null>(null);
+  const [attendance, setAttendance] = useState<any[] | null>(null);
+
+  // Edit sheet
+  const [editing, setEditing] = useState<any | null>(null);
+  const [editPeople, setEditPeople] = useState<any[]>([]);
+  const [editMap, setEditMap] = useState<Record<string, string>>({});
+  const [loadingPeople, setLoadingPeople] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [member, setMember] = useState(emptyMember);
 
   useEffect(() => { fetchReports(); fetchSupportData(); }, []);
 
   async function fetchSupportData() {
-    const { data: tData } = await supabase.from("syllabus_topics").select("id, title, topic_number").order("topic_number");
-    const { data: cData } = await supabase.from("quran_circles").select("id, name");
-    setTopics(tData || []);
-    setCircles(cData || []);
+    const [t, c] = await Promise.all([
+      supabase.from("syllabus_topics").select("id, title, topic_number").order("topic_number"),
+      supabase.from("quran_circles").select("id, name, uc_id").order("name"),
+    ]);
+    setTopics(t.data ?? []);
+    setCircles(c.data ?? []);
   }
 
   async function fetchReports() {
-    setLoading(true);
     try {
       const data = await fetchAll<any>((f, t) => supabase
         .from("sessions")
-        .select(`*, quran_circles (id, name, murabbi_name, union_councils (name)), union_councils (name), syllabus_topics (id, title, topic_number), attendance (status)`)
+        .select(`*, quran_circles (id, name, murabbi_name, uc_id, union_councils (name)), union_councils (name), syllabus_topics (id, title, topic_number), attendance (status)`)
         .order("session_date", { ascending: false })
         .order("id")
         .range(f, t));
       setReports(data);
     } catch (e) {
-      alert("Couldn't load reports: " + (e instanceof Error ? e.message : e));
+      toast("Couldn’t load reports: " + (e instanceof Error ? e.message : String(e)), "error");
     }
     setLoading(false);
   }
 
-  async function fetchAttendanceDetails(sessionId: string) {
-    const { data, error } = await supabase
-      .from("attendance")
-      .select(`*, participants (id, full_name, type)`)
-      .eq("session_id", sessionId);
-    if (error) console.error("Error fetching attendance details:", error);
-    else setSessionAttendance(data || []);
+  async function openDetails(report: any) {
+    setViewing(report);
+    setAttendance(null);
+    await loadAttendance(report.id);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Delete this session report? This will also remove attendance records.")) return;
-    const { error } = await supabase.from("sessions").delete().eq("id", id);
-    if (error) alert(error.message);
-    else fetchReports();
+  async function loadAttendance(sessionId: string) {
+    const { data, error } = await supabase.from("attendance").select("*, participants (id, full_name, type)").eq("session_id", sessionId);
+    if (error) toast(error.message, "error");
+    setAttendance((data ?? []).sort((a: any, b: any) => (a.participants?.full_name ?? "").localeCompare(b.participants?.full_name ?? "")));
   }
 
-  async function loadParticipantsForModal(report: any) {
-    const isIjtima = report.category === 'ijtima_arkan';
-    if (isIjtima && !report.uc_id) return;
-    if (!isIjtima && !report.circle_id) {
-      setEditModalParticipants([]);
-      setEditAttendanceMap({});
-      return;
-    }
-    setLoadingModalParticipants(true);
-    
-    let pData: any[] = [];
-    if (isIjtima) {
-      const { data: cData } = await supabase.from('quran_circles').select('id').eq('uc_id', report.uc_id);
-      const circleIds = (cData || []).map(c => c.id);
-      if (circleIds.length > 0) {
-        const { data } = await supabase.from("participants").select("id, full_name, type").in("circle_id", circleIds).eq('type', 'haazir_arkan').order("full_name");
-        pData = data || [];
+  async function cycleStatus(a: any) {
+    const status = nextStatus(a.status, viewing.category);
+    setAttendance((prev) => prev?.map((x) => (x.participant_id === a.participant_id ? { ...x, status } : x)) ?? null);
+    const { error } = await supabase.from("attendance").update({ status }).eq("session_id", viewing.id).eq("participant_id", a.participant_id);
+    if (error) { toast(error.message, "error"); loadAttendance(viewing.id); return; }
+    fetchReports();
+  }
+
+  async function handleDelete(report: any) {
+    if (!confirm(`Delete the ${CATEGORY_LABEL[report.category] ?? ""} report for ${placeOf(report)} on ${formatDate(report.session_date)}?\n\nIts attendance records are deleted too. This cannot be undone.`)) return;
+    const { error } = await supabase.from("sessions").delete().eq("id", report.id);
+    if (error) { toast(error.message, "error"); return; }
+    toast("Report deleted");
+    setViewing(null);
+    fetchReports();
+  }
+
+  async function loadPeople(report: any) {
+    const isIjtima = report.category === "ijtima_arkan";
+    setLoadingPeople(true);
+    let people: any[] = [];
+    if (isIjtima && report.uc_id) {
+      const ids = circles.filter((c) => c.uc_id === report.uc_id).map((c) => c.id);
+      if (ids.length) {
+        const { data } = await supabase.from("participants").select("id, full_name, type").in("circle_id", ids).eq("type", "haazir_arkan").order("full_name");
+        people = data ?? [];
       }
-    } else {
+    } else if (report.circle_id) {
       const { data } = await supabase.from("participants").select("id, full_name, type").eq("circle_id", report.circle_id).order("full_name");
-      pData = data || [];
+      people = data ?? [];
     }
-      
-    setEditModalParticipants(pData || []);
-
-    const { data: attData } = await supabase
-      .from("attendance")
-      .select("participant_id, status")
-      .eq("session_id", report.id);
-
-    const map: { [key: string]: string } = {};
-    (pData || []).forEach(p => {
-      map[p.id] = 'absent';
-    });
-    (attData || []).forEach(a => {
-      if (a.participant_id) map[a.participant_id] = a.status;
-    });
-
-    setEditAttendanceMap(map);
-    setLoadingModalParticipants(false);
+    const { data: att } = await supabase.from("attendance").select("participant_id, status").eq("session_id", report.id);
+    const map: Record<string, string> = {};
+    people.forEach((p) => { map[p.id] = "absent"; });
+    (att ?? []).forEach((a) => { if (a.participant_id) map[a.participant_id] = a.status; });
+    setEditPeople(people);
+    setEditMap(map);
+    setLoadingPeople(false);
   }
 
-  async function handleAddAttendeeInEditModal() {
-    if (!newEditAttendee.full_name.trim()) { alert("Please enter a participant name."); return; }
-    const circleId = editingReport?.circle_id;
-    if (!circleId) return;
-
-    setAddingEditAttendee(true);
-    try {
-      const { data, error } = await supabase.from("participants")
-        .insert({
-          full_name: newEditAttendee.full_name.trim(),
-          phone: newEditAttendee.phone,
-          remarks: newEditAttendee.remarks,
-          type: newEditAttendee.type,
-          circle_id: circleId,
-          is_active: true
-        })
-        .select().single();
-
-      if (error) throw error;
-
-      setEditModalParticipants(prev => [...prev, data]);
-      setEditAttendanceMap(prev => ({ ...prev, [data.id]: 'present' }));
-      setIsAddingEditAttendee(false);
-      setNewEditAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
-    } catch (err: any) {
-      alert("Error adding attendee: " + err.message);
-    } finally {
-      setAddingEditAttendee(false);
-    }
-  }
-
-  async function startEditingReport(report: any) {
-    setEditingReport({
+  async function startEditing(report: any) {
+    setViewing(null);
+    setAdding(false);
+    setMember(emptyMember);
+    setEditing({
       ...report,
-      session_date: report.session_date ? report.session_date.split('T')[0] : "",
-      topic_id: report.topic_id || "",
-      location: report.location || "",
-      notes: report.notes || "",
-      attendance_month: report.attendance_month || ""
+      session_date: report.session_date?.split("T")[0] ?? "",
+      topic_id: report.topic_id ?? "",
+      location: report.location ?? "",
+      notes: report.notes ?? "",
+      attendance_month: report.attendance_month ?? "",
     });
-
-    await loadParticipantsForModal(report);
+    await loadPeople(report);
   }
 
-  async function handleModalCircleChange(newCircleId: string) {
-    setEditingReport({ ...editingReport, circle_id: newCircleId });
-    if (editingReport?.id) {
-      await loadParticipantsForModal({ ...editingReport, circle_id: newCircleId });
-    }
+  async function changeCircle(circleId: string) {
+    const next = { ...editing, circle_id: circleId };
+    setEditing(next);
+    await loadPeople(next);
   }
 
-  async function handleUpdateReport() {
-    if (!editingReport) return;
-    setSavingEdit(true);
+  async function addMember() {
+    if (!member.full_name.trim()) { toast("Enter the member’s name.", "error"); return; }
+    const isIjtima = editing.category === "ijtima_arkan";
+    // Ijtima Arkan reports belong to a council, so the new member's circle must be chosen.
+    const circleId = isIjtima ? member.circle_id : editing.circle_id;
+    if (!circleId) { toast("Choose the member’s circle.", "error"); return; }
+    const { data, error } = await supabase.from("participants")
+      .insert({ full_name: member.full_name.trim(), phone: member.phone, type: isIjtima ? "haazir_arkan" : member.type, circle_id: circleId, is_active: true })
+      .select().single();
+    if (error) { toast("Couldn’t add member: " + error.message, "error"); return; }
+    setEditPeople((prev) => [...prev, data]);
+    setEditMap((prev) => ({ ...prev, [data.id]: "present" }));
+    setAdding(false);
+    setMember(emptyMember);
+    toast(`${data.full_name} added and marked present`);
+  }
+
+  async function saveEdit() {
+    if (!editing.session_date) { toast("Choose a date.", "error"); return; }
+    setSaving(true);
     try {
-      const { error: sessionErr } = await supabase.from("sessions")
-        .update({
-          session_date: editingReport.session_date,
-          location: editingReport.location,
-          topic_id: editingReport.topic_id || null,
-          notes: editingReport.notes,
-          circle_id: editingReport.circle_id,
-          attendance_month: editingReport.attendance_month
-        })
-        .eq("id", editingReport.id);
-
-      if (sessionErr) throw sessionErr;
-
-      const attRecords = Object.entries(editAttendanceMap).map(([participant_id, status]) => ({
-        session_id: editingReport.id,
-        participant_id,
-        status
-      }));
-
-      if (attRecords.length > 0) {
-        const { error: attErr } = await supabase
-          .from("attendance")
-          .upsert(attRecords, { onConflict: "session_id,participant_id" });
+      const { error } = await supabase.from("sessions").update({
+        session_date: editing.session_date,
+        location: editing.location,
+        topic_id: editing.topic_id || null,
+        notes: editing.notes,
+        circle_id: editing.circle_id,
+        attendance_month: editing.attendance_month || null,
+      }).eq("id", editing.id);
+      if (error) throw error;
+      const rows = Object.entries(editMap).map(([participant_id, status]) => ({ session_id: editing.id, participant_id, status }));
+      if (rows.length) {
+        const { error: attErr } = await supabase.from("attendance").upsert(rows, { onConflict: "session_id,participant_id" });
         if (attErr) throw attErr;
       }
-
-      setEditingReport(null);
-      await fetchReports();
-      if (viewingDetails === editingReport.id) {
-        await fetchAttendanceDetails(editingReport.id);
-      }
-    } catch (err: any) {
-      alert("Error updating report: " + err.message);
+      toast("Report updated");
+      setEditing(null);
+      fetchReports();
+    } catch (e) {
+      toast("Couldn’t save: " + (e instanceof Error ? e.message : String(e)), "error");
     } finally {
-      setSavingEdit(false);
+      setSaving(false);
     }
   }
 
-  async function toggleAttendance(sessionId: string, participantId: string, currentStatus: string, category: string = 'quran_circle') {
-    const nextStatus = currentStatus === 'present' ? 'absent' : (currentStatus === 'absent' && category === 'ijtima_arkan' ? 'leave' : (currentStatus === 'leave' ? 'present' : 'present'));
-    const { error } = await supabase.from("attendance").update({ status: nextStatus }).eq("session_id", sessionId).eq("participant_id", participantId);
-    if (error) alert(error.message);
-    else fetchAttendanceDetails(viewingDetails!);
-  }
-
-  // Same circle (or UC for Ijtima), same type, same day: almost always a report submitted twice.
-  const dupIds = (() => {
+  // Same circle (or council for Ijtima), same type, same day: almost always a report submitted twice.
+  const dupIds = useMemo(() => {
     const groups: Record<string, string[]> = {};
     for (const r of reports) (groups[`${r.category}|${r.circle_id ?? r.uc_id}|${r.session_date}`] ??= []).push(r.id);
-    return new Set(Object.values(groups).filter(g => g.length > 1).flat());
-  })();
+    return new Set(Object.values(groups).filter((g) => g.length > 1).flat());
+  }, [reports]);
 
-  const filteredReports = reports.filter(r => {
-    if (onlyDuplicates && !dupIds.has(r.id)) return false;
-    const matchesSearch = 
-      r.quran_circles?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.union_councils?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.quran_circles?.union_councils?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.syllabus_topics?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.location?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-    if (sessionCategoryFilter !== "all" && r.category !== sessionCategoryFilter) {
-      return false;
+  const months = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const shown = reports.filter((r) => {
+      if (onlyDuplicates && !dupIds.has(r.id)) return false;
+      if (category !== "all" && r.category !== category) return false;
+      if (!q) return true;
+      return [placeOf(r), ucOf(r), r.syllabus_topics?.title, r.location, r.quran_circles?.murabbi_name].some((v) => v?.toLowerCase().includes(q));
+    });
+    const groups = new Map<string, any[]>();
+    for (const r of shown) {
+      const key = r.session_date.slice(0, 7);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(r);
     }
-    
-    return matchesSearch;
-  });
+    return [...groups.entries()].map(([key, rows]) => ({ label: `${MONTHS[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`, rows, count: shown.length }));
+  }, [reports, query, category, onlyDuplicates, dupIds]);
+  const shownCount = months.reduce((n, m) => n + m.rows.length, 0);
+
+  const presentOf = (r: any) => (r.attendance ?? []).filter((a: any) => a.status === "present").length;
 
   return (
-    <div className="p-5 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <header>
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm" />
-          <p className="section-label">Session Log</p>
-        </div>
-        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Jaiza Reports</h2>
-        <p className="text-slate-500 mt-1.5 text-sm leading-relaxed max-w-2xl">
-          View and manage all recorded Quran Circle sessions, attendance, and curriculum progress.
-        </p>
-      </header>
+    <div className="px-4 sm:px-6 lg:px-10 pt-6 md:pt-10 max-w-[1000px] mx-auto space-y-5">
+      <PageHeader eyebrow="Jaiza" title="Reports" subtitle="Every session submitted by murabbis. Tap a report to see who attended, correct attendance or edit the report." />
 
-      {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 max-w-3xl">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            placeholder="Search by circle, UC, topic, or location..."
-            className="form-input pl-9"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-        </div>
-        <div className="relative w-full sm:w-48">
-          <select 
-            className="form-input pr-10 bg-white"
-            value={sessionCategoryFilter}
-            onChange={(e) => setSessionCategoryFilter(e.target.value)}
-          >
-            <option value="all">All Sessions</option>
-            <option value="quran_circle">Quran Circle</option>
-            <option value="ijtima_arkan">Ijtima Arkan</option>
-            <option value="dars_e_quran">Dars-e-Quran</option>
-            <option value="other">Other</option>
+      <div className="space-y-2.5 animate-rise">
+        <SearchField value={query} onChange={setQuery} placeholder="Search circle, council, topic, murabbi or place" />
+        <div className="flex flex-wrap items-center gap-2">
+          <select aria-label="Session type" className="form-input !min-h-[36px] !py-1 !text-[14px] !w-auto" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="all">All session types</option>
+            {Object.entries(CATEGORY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          {dupIds.size > 0 && (
+            <Segmented
+              label="Show"
+              value={onlyDuplicates ? "dup" : "all"}
+              onChange={(v) => setOnlyDuplicates(v === "dup")}
+              options={[{ value: "all", label: "All reports" }, { value: "dup", label: `Possible duplicates (${dupIds.size})` }]}
+            />
+          )}
+          {!loading && <span className="text-[13px] text-label-2 ml-auto">{shownCount} report{shownCount === 1 ? "" : "s"}</span>}
         </div>
-        {dupIds.size > 0 && (
-          <label className="btn btn-secondary cursor-pointer select-none whitespace-nowrap">
-            <input type="checkbox" className="w-4 h-4 accent-amber-600" checked={onlyDuplicates} onChange={(e) => setOnlyDuplicates(e.target.checked)} />
-            Duplicates only ({dupIds.size})
-          </label>
-        )}
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-emerald-600">
-          <Loader2 className="w-8 h-8 animate-spin opacity-50" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Loading sessions...</p>
-        </div>
+        <div className="card"><SkeletonRows rows={7} /></div>
+      ) : shownCount === 0 ? (
+        <div className="card"><EmptyState icon={ClipboardList} title="No reports found" text={query || category !== "all" || onlyDuplicates ? "Try a different search or filter." : "Reports appear here when murabbis submit attendance."} /></div>
       ) : (
-        <div className="glass-table">
-          {/* Mobile / Tablet card view */}
-          <div className="lg:hidden divide-y divide-slate-100">
-            {filteredReports.length > 0 ? filteredReports.map((report) => (
-              <div key={report.id + '-card'} className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <span className="text-xs font-bold text-slate-500">
-                        {new Date(report.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })} {report.category === 'ijtima_arkan' && report.attendance_month ? `(${report.attendance_month})` : ''}
+        months.map((m) => (
+          <section key={m.label} className="space-y-2">
+            <h2 className="px-1 text-[13px] font-semibold text-label-2">{m.label}</h2>
+            <ul className="card overflow-hidden list-inset">
+              {m.rows.map((r) => (
+                <li key={r.id}>
+                  <button type="button" onClick={() => openDetails(r)} className="w-full text-left px-4 sm:px-5 py-3 grid grid-cols-[auto_1fr_auto_auto] items-center gap-3.5 hover:bg-grouped active:bg-fill transition-colors">
+                    <div className="w-11 h-11 rounded-xl bg-fill grid place-items-center text-center leading-none">
+                      <span>
+                        <span className="block text-[16px] font-bold tabular">{r.session_date.slice(8, 10)}</span>
+                        <span className="block text-[10px] font-semibold text-label-2 uppercase mt-0.5">{MONTHS[Number(r.session_date.slice(5, 7)) - 1].slice(0, 3)}</span>
                       </span>
-                      <span className="badge badge-emerald">{report.category.replace('_', ' ')}</span>
-                      {dupIds.has(report.id) && <span className="badge badge-amber">Possible duplicate</span>}
                     </div>
-                    <p className="font-bold text-slate-800 text-sm">{report.category === 'ijtima_arkan' ? (report.union_councils?.name || 'Unknown UC') : report.quran_circles?.name}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />{report.category === 'ijtima_arkan' ? 'Ijtima Arkan' : (report.quran_circles?.union_councils?.name || 'Unknown UC')}
+                    <div className="min-w-0">
+                      <p className="text-[15px] font-semibold truncate">{placeOf(r)}</p>
+                      <p className="text-[13px] text-label-2 truncate">
+                        {CATEGORY_LABEL[r.category] ?? r.category}
+                        {r.category === "ijtima_arkan" && r.attendance_month ? ` · ${r.attendance_month}` : ""}
+                        {r.category !== "ijtima_arkan" && ucOf(r) ? ` · ${ucOf(r)}` : ""}
+                        {r.syllabus_topics ? ` · Topic ${r.syllabus_topics.topic_number}` : ""}
+                      </p>
+                      {dupIds.has(r.id) && <span className="badge badge-amber mt-1">Possible duplicate</span>}
+                    </div>
+                    <p className="text-right leading-tight">
+                      <span className="text-[17px] font-semibold tabular">{presentOf(r)}</span>
+                      <span className="text-[13px] text-label-2">/{r.attendance?.length ?? 0}</span>
+                      <span className="block text-[11px] text-label-2">present</span>
                     </p>
-                    {report.category !== "ijtima_arkan" && report.syllabus_topics && (
-                      <p className="text-xs text-slate-500 mt-1.5">
-                        <span className="font-semibold">Topic #{report.syllabus_topics.topic_number}:</span> {report.syllabus_topics.title}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                    <span className="badge badge-emerald">{report.attendance?.filter((a: any) => a.status === 'present').length || 0} present</span>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => { if (viewingDetails === report.id) setViewingDetails(null); else { setViewingDetails(report.id); fetchAttendanceDetails(report.id); } }}
-                        className={`p-2 rounded-lg transition-all ${viewingDetails === report.id ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}>
-                        {viewingDetails === report.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                      </button>
-                      <button onClick={() => startEditingReport(report)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit Session & Attendees"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(report.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                </div>
-                {viewingDetails === report.id && (
-                  <div className="mt-3 pt-3 border-t border-slate-100 animate-fade-in">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-semibold text-slate-500 flex items-center gap-1"><Users className="w-3.5 h-3.5 text-emerald-600" /> Attendance Breakdown</p>
-                      <span className="badge badge-emerald">{sessionAttendance.filter(a => a.status === 'present').length} / {sessionAttendance.length} present</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {sessionAttendance.map(att => (
-                        <button key={`m-${att.session_id}-${att.participant_id}`}
-                          onClick={() => toggleAttendance(att.session_id, att.participant_id, att.status, report.category)}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border-2 transition-all text-left text-xs ${att.status === 'present' ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : (att.status === 'leave' ? 'bg-amber-50 border-amber-300 text-amber-800' : 'bg-white border-slate-100 text-slate-400')}`}>
-                          <span className="font-semibold truncate">{att.participants?.full_name}</span>
-                          <div className={`w-4 h-4 rounded-full flex-shrink-0 ml-1 flex items-center justify-center ${att.status === 'present' ? 'bg-emerald-500' : (att.status === 'leave' ? 'bg-amber-500' : 'bg-slate-200')}`}>
-                            {att.status === 'present' && <span className="text-white text-[10px]">P</span>}
-                            {att.status === 'leave' && <span className="text-white text-[10px]">L</span>}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )) : (
-              <div className="py-16 text-center">
-                <ClipboardList className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                <p className="text-sm font-semibold text-slate-400">No reports found</p>
-              </div>
-            )}
-          </div>
+                    <ChevronRight className="h-4 w-4 text-label-3" aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
+      )}
 
-          {/* Desktop table view */}
-          <div className="hidden lg:block">
-          <table className="w-full text-left border-separate border-spacing-0">
-            <thead>
-              <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
-                <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
-                <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Circle</th>
-                <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:table-cell">Topic</th>
-                <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-center hidden sm:table-cell">Attendance</th>
-                <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredReports.length > 0 ? filteredReports.map((report) => (
-                <React.Fragment key={report.id}>
-                  <tr className={`group transition-colors ${viewingDetails === report.id ? '' : ''}`} style={viewingDetails === report.id ? { background: 'rgba(236,253,245,0.5)' } : {}} onMouseEnter={e => { if (viewingDetails !== report.id) e.currentTarget.style.background = 'rgba(248,250,252,0.6)'; }} onMouseLeave={e => { if (viewingDetails !== report.id) e.currentTarget.style.background = 'transparent'; }}>
-                    <td className="px-5 md:px-6 py-4">
-                      <p className="text-sm font-semibold text-slate-800">
-                        {new Date(report.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </p>
-                      <span className="badge badge-emerald mt-1.5">{report.category.replace('_', ' ')}</span>
-                      {dupIds.has(report.id) && <span className="badge badge-amber mt-1.5 ml-1.5">Possible duplicate</span>}
-                      {report.category === 'ijtima_arkan' && report.attendance_month && (
-                        <span className="badge badge-amber mt-1.5 ml-1.5">{report.attendance_month}</span>
-                      )}
-                    </td>
-                    <td className="px-5 md:px-6 py-4">
-                      <p className="text-sm font-semibold text-slate-800">{report.category === 'ijtima_arkan' ? (report.union_councils?.name || 'Unknown UC') : report.quran_circles?.name}</p>
-                      <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />{report.category === 'ijtima_arkan' ? 'Ijtima Arkan' : (report.quran_circles?.union_councils?.name || 'Unknown UC')}
-                      </p>
-                    </td>
-                    <td className="px-5 md:px-6 py-4 hidden md:table-cell">
-                      {report.category !== "ijtima_arkan" ? (
-                        report.syllabus_topics ? (
-                          <div>
-                            <p className="text-sm font-medium text-slate-700 leading-snug">{report.syllabus_topics.title}</p>
-                            <p className="text-xs text-slate-400 mt-0.5">Topic #{report.syllabus_topics.topic_number}</p>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-300 italic">General / Custom</span>
-                        )
-                      ) : (
-                        <span className="text-xs text-slate-300 italic">N/A</span>
-                      )}
-                    </td>
-                    <td className="px-5 md:px-6 py-4 text-center hidden sm:table-cell">
-                      <span className="badge badge-emerald">
-                        {report.attendance?.filter((a: any) => a.status === 'present').length || 0} present
-                      </span>
-                    </td>
-                    <td className="px-5 md:px-6 py-4">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => {
-                            if (viewingDetails === report.id) setViewingDetails(null);
-                            else { setViewingDetails(report.id); fetchAttendanceDetails(report.id); }
-                          }}
-                          className={`p-2 rounded-lg transition-all ${viewingDetails === report.id ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
-                          title="View attendance details"
-                        >
-                          {viewingDetails === report.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </button>
-                        <button onClick={() => startEditingReport(report)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="Edit session & attendee roster">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(report.id)} className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Delete session">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+      {/* Details */}
+      <Sheet
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        title={viewing ? placeOf(viewing) : ""}
+        subtitle={viewing ? `${CATEGORY_LABEL[viewing.category] ?? viewing.category} · ${formatDate(viewing.session_date)}` : ""}
+        footer={viewing && (
+          <>
+            <button type="button" onClick={() => handleDelete(viewing)} className="btn btn-danger mr-auto"><Trash2 className="h-4 w-4" /> Delete</button>
+            <button type="button" onClick={() => startEditing(viewing)} className="btn btn-primary"><Edit2 className="h-4 w-4" /> Edit report</button>
+          </>
+        )}
+      >
+        {viewing && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2 text-[13px]">
+              {viewing.syllabus_topics && <span className="badge badge-blue">Topic {viewing.syllabus_topics.topic_number}: <BiText text={cleanTitle(viewing.syllabus_topics.title)} /></span>}
+              {viewing.location && <span className="badge badge-gray"><MapPin className="h-3 w-3" /> {viewing.location}</span>}
+              {viewing.quran_circles?.murabbi_name && <span className="badge badge-gray">Murabbi: {viewing.quran_circles.murabbi_name}</span>}
+            </div>
+            {viewing.notes && <p className="text-[15px] text-label-2 whitespace-pre-wrap">{viewing.notes}</p>}
+            <div>
+              <p className="text-[13px] font-semibold text-label-2 mb-2">Attendance · tap a status to change it</p>
+              {attendance === null ? (
+                <div className="flex items-center gap-2 py-6 justify-center text-label-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+              ) : attendance.length === 0 ? (
+                <p className="text-[15px] text-label-2 py-4">No attendance was marked for this session.</p>
+              ) : (
+                <ul className="card-inset overflow-hidden list-inset">
+                  {attendance.map((a) => (
+                    <li key={a.participant_id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-surface">
+                      <div className="min-w-0">
+                        <p className="text-[15px] truncate"><BiText text={a.participants?.full_name ?? "Removed member"} /></p>
+                        <p className="text-[12px] text-label-2">{a.participants?.type === "haazir_arkan" ? "Arkan" : "Public"}</p>
                       </div>
-                    </td>
-                  </tr>
-
-                  {/* Expandable Details Row */}
-                  {viewingDetails === report.id && (
-                    <tr>
-                      <td colSpan={5} className="px-5 md:px-6 pb-4 pt-0 bg-emerald-50/30">
-                        <div className="card border border-emerald-100 p-5 animate-fade-in">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                              <Users className="w-4 h-4 text-emerald-600" /> Attendance Details (Tap to toggle status)
-                            </h4>
-                            <span className="badge badge-emerald">
-                              {sessionAttendance.filter(a => a.status === 'present').length} / {sessionAttendance.length} present
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-                            {sessionAttendance.map(att => (
-                              <button
-                                key={`${att.session_id}-${att.participant_id}`}
-                                onClick={() => toggleAttendance(att.session_id, att.participant_id, att.status, report.category)}
-                                className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer text-left ${
-                                  att.status === 'present'
-                                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800 font-bold'
-                                    : (att.status === 'leave' ? 'bg-amber-50 border-amber-300 text-amber-800 font-bold' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200')
-                                }`}
-                              >
-                                <div className="min-w-0 pr-1">
-                                  <p className="text-xs font-semibold truncate">{att.participants?.full_name}</p>
-                                  <p className="text-xs capitalize opacity-60 mt-0.5">{att.participants?.type?.replace('_', ' ')}</p>
-                                </div>
-                                <div className={`w-5 h-5 rounded-full ml-1 flex-shrink-0 flex items-center justify-center ${att.status === 'present' ? 'bg-emerald-500' : (att.status === 'leave' ? 'bg-amber-500' : 'bg-slate-200')}`}>
-                                  {att.status === 'present' && <span className="text-white text-xs">P</span>}
-                                  {att.status === 'leave' && <span className="text-white text-xs">L</span>}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                          {report.notes && (
-                            <div className="mt-4 pt-4 border-t border-emerald-100">
-                              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Notes</p>
-                              <p className="text-sm text-slate-600 leading-relaxed">{report.notes}</p>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              )) : (
-                <tr>
-                  <td colSpan={5} className="py-16 text-center">
-                    <ClipboardList className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                    <p className="text-sm font-semibold text-slate-400">No reports found</p>
-                    <p className="text-xs text-slate-300 mt-1">
-                      {searchQuery ? 'Try adjusting your search' : 'Reports will appear after sessions are submitted'}
-                    </p>
-                  </td>
-                </tr>
+                      <button type="button" onClick={() => cycleStatus(a)} className={`badge ${STATUS_CLASS[a.status] ?? "badge-gray"} !text-[13px] !px-3 !py-1.5 min-w-[78px] justify-center`}>
+                        {STATUS_LABEL[a.status] ?? a.status}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </tbody>
-          </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Sheet>
 
-      {/* Edit Session Modal */}
-      {editingReport && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4 animate-fade-in"
-          onClick={(e) => { if (e.target === e.currentTarget) setEditingReport(null); }}
-        >
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-float-up overflow-hidden rounded-3xl" style={{ background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(40px) saturate(200%)', WebkitBackdropFilter: 'blur(40px) saturate(200%)', border: '1px solid rgba(255,255,255,0.95)', boxShadow: '0 25px 80px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,1)' }}>
-            <div className="bg-gradient-to-r from-emerald-800 to-teal-900 px-6 py-5 flex items-center justify-between text-white sticky top-0 z-10">
-              <div>
-                <h3 className="font-bold text-base flex items-center gap-2">
-                  <Edit2 className="w-4 h-4 text-emerald-400" /> Edit Session & Attendee Roster
-                </h3>
-                <p className="text-xs text-emerald-200/70 mt-0.5">{editingReport.quran_circles?.name}</p>
-              </div>
-              <button onClick={() => setEditingReport(null)} className="p-2 hover:bg-white/15 rounded-lg transition-colors">
-                <X className="w-4 h-4" />
-              </button>
+      {/* Edit */}
+      <Sheet
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        wide
+        title="Edit report"
+        subtitle={editing ? `${placeOf(editing)} · ${CATEGORY_LABEL[editing.category] ?? editing.category}` : ""}
+        footer={editing && (
+          <>
+            <button type="button" onClick={() => setEditing(null)} className="btn btn-secondary">Cancel</button>
+            <button type="button" onClick={saveEdit} disabled={saving} className="btn btn-primary">{saving && <Loader2 className="h-4 w-4 animate-spin" />} Save changes</button>
+          </>
+        )}
+      >
+        {editing && (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block"><span className="form-label">Date</span>
+                <input type="date" className="form-input" value={editing.session_date} onChange={(e) => setEditing({ ...editing, session_date: e.target.value })} />
+              </label>
+              {editing.category === "ijtima_arkan" ? (
+                <label className="block"><span className="form-label">Attendance month</span>
+                  <select className="form-input" value={editing.attendance_month} onChange={(e) => setEditing({ ...editing, attendance_month: e.target.value })}>
+                    <option value="">Not set</option>
+                    {MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </label>
+              ) : (
+                <label className="block"><span className="form-label">Circle</span>
+                  <select className="form-input" value={editing.circle_id ?? ""} onChange={(e) => changeCircle(e.target.value)}>
+                    {circles.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </label>
+              )}
+              {editing.category !== "ijtima_arkan" && (
+                <label className="block sm:col-span-2"><span className="form-label">Topic</span>
+                  <select className="form-input" value={editing.topic_id} onChange={(e) => setEditing({ ...editing, topic_id: e.target.value })}>
+                    <option value="">No topic</option>
+                    {topics.map((t) => <option key={t.id} value={t.id}>Topic {t.topic_number}: {cleanTitle(t.title)}</option>)}
+                  </select>
+                </label>
+              )}
+              <label className="block sm:col-span-2"><span className="form-label">Location</span>
+                <input className="form-input" value={editing.location} onChange={(e) => setEditing({ ...editing, location: e.target.value })} placeholder="Masjid, residence…" />
+              </label>
+              <label className="block sm:col-span-2"><span className="form-label">Notes</span>
+                <textarea rows={3} className="form-input resize-none" value={editing.notes} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} />
+              </label>
             </div>
 
-            <div className="p-6 space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Session Date</label>
-                  <input type="date" className="form-input" value={editingReport.session_date} onChange={(e) => setEditingReport({...editingReport, session_date: e.target.value})} />
-                </div>
-                {editingReport.category === 'ijtima_arkan' ? (
-                  <div>
-                    <label className="form-label">Attendance Month</label>
-                    <div className="relative">
-                      <select className="form-input pr-8" value={editingReport.attendance_month || ''} onChange={(e) => setEditingReport({...editingReport, attendance_month: e.target.value})}>
-                        <option value="">— Select Month —</option>
-                        {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="form-label">Quran Circle</label>
-                    <div className="relative">
-                      <select className="form-input pr-8" value={editingReport.circle_id || ''} onChange={(e) => handleModalCircleChange(e.target.value)}>
-                        <option value="">— N/A —</option>
-                        {circles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                )}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[13px] font-semibold text-label-2">Attendance ({Object.values(editMap).filter((s) => s === "present").length} present)</p>
+                <button type="button" onClick={() => setAdding((v) => !v)} className="btn btn-tinted btn-sm"><UserPlus className="h-4 w-4" /> Add member</button>
               </div>
-
-              {editingReport.category !== "ijtima_arkan" && (
-                <div>
-                  <label className="form-label">Topic</label>
-                  <div className="relative">
-                    <select className="form-input pr-8" value={editingReport.topic_id || ""} onChange={(e) => setEditingReport({...editingReport, topic_id: e.target.value})}>
-                      <option value="">No Topic / Custom Session</option>
-                      {topics.map(t => <option key={t.id} value={t.id}>Topic {t.topic_number}: {t.title}</option>)}
+              {adding && (
+                <div className="card-inset p-3 mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2 animate-fade">
+                  <input className="form-input" placeholder="Full name" value={member.full_name} onChange={(e) => setMember({ ...member, full_name: e.target.value })} />
+                  <input className="form-input" type="tel" inputMode="tel" placeholder="Phone (optional)" value={member.phone} onChange={(e) => setMember({ ...member, phone: e.target.value })} />
+                  {editing.category === "ijtima_arkan" ? (
+                    <select className="form-input" value={member.circle_id} onChange={(e) => setMember({ ...member, circle_id: e.target.value })}>
+                      <option value="">Member’s circle</option>
+                      {circles.filter((c) => c.uc_id === editing.uc_id).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  </div>
+                  ) : (
+                    <select className="form-input" value={member.type} onChange={(e) => setMember({ ...member, type: e.target.value })}>
+                      <option value="aam_afraad">Public (Aam Afraad)</option>
+                      <option value="haazir_arkan">Arkan (Haazir Arkan)</option>
+                    </select>
+                  )}
+                  <button type="button" onClick={addMember} className="btn btn-primary"><Plus className="h-4 w-4" /> Add and mark present</button>
                 </div>
               )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="form-label">Location</label>
-                  <input type="text" className="form-input" placeholder="e.g. Masjid, Residence..." value={editingReport.location || ""} onChange={(e) => setEditingReport({...editingReport, location: e.target.value})} />
-                </div>
-                <div>
-                  <label className="form-label">Notes</label>
-                  <input type="text" className="form-input" placeholder="Session notes..." value={editingReport.notes || ""} onChange={(e) => setEditingReport({...editingReport, notes: e.target.value})} />
-                </div>
-              </div>
-
-              {/* Attendee Roster & Attendance Statuses Section */}
-              <div className="space-y-3 pt-2 border-t border-slate-200/80">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <label className="form-label mb-0">
-                    Attendees ({Object.values(editAttendanceMap).filter(Boolean).length} / {editModalParticipants.length} Present)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingEditAttendee(!isAddingEditAttendee)}
-                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 bg-emerald-100/80 hover:bg-emerald-200/80 px-2.5 py-1 rounded-xl transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" /> Add Attendee
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => {
-                        const allTrue: { [k: string]: string } = {};
-                        editModalParticipants.forEach(p => allTrue[p.id] = 'present');
-                        setEditAttendanceMap(allTrue);
-                      }}
-                      className="text-[11px] font-bold text-emerald-600 hover:text-emerald-800"
-                    >
-                      Mark All Present
-                    </button>
-                    <span className="text-slate-300">•</span>
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        const allFalse: { [k: string]: string } = {};
-                        editModalParticipants.forEach(p => allFalse[p.id] = 'absent');
-                        setEditAttendanceMap(allFalse);
-                      }}
-                      className="text-[11px] font-bold text-slate-400 hover:text-slate-600"
-                    >
-                      Mark All Absent
-                    </button>
-                  </div>
-                </div>
-
-                {/* Inline form to add new attendee */}
-                {isAddingEditAttendee && (
-                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 space-y-2 animate-float-up">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> New Attendee for Circle
-                      </span>
-                      <button type="button" onClick={() => setIsAddingEditAttendee(false)} className="text-slate-400 hover:text-slate-600">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <input 
-                        type="text" 
-                        placeholder="Full Name *" 
-                        className="form-input text-xs py-2" 
-                        value={newEditAttendee.full_name} 
-                        onChange={(e) => setNewEditAttendee({ ...newEditAttendee, full_name: e.target.value })} 
+              {loadingPeople ? (
+                <div className="flex items-center gap-2 py-6 justify-center text-label-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading members…</div>
+              ) : editPeople.length === 0 ? (
+                <p className="text-[15px] text-label-2 py-3">No members found for this report.</p>
+              ) : (
+                <ul className="card-inset overflow-hidden list-inset">
+                  {editPeople.map((p) => (
+                    <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-surface">
+                      <span className="text-[15px] min-w-0 truncate"><BiText text={p.full_name} /></span>
+                      <Segmented
+                        label={`Status for ${p.full_name}`}
+                        value={editMap[p.id] ?? "absent"}
+                        onChange={(v) => setEditMap({ ...editMap, [p.id]: v })}
+                        options={[
+                          { value: "present", label: "Present" },
+                          ...(editing.category === "ijtima_arkan" ? [{ value: "leave", label: "Leave" }] : []),
+                          { value: "absent", label: "Absent" },
+                        ]}
                       />
-                      <input 
-                        type="text" 
-                        placeholder="Phone (optional)" 
-                        className="form-input text-xs py-2" 
-                        value={newEditAttendee.phone} 
-                        onChange={(e) => setNewEditAttendee({ ...newEditAttendee, phone: e.target.value })} 
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2 pt-1">
-                      <button type="button" onClick={() => setIsAddingEditAttendee(false)} className="btn btn-secondary text-xs py-1.5 px-3">
-                        Cancel
-                      </button>
-                      <button type="button" onClick={handleAddAttendeeInEditModal} disabled={addingEditAttendee} className="btn btn-primary text-xs py-1.5 px-3">
-                        {addingEditAttendee ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Add & Mark Present"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {loadingModalParticipants ? (
-                  <div className="flex items-center justify-center py-6 text-emerald-600 gap-2 text-xs font-semibold">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Loading circle attendees...
-                  </div>
-                ) : editModalParticipants.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">No participants found in this circle.</p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto p-1.5 border border-slate-200/80 rounded-2xl bg-slate-50/50">
-                    {editModalParticipants.map(p => {
-                      const currentStatus = editAttendanceMap[p.id] || 'absent';
-                      const isPresent = currentStatus === 'present';
-                      const isLeave = currentStatus === 'leave';
-                      
-                      if (editingReport?.category === 'ijtima_arkan') {
-                        return (
-                          <div key={p.id} className="flex flex-col gap-2 p-2.5 rounded-xl border bg-white border-slate-200">
-                            <div className="min-w-0 pr-2">
-                              <p className="truncate font-bold text-slate-700">{p.full_name}</p>
-                              <p className="text-[10px] font-normal capitalize opacity-60 text-slate-500">{p.type?.replace('_', ' ')}</p>
-                            </div>
-                            <div className="flex gap-1">
-                              <button type="button" onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: 'present' })} className={`flex-1 py-1 text-[10px] rounded-lg font-bold ${isPresent ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'}`}>P</button>
-                              <button type="button" onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: 'leave' })} className={`flex-1 py-1 text-[10px] rounded-lg font-bold ${isLeave ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}`}>L</button>
-                              <button type="button" onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: 'absent' })} className={`flex-1 py-1 text-[10px] rounded-lg font-bold ${currentStatus === 'absent' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-500'}`}>A</button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setEditAttendanceMap({ ...editAttendanceMap, [p.id]: isPresent ? 'absent' : 'present' })}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-left ${
-                            isPresent
-                              ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                              : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
-                          }`}
-                        >
-                          <div className="min-w-0 pr-2">
-                            <p className="truncate font-bold">{p.full_name}</p>
-                            <p className="text-[10px] font-normal capitalize opacity-60">{p.type?.replace('_', ' ')}</p>
-                          </div>
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${isPresent ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                            {isPresent ? '✓' : ''}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setEditingReport(null)} className="btn btn-secondary flex-1 py-3 text-sm">Cancel</button>
-                <button onClick={handleUpdateReport} disabled={savingEdit} className="btn btn-primary flex-[2] py-3 text-sm font-bold">
-                  {savingEdit ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Session & Attendance</>}
-                </button>
-              </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Sheet>
     </div>
   );
 }
-

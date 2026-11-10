@@ -70,3 +70,8 @@ export function formatDate(isoDate: string): string {
   const [y, m, d] = isoDate.slice(0, 10).split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
+
+/** Titles are stored as "Topic 1: ثنائے رب (…)"; screens add the number themselves, so drop it here. */
+export function cleanTitle(title: string | null | undefined): string {
+  return (title ?? "").replace(/^\s*topic\s*\d+\s*[:\-–—.]\s*/i, "").trim();
+}

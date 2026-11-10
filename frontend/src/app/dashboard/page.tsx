@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, BookOpen, CalendarCheck, ChevronRight, CircleDot, Loader2, RefreshCw, Users } from "lucide-react";
+import { AlertTriangle, ChevronRight, ClipboardList, RefreshCw } from "lucide-react";
+import { BiText, EmptyState, PageHeader, RateBar, Segmented, SkeletonRows, Stat } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
-import { CATEGORY_LABEL, Period, attendanceRate, daysAgo, fetchAll, formatDate, inPeriod, localDate } from "@/lib/data";
+import { CATEGORY_LABEL, Period, attendanceRate, cleanTitle, daysAgo, fetchAll, formatDate, inPeriod, localDate } from "@/lib/data";
 
 type UC = { id: string; name: string };
 type Circle = { id: string; name: string; uc_id: string; murabbi_name: string | null };
@@ -16,13 +17,13 @@ type Topic = { id: string; topic_number: number; title: string };
 
 const QUIET_AFTER_DAYS = 14;
 const WEEKS = 12;
-const EMERALD = "#047857";
+const BLUE = "#0071e3";
 
-const PERIODS: { value: Period; label: string }[] = [
-  { value: "week", label: "Last 7 days" },
-  { value: "month", label: "Last 30 days" },
-  { value: "3_months", label: "Last 3 months" },
-  { value: "complete", label: "All time" },
+const PERIODS: { value: Period; label: string; long: string }[] = [
+  { value: "week", label: "7 days", long: "last 7 days" },
+  { value: "month", label: "30 days", long: "last 30 days" },
+  { value: "3_months", label: "3 months", long: "last 3 months" },
+  { value: "complete", label: "All time", long: "all time" },
 ];
 
 export default function DashboardOverview() {
@@ -183,182 +184,159 @@ export default function DashboardOverview() {
     };
   }, [data, period, category, memberType]);
 
-  const periodLabel = PERIODS.find((p) => p.value === period)!.label.toLowerCase();
+  const periodLabel = PERIODS.find((p) => p.value === period)!.long;
+  const axis = { fontSize: 11, fill: "#86868b" };
 
   return (
-    <div className="px-4 md:px-6 xl:px-8 pt-5 md:pt-8 pb-32 md:pb-10 max-w-7xl mx-auto space-y-5 md:space-y-6">
-      {/* Header + filters */}
-      <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-        <div>
-          <p className="section-label">Zone overview</p>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mt-1">How the circles are doing</h1>
-          {view && (
-            <p className="text-sm text-slate-600 mt-1">
-              {view.totalCircles} circles · {view.arkan + view.public} members ({view.arkan} Arkan, {view.public} Public)
-            </p>
-          )}
-        </div>
-        <div className="grid grid-cols-2 sm:flex gap-2">
-          <select aria-label="Time period" className="form-input select-chevron sm:w-44" value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
-            {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
-          <select aria-label="Session type" className="form-input select-chevron sm:w-52" value={category} onChange={(e) => setCategory(e.target.value)}>
+    <div className="px-4 sm:px-6 lg:px-10 pt-6 md:pt-10 max-w-[1200px] mx-auto space-y-6">
+      <PageHeader
+        eyebrow="Zone 5 overview"
+        title="How the circles are doing"
+        subtitle={view ? `${view.totalCircles} circles · ${view.arkan + view.public} members (${view.arkan} Arkan, ${view.public} Public)` : "Loading the latest reports…"}
+      />
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 animate-rise">
+        <Segmented label="Time period" options={PERIODS.map(({ value, label }) => ({ value, label }))} value={period} onChange={setPeriod} />
+        <div className="grid grid-cols-2 gap-2 sm:flex">
+          <select aria-label="Session type" className="form-input !min-h-[36px] !py-1 !text-[14px] sm:w-56" value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value="all">All session types</option>
             {Object.entries(CATEGORY_LABEL).filter(([k]) => k !== "other").map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <select aria-label="Members" className="form-input select-chevron sm:w-40 col-span-2 sm:col-span-1" value={memberType} onChange={(e) => setMemberType(e.target.value)}>
+          <select aria-label="Members" className="form-input !min-h-[36px] !py-1 !text-[14px] sm:w-40" value={memberType} onChange={(e) => setMemberType(e.target.value)}>
             <option value="all">All members</option>
             <option value="haazir_arkan">Arkan only</option>
             <option value="aam_afraad">Public only</option>
           </select>
         </div>
-      </header>
+      </div>
 
       {loading && !data && (
-        <div className="card p-10 flex items-center justify-center gap-3 text-slate-600">
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-700" /> Loading every session and attendance record…
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {Array.from({ length: 4 }, (_, i) => <div key={i} className="skeleton h-[118px] !rounded-[var(--radius-card)]" />)}
         </div>
       )}
 
       {error && (
-        <div role="alert" className="card p-5 flex flex-col sm:flex-row sm:items-center gap-3 justify-between border-red-200">
-          <p className="text-sm text-red-700"><strong>Couldn’t load the dashboard.</strong> {error}</p>
+        <div role="alert" className="card p-5 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+          <p className="text-[15px]"><span className="font-semibold text-danger">Couldn’t load the dashboard.</span> <span className="text-label-2">{error}</span></p>
           <button onClick={retry} className="btn btn-secondary"><RefreshCw className="w-4 h-4" /> Try again</button>
         </div>
       )}
 
       {view && (
         <>
-          {/* KPIs */}
-          <section aria-label="Key figures" className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            <Kpi icon={CalendarCheck} label="Sessions held" value={String(view.sessions)} note={periodLabel} />
-            <Kpi
-              icon={Users}
+          <section aria-label="Key figures" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 stagger">
+            <Stat label="Sessions held" value={view.sessions} note={periodLabel} />
+            <Stat
               label="Attendance"
               value={view.rate === null ? "—" : `${view.rate}%`}
-              note={view.marked ? `${view.present} present of ${view.marked} marked` : "nothing marked yet"}
+              note={view.marked ? `${view.present} of ${view.marked} present` : "nothing marked yet"}
               tone={view.rate === null ? undefined : view.rate >= 60 ? "good" : view.rate >= 35 ? "warn" : "bad"}
             />
-            <Kpi icon={CircleDot} label="Circles active" value={`${view.activeCircles} / ${view.totalCircles}`} note={period === "complete" ? "held at least one class" : `held a class, ${periodLabel}`} />
-            <Kpi icon={BookOpen} label="Topics taught" value={`${view.topicsTaught} / ${view.totalTopics}`} note="syllabus topics covered" />
+            <Stat label="Circles active" value={<>{view.activeCircles}<span className="text-label-3 text-[0.6em] font-semibold"> / {view.totalCircles}</span></>} note={period === "complete" ? "held at least one class" : `held a class, ${periodLabel}`} />
+            <Stat label="Topics taught" value={<>{view.topicsTaught}<span className="text-label-3 text-[0.6em] font-semibold"> / {view.totalTopics}</span></>} note="syllabus topics covered" />
           </section>
 
-          {/* Trends */}
-          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             <ChartCard title="Sessions per week" subtitle={`Last ${WEEKS} weeks`}>
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={view.weeks} margin={{ top: 8, right: 4, left: -24, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="#edf0ea" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#5f6f66" }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={16} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#5f6f66" }} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{ fill: "rgba(4,120,87,0.06)" }} content={<WeekTip kind="sessions" />} />
-                  <Bar dataKey="sessions" fill={EMERALD} radius={[4, 4, 0, 0]} maxBarSize={28} />
+                <BarChart data={view.weeks} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="#ececf0" />
+                  <XAxis dataKey="label" tick={axis} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={18} />
+                  <YAxis allowDecimals={false} width={28} tick={axis} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{ fill: "rgba(0,113,227,0.06)" }} content={<WeekTip kind="sessions" />} />
+                  <Bar dataKey="sessions" fill={BLUE} radius={[4, 4, 0, 0]} maxBarSize={26} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
-            <ChartCard title="Attendance rate per week" subtitle="Present ÷ marked (leave excluded)">
+            <ChartCard title="Attendance rate per week" subtitle="Present ÷ marked · leave excluded">
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={view.weeks} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="#edf0ea" />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#5f6f66" }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={16} />
-                  <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v) => `${v}%`} width={40} tick={{ fontSize: 11, fill: "#5f6f66" }} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{ stroke: "#b9c7bd" }} content={<WeekTip kind="rate" />} />
-                  <Line dataKey="rate" stroke={EMERALD} strokeWidth={2} dot={{ r: 4, fill: EMERALD, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls />
+                  <CartesianGrid vertical={false} stroke="#ececf0" />
+                  <XAxis dataKey="label" tick={axis} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={18} />
+                  <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v) => `${v}%`} width={40} tick={axis} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{ stroke: "#d2d2d7" }} content={<WeekTip kind="rate" />} />
+                  <Line dataKey="rate" stroke={BLUE} strokeWidth={2} dot={{ r: 4, fill: BLUE, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </ChartCard>
           </section>
 
-          <section className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-            {/* UC table */}
+          <section className="grid grid-cols-1 xl:grid-cols-5 gap-3 sm:gap-4">
             <div className="card xl:col-span-3 overflow-hidden">
-              <div className="p-4 md:p-5 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base font-bold text-slate-900">Union councils</h2>
-                  <p className="text-xs text-slate-600 mt-0.5">Best attendance first · {periodLabel}</p>
-                </div>
-                <Link href="/dashboard/uc-status" className="btn btn-ghost !min-h-[36px] text-xs">Details <ChevronRight className="w-3.5 h-3.5" /></Link>
-              </div>
-              <ul className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
+              <SectionTitle title="Union councils" subtitle={`Best attendance first · ${periodLabel}`} href="/dashboard/uc-status" link="Details" />
+              <ul className="list-inset border-t border-separator">
                 {view.ucRows.map((u) => (
-                  <li key={u.id} className="px-4 md:px-5 py-3 grid grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5">
+                  <li key={u.id} className="px-4 sm:px-5 py-3 grid grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_3rem] items-center gap-x-4 gap-y-2">
                     <div className="min-w-0">
-                      <p className="font-semibold text-sm text-slate-900 truncate">{u.name}</p>
-                      <p className="text-xs text-slate-600">
-                        {u.activeCircles}/{u.circles} circles active · {u.sessions} sessions
-                        {u.lastHeld && <> · last {relative(u.lastHeld)}</>}
+                      <p className="text-[15px] font-semibold truncate">{u.name}</p>
+                      <p className="text-[13px] text-label-2">
+                        {u.activeCircles}/{u.circles} circles active · {u.sessions} sessions{u.lastHeld && <> · {relative(u.lastHeld)}</>}
                       </p>
                     </div>
                     <RateBar rate={u.rate} className="col-span-2 sm:col-span-1 row-start-2 sm:row-start-auto" />
-                    <p className="text-sm font-bold tabular-nums text-right text-slate-900 col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto w-12">
-                      {u.rate === null ? "—" : `${u.rate}%`}
-                    </p>
+                    <p className="text-[15px] font-semibold tabular text-right col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto">{u.rate === null ? "—" : `${u.rate}%`}</p>
                   </li>
                 ))}
               </ul>
             </div>
 
-            {/* Needs attention */}
             <div className="card xl:col-span-2 overflow-hidden flex flex-col">
-              <div className="p-4 md:p-5">
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" aria-hidden /> Needs attention
-                </h2>
-                <p className="text-xs text-slate-600 mt-0.5">Circles with no Quran Circle class in {QUIET_AFTER_DAYS}+ days</p>
+              <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-3">
+                <h2 className="text-[17px] font-semibold flex items-center gap-2"><AlertTriangle className="h-[18px] w-[18px] text-warning" aria-hidden /> Needs attention</h2>
+                <p className="text-[13px] text-label-2 mt-0.5">No Quran Circle class in {QUIET_AFTER_DAYS}+ days</p>
               </div>
               {view.quiet.length === 0 ? (
-                <p className="px-5 pb-5 text-sm text-emerald-800">Every circle held a class in the last {QUIET_AFTER_DAYS} days.</p>
+                <p className="px-5 pb-5 text-[15px] text-success">Every circle held a class in the last {QUIET_AFTER_DAYS} days.</p>
               ) : (
-                <ul className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)] max-h-[22rem] overflow-y-auto">
+                <ul className="list-inset border-t border-separator max-h-[23rem] overflow-y-auto">
                   {view.quiet.map((c) => (
-                    <li key={c.id} className="px-4 md:px-5 py-2.5 flex items-center justify-between gap-3">
+                    <li key={c.id} className="px-4 sm:px-5 py-2.5 flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
-                        <p className="text-xs text-slate-600 truncate">{c.ucName}{c.murabbi_name ? ` · ${c.murabbi_name}` : ""}</p>
+                        <p className="text-[15px] font-medium truncate">{c.name}</p>
+                        <p className="text-[13px] text-label-2 truncate">{c.ucName}{c.murabbi_name ? ` · ${c.murabbi_name}` : ""}</p>
                       </div>
-                      <span className={`badge ${c.last ? "badge-amber" : "badge-rose"}`}>{c.last ? `${c.days} days` : "No class yet"}</span>
+                      <span className={`badge ${c.last ? "badge-amber" : "badge-red"}`}>{c.last ? `${c.days} days` : "No class yet"}</span>
                     </li>
                   ))}
                 </ul>
               )}
               {(view.duplicates > 0 || view.empty > 0) && (
-                <div className="mt-auto m-4 p-3 rounded-xl bg-[var(--gold-light)] text-xs text-[#6b4a0e] space-y-1">
-                  <p className="font-bold">Data to tidy up</p>
+                <div className="mt-auto m-3 sm:m-4 p-3.5 rounded-2xl bg-warning-tint text-[13px] text-[#7a3d00] space-y-1">
+                  <p className="font-semibold">Data to tidy up</p>
                   {view.duplicates > 0 && <p>{view.duplicates} sessions look like duplicates (same circle, type and date).</p>}
                   {view.empty > 0 && <p>{view.empty} past sessions have no attendance marked.</p>}
-                  <Link href={view.duplicates > 0 ? "/dashboard/jaiza?duplicates=1" : "/dashboard/jaiza"} className="inline-flex items-center gap-1 font-bold underline underline-offset-2">Review in Jaiza <ChevronRight className="w-3 h-3" /></Link>
+                  <Link href={view.duplicates > 0 ? "/dashboard/jaiza?duplicates=1" : "/dashboard/jaiza"} className="inline-flex items-center gap-0.5 font-semibold text-link">Review reports <ChevronRight className="w-3.5 h-3.5" /></Link>
                 </div>
               )}
             </div>
           </section>
 
-          {/* Recent sessions */}
           <section className="card overflow-hidden">
-            <div className="p-4 md:p-5 flex items-center justify-between gap-3">
-              <h2 className="text-base font-bold text-slate-900">Latest reports</h2>
-              <Link href="/dashboard/jaiza" className="btn btn-ghost !min-h-[36px] text-xs">All reports <ChevronRight className="w-3.5 h-3.5" /></Link>
-            </div>
+            <SectionTitle title="Latest reports" href="/dashboard/jaiza" link="All reports" />
             {view.recent.length === 0 ? (
-              <p className="px-5 pb-5 text-sm text-slate-600">No sessions match these filters yet.</p>
+              <EmptyState icon={ClipboardList} title="No reports yet" text="Reports appear here as soon as a murabbi submits attendance." />
             ) : (
-              <ul className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
+              <ul className="list-inset border-t border-separator">
                 {view.recent.map((s) => (
-                  <li key={s.id} className="px-4 md:px-5 py-3 grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                    <div className="w-12 text-center leading-tight">
-                      <p className="text-lg font-bold text-slate-900 tabular-nums">{s.session_date.slice(8, 10)}</p>
-                      <p className="text-[11px] font-semibold text-slate-600 uppercase">{formatDate(s.session_date).split(" ")[1]}</p>
+                  <li key={s.id} className="px-4 sm:px-5 py-3 grid grid-cols-[auto_1fr_auto] items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-fill grid place-items-center leading-none text-center">
+                      <span>
+                        <span className="block text-[16px] font-bold tabular">{s.session_date.slice(8, 10)}</span>
+                        <span className="block text-[10px] font-semibold text-label-2 uppercase mt-0.5">{formatDate(s.session_date).split(" ")[1]}</span>
+                      </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{s.place}</p>
-                      <p className="text-xs text-slate-600 truncate">
-                        <span className="badge badge-slate mr-1.5">{CATEGORY_LABEL[s.category] ?? s.category}</span>
-                        {s.topic ? `Topic ${s.topic.topic_number}: ${s.topic.title}` : s.ucName}
+                      <p className="text-[15px] font-semibold truncate">{s.place}</p>
+                      <p className="text-[13px] text-label-2 truncate">
+                        {CATEGORY_LABEL[s.category] ?? s.category}{s.topic ? <> · Topic {s.topic.topic_number}: <BiText text={cleanTitle(s.topic.title)} /></> : s.ucName ? ` · ${s.ucName}` : ""}
                       </p>
                     </div>
-                    <p className="text-right">
-                      <span className="text-sm font-bold text-slate-900 tabular-nums">{s.present}</span>
-                      <span className="text-xs text-slate-600">/{s.marked}</span>
-                      <span className="block text-[11px] text-slate-600">present</span>
+                    <p className="text-right leading-tight">
+                      <span className="text-[17px] font-semibold tabular">{s.present}</span>
+                      <span className="text-[13px] text-label-2">/{s.marked}</span>
+                      <span className="block text-[11px] text-label-2">present</span>
                     </p>
                   </li>
                 ))}
@@ -376,34 +354,24 @@ function relative(iso: string) {
   return d === 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
 }
 
-function Kpi({ icon: Icon, label, value, note, tone }: { icon: typeof Users; label: string; value: string; note: string; tone?: "good" | "warn" | "bad" }) {
-  const toneClass = tone === "good" ? "text-emerald-800" : tone === "warn" ? "text-amber-700" : tone === "bad" ? "text-red-700" : "text-slate-900";
+function SectionTitle({ title, subtitle, href, link }: { title: string; subtitle?: string; href: string; link: string }) {
   return (
-    <div className="card p-4 md:p-5">
-      <p className="flex items-center gap-2 text-xs font-bold text-slate-600 uppercase tracking-wide">
-        <Icon className="w-4 h-4 text-emerald-700" aria-hidden /> {label}
-      </p>
-      <p className={`mt-2 text-2xl md:text-3xl font-bold tabular-nums ${toneClass}`}>{value}</p>
-      <p className="mt-1 text-xs text-slate-600">{note}</p>
+    <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-3 flex items-end justify-between gap-3">
+      <div>
+        <h2 className="text-[17px] font-semibold">{title}</h2>
+        {subtitle && <p className="text-[13px] text-label-2 mt-0.5">{subtitle}</p>}
+      </div>
+      <Link href={href} className="text-[14px] font-medium text-link inline-flex items-center hover:underline">{link}<ChevronRight className="w-4 h-4" /></Link>
     </div>
   );
 }
 
 function ChartCard({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="card p-4 md:p-5">
-      <h2 className="text-base font-bold text-slate-900">{title}</h2>
-      <p className="text-xs text-slate-600 mt-0.5 mb-3">{subtitle}</p>
+    <div className="card p-4 sm:p-5">
+      <h2 className="text-[17px] font-semibold">{title}</h2>
+      <p className="text-[13px] text-label-2 mt-0.5 mb-3">{subtitle}</p>
       {children}
-    </div>
-  );
-}
-
-function RateBar({ rate, className = "" }: { rate: number | null; className?: string }) {
-  const color = rate === null ? "#d6dcd3" : rate >= 60 ? EMERALD : rate >= 35 ? "#b7791f" : "#c2410c";
-  return (
-    <div className={`h-2 rounded-full bg-[var(--border-subtle)] overflow-hidden ${className}`} role="img" aria-label={rate === null ? "No attendance marked" : `${rate}% attendance`}>
-      <div className="h-full rounded-full" style={{ width: `${rate ?? 0}%`, background: color }} />
     </div>
   );
 }
@@ -414,13 +382,11 @@ function WeekTip({ active, payload, kind }: { active?: boolean; payload?: { payl
   if (!active || !payload?.length) return null;
   const w = payload[0].payload;
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 shadow-md text-xs">
-      <p className="font-bold text-slate-900">Week of {w.label}</p>
-      {kind === "sessions" ? (
-        <p className="text-slate-700">{w.sessions} session{w.sessions === 1 ? "" : "s"} held</p>
-      ) : (
-        <p className="text-slate-700">{w.rate === null ? "No attendance marked" : `${w.rate}% · ${w.present} of ${w.marked} present`}</p>
-      )}
+    <div className="pill-container !rounded-xl px-3 py-2 text-[12px]">
+      <p className="font-semibold">Week of {w.label}</p>
+      <p className="text-label-2">
+        {kind === "sessions" ? `${w.sessions} session${w.sessions === 1 ? "" : "s"} held` : w.rate === null ? "No attendance marked" : `${w.rate}% · ${w.present} of ${w.marked} present`}
+      </p>
     </div>
   );
 }

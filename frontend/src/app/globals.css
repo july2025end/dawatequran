@@ -1,279 +1,210 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════
+   Dawat-e-Quran design system: Apple-style.
+   Neutral canvas, white surfaces, one blue accent, status colours only
+   where they carry meaning (present / leave / absent).
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* ─── Design Tokens ────────────────────────────────── */
-:root {
-  /* v1 theme: calm Islamic green with a gold accent, solid surfaces (blur is slow on phones and iPads). */
-  --bg: #f5f6f2;
-  --surface: #ffffff;
-  --surface-2: #f8f9f6;
-  --border: #e3e7df;
-  --border-subtle: #edf0ea;
-  --text-primary: #13231b;
-  --text-secondary: #43534a;
-  --text-muted: #5f6f66;           /* 5.3:1 on white: readable, unlike the old #94a3b8 */
-  --emerald: #047857;
-  --emerald-light: #d9f2e6;
-  --emerald-dark: #064e3b;
-  --gold: #a87a1f;
-  --gold-light: #fbf1dc;
-  --danger: #b42318;
-  --danger-light: #fde8e6;
-  --shadow-sm: 0 1px 2px rgba(19, 35, 27, 0.06);
-  --shadow-md: 0 1px 2px rgba(19, 35, 27, 0.05), 0 4px 16px rgba(19, 35, 27, 0.06);
-  /* kept for older markup */
-  --glass-bg: var(--surface);
-  --glass-border: var(--border);
-  --glass-shadow: var(--shadow-md);
-  color-scheme: light;
-}
-
-@theme inline {
-  --color-background: var(--bg);
-  --color-foreground: var(--text-primary);
-}
-
-/* Tailwind's slate-400 (#94a3b8) is used for body text across older pages but is only 2.6:1 on white.
-   Darkening the token fixes contrast everywhere at once. */
 @theme {
-  --color-slate-400: #66758a;
+  /* Surfaces */
+  --color-canvas: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-grouped: #fbfbfd;
+  --color-fill: rgba(118, 118, 128, 0.12);
+  --color-fill-strong: rgba(118, 118, 128, 0.2);
+  --color-separator: rgba(60, 60, 67, 0.13);
+
+  /* Text: label 15:1, label-2 5.0:1, label-3 for large/meta text only */
+  --color-label: #1d1d1f;
+  --color-label-2: #6e6e73;
+  --color-label-3: #86868b;
+
+  /* Accent */
+  --color-accent: #0071e3;
+  --color-accent-hover: #0077ed;
+  --color-accent-press: #006edb;
+  --color-link: #0066cc;
+  --color-accent-tint: rgba(0, 113, 227, 0.1);
+
+  /* Status (text-safe shades + tints) */
+  --color-success: #1e7e34;
+  --color-success-tint: #e8f6ec;
+  --color-warning: #a35200;
+  --color-warning-tint: #fff4e5;
+  --color-danger: #d70015;
+  --color-danger-tint: #ffeceb;
+
+  /* Older pages still use slate-400 for body text; keep it readable. */
+  --color-slate-400: #6e6e73;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-inter), "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-urdu: "Jameel Noori Nastaleeq", "Alvi Nastaleeq", var(--font-noto-urdu), serif;
+  --font-quran: "PDMS Saleem QuranFont", "Al Qalam Quran Majeed", var(--font-amiri), serif;
+
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 24px rgba(0, 0, 0, 0.05);
+  --shadow-float: 0 2px 6px rgba(0, 0, 0, 0.06), 0 16px 48px rgba(0, 0, 0, 0.14);
+
+  --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade: fade 0.25s ease both;
+  --animate-sheet: sheet 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* ─── Base ──────────────────────────────────────────── */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheet { from { opacity: 0; transform: translateY(24px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+
+/* ─── Base ───────────────────────────────────────────── */
 @layer base {
-  :root { --font-sans: var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif; }
-  body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; line-height: 1.6; color: var(--text-primary); }
-  h1, h2, h3, h4, h5, h6 { font-weight: 700; line-height: 1.2; letter-spacing: -0.025em; }
-  input, select, textarea, button { font-family: inherit; }
+  html { color-scheme: light; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    font-family: var(--font-sans);
+    background: var(--color-canvas);
+    color: var(--color-label);
+    font-size: 15px;
+    line-height: 1.47;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4 { letter-spacing: -0.022em; line-height: 1.15; font-weight: 700; }
+  input, select, textarea, button { font: inherit; letter-spacing: inherit; }
+  * { -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 3px solid rgba(0, 113, 227, 0.45); outline-offset: 2px; border-radius: 6px; }
+  ::selection { background: rgba(0, 113, 227, 0.18); }
 }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-body {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  color-scheme: light only;
-  overflow-x: hidden;
-  background: var(--bg);
-}
-
-@font-face {
-  font-family: 'Al Qalam Quran Majeed';
-  src: url('/fonts/AlQalamQuranMajeed.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'PDMS Saleem QuranFont';
-  src: url('/fonts/PDMS_Saleem_QuranFont.ttf') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-.font-arabic {
-  font-family: 'PDMS Saleem QuranFont', 'Al Qalam Quran Majeed', var(--font-amiri), 'Jameel Noori Nastaleeq', 'IndoPak Nastaleeq', 'Alvi Nastaleeq', var(--font-noto-urdu), serif;
-  direction: rtl;
-  line-height: 2.2;
-}
-
-.font-urdu {
-  font-family: 'Jameel Noori Nastaleeq', 'IndoPak Nastaleeq', 'Alvi Nastaleeq', var(--font-noto-urdu), serif;
-  direction: rtl;
-  line-height: 2.2;
-}
-
-.tafseer-content p {
-  margin-bottom: 1rem;
-  line-height: 2.2;
-}
-
-.tafseer-content p:last-child {
-  margin-bottom: 0;
-}
-
-.tafseer-content n {
-  font-weight: bold;
-  color: #7c3aed;
-  margin-left: 0.25rem;
-}
-
-/* ─── App Background ─────────────────────────────────── */
-.mesh-gradient { background: var(--bg); min-height: 100vh; }
-
-/* ─── Surfaces ───────────────────────────────────────── */
-.card, .glass-card, .stat-card, .glass-table {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 1.25rem;
-  box-shadow: var(--shadow-md);
-}
-.glass-table { overflow: hidden; }
-.stat-card { position: relative; overflow: hidden; }
-.card-inset {
-  background: var(--surface-2);
-  border: 1px solid var(--border-subtle);
-  border-radius: 1rem;
-}
-.pill-container, .glass-pill {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 9999px;
-  box-shadow: 0 8px 28px rgba(19, 35, 27, 0.12);
-}
-.gradient-card-emerald { background: #eef8f2; border: 1px solid #cfe9db; }
-.gradient-card-blue    { background: #eef4fb; border: 1px solid #d3e2f3; }
-.gradient-card-purple  { background: #f4f1fa; border: 1px solid #e1d8f0; }
-.gradient-card-amber   { background: var(--gold-light); border: 1px solid #efdcb2; }
-
-.sidebar-glass { background: linear-gradient(180deg, #064e3b 0%, #053d2f 100%); }
-
-/* ─── Form Elements ─────────────────────────────────── */
-.form-input {
-  width: 100%;
-  min-height: 44px;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 0.75rem;
-  padding: 0.625rem 0.875rem;
-  font-size: 16px;                 /* 16px stops iPhone Safari zooming in on focus */
-  font-weight: 500;
-  color: var(--text-primary);
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  appearance: none;
-}
-select.form-input { padding-right: 2.25rem; }
-/* Opt-in chevron: several older pages draw their own icon over the select. */
-select.form-input.select-chevron {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%235f6f66' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-}
-.form-input::placeholder { color: #8a978f; }
-.form-input:focus { border-color: var(--emerald); box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.15); }
-
-.form-label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 0.4rem;
-}
-
-/* ─── Buttons ─────────────────────────────────────────── */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 44px;
-  font-weight: 700;
-  font-size: 0.875rem;
-  border-radius: 0.875rem;
-  padding: 0.625rem 1.125rem;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-  cursor: pointer;
-  border: 1.5px solid transparent;
-}
-.btn:active { transform: scale(0.98); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.btn-primary { background: var(--emerald); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: #065f46; }
-.btn-secondary { background: var(--surface); color: var(--text-primary); border-color: var(--border); }
-.btn-secondary:hover:not(:disabled) { border-color: #b9c7bd; background: var(--surface-2); }
-.btn-ghost { background: transparent; color: var(--text-secondary); }
-.btn-ghost:hover:not(:disabled) { background: var(--border-subtle); color: var(--text-primary); }
-.btn-danger { background: var(--danger-light); color: var(--danger); }
-.btn-danger:hover:not(:disabled) { background: #fbd5d1; }
-
-/* ─── Badge ───────────────────────────────────────────── */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 0.15rem 0.55rem;
-  border-radius: 9999px;
-  white-space: nowrap;
-}
-.badge-emerald { background: var(--emerald-light); color: #05543d; }
-.badge-blue    { background: #e3edf9; color: #1d4f91; }
-.badge-purple  { background: #eee8f8; color: #5b2d9c; }
-.badge-amber   { background: var(--gold-light); color: #7a5410; }
-.badge-rose    { background: var(--danger-light); color: #9a1b12; }
-.badge-slate   { background: #eceee9; color: #43534a; }
-
-/* ─── Animations ──────────────────────────────────────── */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes shimmer {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-@keyframes floatUp {
-  from { opacity: 0; transform: translateY(12px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.animate-fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.animate-fade-in    { animation: fadeIn 0.3s ease both; }
-.animate-float-up   { animation: floatUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
-
-/* Stagger */
-.stagger > *:nth-child(1) { animation-delay: 0ms; }
-.stagger > *:nth-child(2) { animation-delay: 70ms; }
-.stagger > *:nth-child(3) { animation-delay: 140ms; }
-.stagger > *:nth-child(4) { animation-delay: 210ms; }
-.stagger > *:nth-child(5) { animation-delay: 280ms; }
-.stagger > *:nth-child(6) { animation-delay: 350ms; }
-
-/* ─── Accessibility ──────────────────────────────────── */
-:focus-visible { outline: 3px solid rgba(4, 120, 87, 0.45); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* ─── Scrollbar ───────────────────────────────────────── */
+/* ─── Scripts ─────────────────────────────────────────── */
+@font-face { font-family: "Al Qalam Quran Majeed"; src: url("/fonts/AlQalamQuranMajeed.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "PDMS Saleem QuranFont"; src: url("/fonts/PDMS_Saleem_QuranFont.ttf") format("truetype"); font-display: swap; }
+
+.font-arabic, .font-quran { font-family: var(--font-quran); direction: rtl; line-height: 2.3; letter-spacing: 0; }
+.font-urdu { font-family: var(--font-urdu); direction: rtl; line-height: 2.25; letter-spacing: 0; }
+/* Inline runs inside English text: Nastaliq is tall, so keep the line box steady. */
+.font-urdu-inline { font-family: var(--font-urdu); letter-spacing: 0; line-height: 1; font-size: 1.04em; }
+.font-quran-inline { font-family: var(--font-quran); letter-spacing: 0; line-height: 1; font-size: 1.15em; }
+.tafseer-content p { margin-bottom: 1rem; line-height: 2.25; }
+.tafseer-content p:last-child { margin-bottom: 0; }
+.tafseer-content n { font-weight: 700; color: var(--color-accent); margin-left: 0.25rem; }
+
+/* ─── Surfaces ────────────────────────────────────────── */
+.card, .glass-card, .stat-card, .glass-table {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+.glass-table { overflow: hidden; }
+.card-inset { background: var(--color-canvas); border-radius: 1rem; }
+.pill-container, .glass-pill {
+  background: rgba(255, 255, 255, 0.82);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border: 0.5px solid var(--color-separator);
+  border-radius: 9999px;
+  box-shadow: var(--shadow-float);
+}
+/* Frosted bars (navigation, tab bar, sticky footers) */
+.material {
+  background: rgba(251, 251, 253, 0.8);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+.mesh-gradient { background: var(--color-canvas); }
+
+/* ─── Controls ────────────────────────────────────────── */
+.form-input {
+  width: 100%;
+  min-height: 44px;
+  background: var(--color-surface);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 0.75rem;
+  padding: 0.6rem 0.875rem;
+  font-size: 16px; /* iOS Safari zooms into anything smaller */
+  color: var(--color-label);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  appearance: none;
+}
+.form-input::placeholder { color: var(--color-label-3); }
+.form-input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15); }
+textarea.form-input { line-height: 1.5; }
+select.form-input {
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%236e6e73' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3.5 5.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+}
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--color-label-2); margin-bottom: 0.375rem; letter-spacing: -0.005em; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  min-height: 44px; padding: 0.55rem 1.15rem;
+  font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+  border-radius: 9999px; border: 0; cursor: pointer; white-space: nowrap;
+  transition: background-color 0.2s, color 0.2s, transform 0.1s, box-shadow 0.2s;
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: var(--color-accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); }
+.btn-secondary { background: var(--color-fill); color: var(--color-label); }
+.btn-secondary:hover:not(:disabled) { background: var(--color-fill-strong); }
+.btn-tinted { background: var(--color-accent-tint); color: var(--color-link); }
+.btn-tinted:hover:not(:disabled) { background: rgba(0, 113, 227, 0.16); }
+.btn-ghost { background: transparent; color: var(--color-link); }
+.btn-ghost:hover:not(:disabled) { background: var(--color-accent-tint); }
+.btn-danger { background: var(--color-danger-tint); color: var(--color-danger); }
+.btn-danger:hover:not(:disabled) { background: #ffdcda; }
+.btn-sm { min-height: 34px; padding: 0.35rem 0.85rem; font-size: 13px; }
+.btn-icon { min-height: 40px; min-width: 40px; padding: 0; border-radius: 9999px; }
+
+/* Segmented control */
+.segmented { display: inline-flex; padding: 2px; border-radius: 0.6rem; background: var(--color-fill); gap: 2px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.segmented::-webkit-scrollbar { display: none; }
+.segmented button {
+  flex: 1 0 auto; min-height: 32px; padding: 0.25rem 0.85rem; border-radius: 0.5rem;
+  font-size: 13px; font-weight: 500; color: var(--color-label); white-space: nowrap;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+.segmented button[aria-pressed="true"] { background: var(--color-surface); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.04); }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 12px; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 9999px; white-space: nowrap; letter-spacing: -0.005em; }
+.badge-blue, .badge-purple, .badge-emerald { background: var(--color-accent-tint); color: #0058b0; }
+.badge-green   { background: var(--color-success-tint); color: var(--color-success); }
+.badge-amber   { background: var(--color-warning-tint); color: var(--color-warning); }
+.badge-rose, .badge-red { background: var(--color-danger-tint); color: var(--color-danger); }
+.badge-slate, .badge-gray { background: var(--color-fill); color: var(--color-label-2); }
+
+.section-label, .eyebrow { font-size: 13px; font-weight: 600; color: var(--color-label-2); letter-spacing: -0.005em; }
+
+/* Lists in the iOS "inset grouped" style */
+.list-inset > * + * { border-top: 0.5px solid var(--color-separator); }
+
+/* Skeleton shimmer */
+.skeleton { background: linear-gradient(90deg, #ececf0 0%, #f6f6f8 50%, #ececf0 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: 0.6rem; }
+
+/* Legacy animation names used by older markup */
+.animate-fade-in-up, .animate-float-up { animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-fade-in { animation: fade 0.25s ease both; }
+.stagger > * { animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(n+6) { animation-delay: 250ms; }
+
 .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
-
-/* ─── Table ──────────────────────────────────────────── */
-.glass-table {
-  background: rgba(255,255,255,0.72);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255,255,255,0.85);
-  border-radius: 1.5rem;
-  overflow: hidden;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9);
-}
-
-/* ─── Section Header ─────────────────────────────────── */
-.section-label {
-  font-size: 0.7rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--emerald);
-}
-
-/* ─── Glow Effects ────────────────────────────────────── */
-.glow-emerald { box-shadow: 0 0 20px rgba(5, 150, 105, 0.2); }
-.glow-blue    { box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
-.glow-purple  { box-shadow: 0 0 20px rgba(139, 92, 246, 0.2); }
+.tabular { font-variant-numeric: tabular-nums; }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
 /* ─── Arabic Word Tooltip ─────────────────────────────── */
 .arabic-word-wrapper {
@@ -294,9 +225,9 @@ select.form-input.select-chevron {
 
 .arabic-word:hover,
 .arabic-word.is-active {
-  background: rgba(139, 92, 246, 0.12);
-  color: #5b21b6;
-  text-shadow: 0 0 12px rgba(139, 92, 246, 0.3);
+  background: rgba(0, 113, 227, 0.10);
+  color: #0058b0;
+  text-shadow: 0 0 12px rgba(0, 113, 227, 0.25);
 }
 
 @keyframes tooltipFadeIn {
@@ -320,10 +251,10 @@ select.form-input.select-chevron {
   background: rgba(255, 255, 255, 0.97);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1.5px solid rgba(139, 92, 246, 0.3);
+  border: 1.5px solid rgba(0, 113, 227, 0.25);
   border-radius: 0.9rem;
   box-shadow:
-    0 10px 32px rgba(109, 40, 217, 0.2),
+    0 10px 32px rgba(0, 0, 0, 0.14),
     0 2px 10px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 1);
   pointer-events: none;
@@ -340,7 +271,7 @@ select.form-input.select-chevron {
   transform: translateX(-50%);
   border: 7px solid transparent;
   border-top-color: rgba(255, 255, 255, 0.97);
-  filter: drop-shadow(0 2px 2px rgba(109, 40, 217, 0.12));
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.08));
 }
 
 .word-tooltip-label {
@@ -349,7 +280,7 @@ select.form-input.select-chevron {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #a78bfa;
+  color: #6e6e73;
   margin-bottom: 0.2rem;
   text-align: center;
   direction: ltr;
@@ -359,7 +290,7 @@ select.form-input.select-chevron {
   display: block;
   text-align: center;
   direction: rtl;
-  color: #3b0764;
+  color: #1d1d1f;
   font-size: 0.95rem;
   line-height: 1.6;
 }
@@ -371,9 +302,9 @@ select.form-input.select-chevron {
   border-radius: 6px;
   background: linear-gradient(
     90deg,
-    rgba(221, 214, 254, 0.6) 0%,
-    rgba(196, 181, 253, 0.9) 50%,
-    rgba(221, 214, 254, 0.6) 100%
+    rgba(232, 232, 237, 0.7) 0%,
+    rgba(210, 210, 215, 1) 50%,
+    rgba(232, 232, 237, 0.7) 100%
   );
   background-size: 200% auto;
   animation: shimmer 1.2s linear infinite;

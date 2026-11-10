@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const surah = searchParams.get("surah");
   const ayah = searchParams.get("ayah");
 
-  if (!surah || !ayah) {
+  if (!surah || !ayah || !/^\d{1,3}$/.test(surah) || !/^\d{1,3}$/.test(ayah)) {
     return NextResponse.json({ error: "Missing surah or ayah parameters" }, { status: 400 });
   }
 
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       extractedText = "اس آیت کی تفسیر دستیاب نہیں۔ (Tafseer not available for this ayah)";
     }
 
-    return NextResponse.json({ text: extractedText });
+    return NextResponse.json({ text: sanitizeHtml(extractedText) });
   } catch (error) {
     console.error("Tafseer Proxy Error:", error);
     return NextResponse.json({ error: "Failed to fetch tafseer" }, { status: 500 });

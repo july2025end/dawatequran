@@ -1,9 +1,13 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase / external APIs */
+
 import { useState, useEffect, useRef, useCallback, use } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
 import { parseQuranReference } from "@/lib/quran_utils";
+import { BiText, QuranRef } from "@/components/ui";
+import { cleanTitle } from "@/lib/data";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -236,12 +240,12 @@ function InteractiveArabicText({
       style={{
         direction: "rtl",
         textAlign: "right",
-        fontSize: "clamp(1.4rem, 3.5vw, 2.2rem)",
-        lineHeight: 2.4,
+        fontSize: "clamp(1.65rem, 4.2vw, 2.4rem)",
+        lineHeight: 2.35,
         // Add a small letter-spacing to keep words from touching when inline-block
         // spans are rendered next to each other
         wordSpacing: "0.12em",
-        color: "#1e293b",
+        color: "var(--color-label)",
       }}
     >
       {words.map((w, i) => (
@@ -403,170 +407,62 @@ function AyahCard({
   }, [showTafseer, tafseerText, surahNum, ayah.numberInSurah]);
 
   return (
-    <div
-      className={`rounded-3xl transition-all duration-500${isActive ? " ring-2 ring-purple-400/40" : ""}`}
-      style={{
-        background: isActive ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.80)",
-        backdropFilter: "blur(20px)",
-        borderRadius: "1.5rem",
-        border: isActive
-          ? "1px solid rgba(139,92,246,0.4)"
-          : "1px solid rgba(255,255,255,0.9)",
-        boxShadow: isActive
-          ? "0 8px 32px rgba(109,40,217,0.15), inset 0 1px 0 rgba(255,255,255,0.95)"
-          : "0 2px 12px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.95)",
-        overflow: "visible",
-      }}
-    >
-      {isActive && (
-        <div
-          className="h-0.5 w-full"
-          style={{
-            background: "linear-gradient(90deg, #7c3aed, #a855f7, #6366f1)",
-            borderRadius: "1.5rem 1.5rem 0 0",
-          }}
-        />
-      )}
-
-      <div className="p-5 md:p-6">
-        {/* Ayah number + audio controls */}
-        <div className="flex items-center justify-between mb-5">
-          <div
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full font-urdu"
-            style={{
-              background: isActive
-                ? "linear-gradient(135deg, #7c3aed, #a855f7)"
-                : "linear-gradient(135deg, rgba(245,243,255,0.9), rgba(237,233,254,0.8))",
-              border: isActive ? "none" : "1px solid rgba(221,214,254,0.6)",
-            }}
-          >
-            <span className="text-xs font-bold" style={{ color: isActive ? "white" : "#6d28d9" }}>
-              آیت {ayah.numberInSurah}
-            </span>
-          </div>
-
+    <article className={`card overflow-visible transition-shadow duration-300 ${isActive ? "ring-2 ring-accent/40 shadow-[var(--shadow-float)]" : ""}`}>
+      <div className="p-4 sm:p-6">
+        {/* Ayah number + listen */}
+        <div className="flex items-center justify-between mb-4">
+          <span className={`font-urdu inline-flex items-center rounded-full px-3 py-0.5 text-[13px] ${isActive ? "bg-accent text-white" : "bg-fill text-label-2"}`}>آیت {ayah.numberInSurah}</span>
           <button
             onClick={() => (isActive && isPlaying ? onPause() : onPlay(surahNum, ayah.numberInSurah, ayah.number))}
-            className="flex items-center gap-2 px-4 py-2 rounded-full font-bold text-xs font-urdu transition-all active:scale-95 hover:scale-105"
-            style={{
-              background:
-                isActive && isPlaying
-                  ? "linear-gradient(135deg, #7c3aed, #a855f7)"
-                  : "linear-gradient(135deg, rgba(245,243,255,0.9), rgba(237,233,254,0.7))",
-              border: isActive && isPlaying ? "none" : "1px solid rgba(196,181,253,0.4)",
-              color: isActive && isPlaying ? "white" : "#6d28d9",
-              boxShadow:
-                isActive && isPlaying
-                  ? "0 4px 14px rgba(124,58,237,0.4)"
-                  : "0 2px 6px rgba(0,0,0,0.05)",
-            }}
+            className={`btn btn-sm font-urdu ${isActive && isPlaying ? "btn-primary" : "btn-tinted"}`}
+            aria-label={isActive && isPlaying ? "Pause recitation" : `Listen to ayah ${ayah.numberInSurah}`}
           >
-            {isActive && isPlaying ? (
-              <>
-                <Pause className="w-3.5 h-3.5" />
-                روک دیں
-              </>
-            ) : (
-              <>
-                <Headphones className="w-3.5 h-3.5" />
-                سنیں
-              </>
-            )}
+            {isActive && isPlaying ? <><Pause className="w-3.5 h-3.5" /> روک دیں</> : <><Headphones className="w-3.5 h-3.5" /> سنیں</>}
           </button>
         </div>
 
-        {/* Arabic text — interactive word-by-word */}
-        <div
-          className="mb-5 p-4 md:p-5 rounded-2xl"
-          style={{
-            background: "linear-gradient(135deg, rgba(245,243,255,0.6), rgba(237,233,254,0.4))",
-            border: "1px solid rgba(221,214,254,0.3)",
-          }}
-        >
-          <InteractiveArabicText
-            arabic={ayah.arabic}
-            surahNum={surahNum}
-            ayahNum={ayah.numberInSurah}
-          />
+        {/* Arabic text, word by word (tap a word for its meaning) */}
+        <div className="mb-5 rounded-2xl bg-grouped px-4 py-3 sm:px-5 sm:py-4">
+          <InteractiveArabicText arabic={ayah.arabic} surahNum={surahNum} ayahNum={ayah.numberInSurah} />
         </div>
 
-        {/* Maudoodi Tarjuma */}
+        {/* Translation: Maulana Maududi */}
         {ayah.maududi && (
           <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Globe className="w-3.5 h-3.5" style={{ color: "#7c3aed" }} />
-              <span className="font-urdu text-xs font-bold uppercase tracking-wider" style={{ color: "#7c3aed" }}>
-                ترجمہ — مولانا مودودیؒ
-              </span>
-            </div>
-            <p
-              className="font-urdu text-right"
-              style={{
-                fontSize: "1.1rem",
-                color: "#334155",
-              }}
-            >
-              {ayah.maududi}
+            <p className="font-urdu text-[13px] text-accent mb-1 flex items-center gap-1.5 justify-end">
+              ترجمہ — مولانا مودودیؒ <Globe className="w-3.5 h-3.5" />
             </p>
+            <p className="font-urdu text-right text-label" style={{ fontSize: "1.15rem" }}>{ayah.maududi}</p>
           </div>
         )}
 
-        {/* Tafseer — always show the button; content loads on first open */}
-        <div>
-          <button
-            onClick={handleToggleTafseer}
-            className="flex items-center gap-2 w-full py-3 px-4 rounded-xl font-bold text-sm transition-all font-urdu"
-            style={{
-              background: showTafseer
-                ? "linear-gradient(135deg, rgba(237,233,254,0.9), rgba(221,214,254,0.7))"
-                : "rgba(248,250,252,0.8)",
-              border: "1px solid rgba(221,214,254,0.4)",
-              color: "#5b21b6",
-            }}
-          >
+        {/* Tafseer: loads on first open */}
+        <button
+          onClick={handleToggleTafseer}
+          aria-expanded={showTafseer}
+          className={`flex items-center gap-2 w-full py-2.5 px-4 rounded-xl text-[14px] transition-colors font-urdu ${showTafseer ? "bg-accent-tint text-[#0058b0]" : "bg-fill text-label hover:bg-fill-strong"}`}
+        >
+          {tafseerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookText className="w-4 h-4" />}
+          <span className="flex-1 text-right">تفسیر — تفہیم القرآن، مولانا مودودیؒ</span>
+          {showTafseer ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
+        </button>
+        {showTafseer && (
+          <div className="mt-3 p-4 rounded-xl bg-grouped tafseer-content animate-fade" style={{ minHeight: tafseerLoading ? "5rem" : undefined }}>
             {tafseerLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <div className="flex items-center justify-center py-4 gap-2 text-label-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="font-urdu text-sm">تفسیر لوڈ ہو رہی ہے…</span>
+              </div>
+            ) : tafseerText ? (
+              // tafseerText is sanitised by /api/tafseer before it reaches the page.
+              <div className="font-urdu text-right text-label" style={{ fontSize: "1.08rem" }} dangerouslySetInnerHTML={{ __html: tafseerText }} />
             ) : (
-              <BookText className="w-4 h-4" />
+              <p className="font-urdu text-center text-sm text-label-2">تفسیر دستیاب نہیں</p>
             )}
-            <span className="flex-1 text-right">
-              تفسیر — تفہیم القرآن، مولانا مودودیؒ
-            </span>
-            {showTafseer ? (
-              <ChevronUp className="w-4 h-4 flex-shrink-0" />
-            ) : (
-              <ChevronDown className="w-4 h-4 flex-shrink-0" />
-            )}
-          </button>
-
-          {showTafseer && (
-            <div
-              className="mt-3 p-4 rounded-xl tafseer-content"
-              style={{
-                background: "rgba(245,243,255,0.5)",
-                border: "1px solid rgba(221,214,254,0.3)",
-                minHeight: tafseerLoading ? "5rem" : undefined,
-              }}
-            >
-              {tafseerLoading ? (
-                <div className="flex items-center justify-center py-4 gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-                  <span className="font-urdu text-sm text-slate-400">تفسیر لوڈ ہو رہی ہے…</span>
-                </div>
-              ) : tafseerText ? (
-                <div
-                  className="font-urdu text-right"
-                  style={{ fontSize: "1.05rem", color: "#475569" }}
-                  dangerouslySetInnerHTML={{ __html: tafseerText }}
-                />
-              ) : (
-                <p className="font-urdu text-center text-sm text-slate-400">تفسیر دستیاب نہیں</p>
-              )}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -686,229 +582,78 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
     return () => audio.removeEventListener("ended", onEnded);
   }, [ayaat, activeAyah, handlePlay]);
 
+  const ref = topic ? parseQuranReference(topic.reference) : null;
+  const fmt = (d?: string) => (d ? new Date(d.slice(0, 10) + "T00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "");
+
   if (loading) {
     return (
-      <div
-        className="flex flex-col items-center justify-center min-h-screen gap-4"
-        style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #eef2ff 40%, #fdf4ff 100%)" }}
-      >
-        <div
-          className="w-16 h-16 rounded-3xl flex items-center justify-center shadow-lg"
-          style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)" }}
-        >
-          <Loader2 className="animate-spin w-7 h-7 text-purple-600" />
+      <div className="min-h-dvh bg-canvas grid place-items-center">
+        <div className="flex flex-col items-center gap-3 text-label-2">
+          <Loader2 className="animate-spin w-7 h-7 text-accent" />
+          <p className="font-urdu text-[15px]">آیات لوڈ ہو رہی ہیں…</p>
         </div>
-        <p className="text-sm font-semibold text-slate-500">آیات لوڈ ہو رہی ہیں…</p>
       </div>
     );
   }
 
   if (error || !topic) {
     return (
-      <div
-        className="flex flex-col items-center justify-center min-h-screen gap-4 px-6"
-        style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #eef2ff 40%, #fdf4ff 100%)" }}
-      >
-        <p className="text-slate-600 font-semibold text-center">{error || "Topic not found."}</p>
-        <Link
-          href="/portal"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm text-white"
-          style={{ background: "linear-gradient(135deg, #7c3aed, #a855f7)" }}
-        >
-          <ArrowLeft className="w-4 h-4" /> واپس جائیں
-        </Link>
+      <div className="min-h-dvh bg-canvas grid place-items-center px-6">
+        <div className="text-center">
+          <p className="text-[17px] font-semibold">{error || "This lesson could not be found."}</p>
+          <Link href="/portal" className="btn btn-primary mt-5"><ArrowLeft className="w-4 h-4" /> Back to the portal</Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: "linear-gradient(160deg, #f5f3ff 0%, #eef2ff 50%, #fdf4ff 100%)" }}
-    >
-      {/* Audio is created imperatively via useEffect to avoid ref timing issues */}
-
-      {/* ── Hero ─────────────────────────────────────────── */}
-      <div
-        className="relative overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg, #3b0764 0%, #4c1d95 40%, #4338ca 100%)",
-          borderRadius: "0 0 2.5rem 2.5rem",
-          boxShadow: "0 10px 40px rgba(59,7,100,0.25)",
-        }}
-      >
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-          <div
-            className="absolute -top-24 right-0 w-[500px] h-[500px] rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%)" }}
-          />
-          <div
-            className="absolute top-0 left-0 w-[400px] h-[400px] rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)" }}
-          />
-        </div>
-
-        <div className="relative z-10 max-w-3xl mx-auto px-5 md:px-8 pt-8 pb-12">
-          <Link
-            href="/portal"
-            className="inline-flex items-center gap-1.5 mb-8 group transition-all"
-            style={{ color: "rgba(196,181,253,0.65)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.02em" }}
-          >
-            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-            Attendee Portal
-          </Link>
-
-          <div className="flex items-start gap-4">
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-purple-100 flex-shrink-0 text-sm"
-              style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}
-            >
-              {topic.topic_number}
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
-                <span
-                  style={{
-                    color: "rgba(196,181,253,0.65)",
-                    fontSize: "0.65rem",
-                    fontWeight: 800,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.12em",
-                  }}
-                >
-                  Topic {topic.topic_number}
-                </span>
-              </div>
-              <h1
-                className="font-bold text-white leading-tight mb-2"
-                style={{ fontSize: "clamp(1.2rem, 3vw, 1.8rem)", letterSpacing: "-0.025em" }}
-              >
-                {topic.title}
-              </h1>
-              <p style={{ color: "rgba(196,181,253,0.7)", fontSize: "0.875rem", fontWeight: 600 }}>
-                {topic.reference}
-              </p>
-              {(topic.start_date || topic.end_date) && (
-                <div className="mt-3 flex items-center gap-2 text-emerald-300 font-bold" style={{ fontSize: "0.78rem" }}>
-                  <Calendar className="w-4 h-4 text-emerald-300" />
-                  <span>
-                    Schedule: {topic.start_date ? new Date(topic.start_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                    {" to "}
-                    {topic.end_date ? new Date(topic.end_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Player controls bar */}
+    <div className="min-h-dvh bg-canvas">
+      {/* Frosted bar with the player, always reachable while reading */}
+      <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+          <Link href="/portal" className="inline-flex items-center gap-1 text-[15px] text-link flex-shrink-0"><ArrowLeft className="h-4 w-4" /> Portal</Link>
           {ayaat.length > 0 && (
-            <div
-              className="mt-8 flex items-center justify-between p-3 rounded-2xl"
-              style={{
-                background: "rgba(255,255,255,0.10)",
-                backdropFilter: "blur(20px)",
-                border: "1px solid rgba(255,255,255,0.15)",
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handlePlayAll}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm active:scale-95 transition-all"
-                  style={{
-                    background: isPlaying ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.92)",
-                    color: isPlaying ? "white" : "#4c1d95",
-                    border: isPlaying ? "1px solid rgba(255,255,255,0.2)" : "none",
-                    boxShadow: isPlaying ? "none" : "0 4px 14px rgba(0,0,0,0.15)",
-                  }}
-                >
-                  {isPlaying ? (
-                    <><Pause className="w-4 h-4" /> Stop</>
-                  ) : (
-                    <><Play className="w-4 h-4" /> Play All</>
-                  )}
-                </button>
-                <span style={{ fontSize: "0.75rem", color: "rgba(196,181,253,0.6)", fontWeight: 600 }}>
-                  Mishary Alafasy
-                </span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
-                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
-                >
-                  <BookOpen className="w-3.5 h-3.5 text-purple-300" />
-                  <span style={{ fontSize: "0.7rem", color: "rgba(196,181,253,0.7)", fontWeight: 700 }}>
-                    {ayaat.length} آیات
-                  </span>
-                </div>
-
-                <button
-                  onClick={() => {
-                    const newMuted = !isMuted;
-                    setIsMuted(newMuted);
-                    if (audioRef.current) audioRef.current.muted = newMuted;
-                  }}
-                  className="p-2 rounded-xl transition-all"
-                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
-                >
-                  {isMuted ? (
-                    <VolumeX className="w-4 h-4 text-purple-300" />
-                  ) : (
-                    <Volume2 className="w-4 h-4 text-purple-300" />
-                  )}
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <button onClick={handlePlayAll} className={`btn btn-sm ${isPlaying ? "btn-secondary" : "btn-primary"}`}>
+                {isPlaying ? <><Pause className="w-4 h-4" /> Stop</> : <><Play className="w-4 h-4" /> Play all</>}
+              </button>
+              <button
+                onClick={() => { const m = !isMuted; setIsMuted(m); if (audioRef.current) audioRef.current.muted = m; }}
+                className="btn btn-secondary btn-icon !min-h-[34px] !min-w-[34px]"
+                aria-label={isMuted ? "Unmute" : "Mute"}
+              >
+                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+              </button>
             </div>
           )}
         </div>
-      </div>
+      </header>
 
-      {/* ── Ayaat list ──────────────────────────────────── */}
-      <div className="max-w-3xl mx-auto px-5 md:px-8 pt-8 pb-16">
+      {/* Title */}
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-6 animate-rise">
+        <p className="text-[15px] font-semibold text-accent">Lesson {topic.topic_number}{topic.start_date ? ` · ${fmt(topic.start_date)}${topic.end_date ? ` – ${fmt(topic.end_date)}` : ""}` : ""}</p>
+        <h1 className="mt-2 text-[30px] sm:text-[44px] font-bold tracking-[-0.03em] leading-tight" ><BiText text={cleanTitle(topic.title)} /></h1>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px] text-label-2">
+          <QuranRef reference={topic.reference} className="font-medium text-label" />
+          {ayaat.length > 0 && <span className="badge badge-gray">{ayaat.length} ayaat</span>}
+          <span className="badge badge-gray">Recitation: Mishary Alafasy</span>
+        </div>
+        <p className="mt-3 text-[13px] text-label-2">Tap any Arabic word to see its Urdu meaning.</p>
+      </section>
+
+      {/* Ayaat */}
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
         {ayaat.length === 0 ? (
-          <div
-            className="rounded-3xl p-10 text-center"
-            style={{
-              background: "rgba(255,255,255,0.80)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(255,255,255,0.9)",
-            }}
-          >
-            <BookOpen className="w-10 h-10 text-purple-300 mx-auto mb-3" />
-            <p className="font-semibold" style={{ color: "#94a3b8", fontSize: "0.9rem" }}>
-              اس موضوع کے لیے آیات دستیاب نہیں ہیں
-            </p>
+          <div className="card p-10 text-center">
+            <BookOpen className="w-9 h-9 text-label-3 mx-auto mb-3" />
+            <p className="font-urdu text-label-2">اس موضوع کے لیے آیات دستیاب نہیں ہیں</p>
           </div>
         ) : (
-          <div className="space-y-4 animate-fade-in">
-            {topic && (() => {
-              const ref = parseQuranReference(topic.reference);
-              if (ref && ref.startAyah === 1 && ref.surahNum !== 1 && ref.surahNum !== 9) {
-                return (
-                  <div
-                    className="text-center py-6 mb-2 font-arabic"
-                    style={{
-                      fontSize: "clamp(1.6rem, 4.5vw, 2.4rem)",
-                      color: "#1e293b",
-                      direction: "rtl",
-                      lineHeight: 1.8,
-                      background: "rgba(255,255,255,0.6)",
-                      backdropFilter: "blur(10px)",
-                      borderRadius: "1.5rem",
-                      border: "1px solid rgba(255,255,255,0.8)",
-                      boxShadow: "0 4px 20px rgba(0,0,0,0.02)",
-                    }}
-                  >
-                    بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-                  </div>
-                );
-              }
-              return null;
-            })()}
+          <div className="space-y-4">
+            {ref && ref.startAyah === 1 && ref.surahNum !== 1 && ref.surahNum !== 9 && (
+              <p className="font-quran text-center text-label py-4" style={{ fontSize: "clamp(1.7rem, 4.5vw, 2.4rem)" }}>بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</p>
+            )}
             {ayaat.map((ayah) => (
               <AyahCard
                 key={ayah.number}
@@ -917,12 +662,12 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
                 onPlay={handlePlay}
                 onPause={handlePause}
                 isPlaying={isPlaying}
-                surahNum={topic ? parseQuranReference(topic.reference)?.surahNum ?? 0 : 0}
+                surahNum={ref?.surahNum ?? 0}
               />
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

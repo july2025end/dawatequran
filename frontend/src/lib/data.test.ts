@@ -27,3 +27,10 @@ test("dates use the local calendar day", () => {
   assert.ok(!inPeriod("2000-01-01", "3_months"));
   assert.ok(inPeriod("2000-01-01", "complete"));
 });
+
+test("cleanTitle drops a stored 'Topic N:' prefix only", async () => {
+  const { cleanTitle } = await import("./data.ts");
+  assert.equal(cleanTitle("Topic 1: ثنائے رب (Praise of the Lord)"), "ثنائے رب (Praise of the Lord)");
+  assert.equal(cleanTitle("Wealth of Faith"), "Wealth of Faith");
+  assert.equal(cleanTitle(null), "");
+});

@@ -1,339 +1,186 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
-import { BookOpen, Map, LayoutDashboard, Loader2, ChevronRight, Calendar, BookText } from 'lucide-react';
+import { BiText, QuranRef } from "@/components/ui";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { parseQuranReference } from "@/lib/quran_utils";
+import { ArrowRight, BookOpen, CalendarDays, ChevronRight, MapPin, Users } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { CATEGORY_LABEL, cleanTitle, formatDate, localDate } from "@/lib/data";
 
-export default function AttendeePortal() {
+/* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase joins */
+
+export default function PublicPortal() {
   const [loading, setLoading] = useState(true);
   const [syllabus, setSyllabus] = useState<any[]>([]);
-  const [ucs, setUcs] = useState<any[]>([]);
-  const [circles, setCircles] = useState<any[]>([]);
-  const [upcomingSessions, setUpcomingSessions] = useState<any[]>([]);
-  const [showAllTopics, setShowAllTopics] = useState(false);
+  const [ucCount, setUcCount] = useState(0);
+  const [circleCount, setCircleCount] = useState(0);
+  const [upcoming, setUpcoming] = useState<any[]>([]);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
-    async function fetchPortalData() {
-      setLoading(true);
-      try {
-        const { data: sData } = await supabase.from('syllabus_topics').select('*').order('topic_number');
-        const { data: uData } = await supabase.from('union_councils').select('*').order('name');
-        const { data: cData } = await supabase.from('quran_circles').select('*, union_councils(name)');
-        const now = new Date().toISOString().split('T')[0];
-        const { data: sessData } = await supabase
-          .from('sessions')
-          .select('*, quran_circles(name), syllabus_topics(title)')
-          .gte('session_date', now)
-          .order('session_date', { ascending: true })
-          .limit(6);
-        setSyllabus(sData || []);
-        setUcs(uData || []);
-        setCircles(cData || []);
-        setUpcomingSessions(sessData || []);
-      } catch (e) { console.error(e); }
-      finally { setLoading(false); }
-    }
-    fetchPortalData();
+    (async () => {
+      const [s, u, c, sess] = await Promise.all([
+        supabase.from("syllabus_topics").select("*").order("topic_number"),
+        supabase.from("union_councils").select("id", { count: "exact", head: true }),
+        supabase.from("quran_circles").select("id", { count: "exact", head: true }),
+        supabase.from("sessions")
+          .select("id, session_date, category, location, quran_circles(name, union_councils(name)), union_councils(name), syllabus_topics(title, topic_number)")
+          .gte("session_date", localDate())
+          .order("session_date")
+          .limit(6),
+      ]);
+      setSyllabus(s.data ?? []);
+      setUcCount(u.count ?? 0);
+      setCircleCount(c.count ?? 0);
+      setUpcoming(sess.data ?? []);
+      setLoading(false);
+    })();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3" style={{
-        background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 40%, #f0fdf4 100%)'
-      }}>
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"
-          style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.9)' }}>
-          <Loader2 className="animate-spin w-6 h-6 text-emerald-600" />
-        </div>
-        <p className="text-sm font-semibold text-slate-600">Loading portal...</p>
-      </div>
-    );
-  }
-
-  const visibleTopics = showAllTopics ? syllabus : syllabus.slice(0, 8);
+  const today = localDate();
+  // This week's lesson: the topic whose teaching dates include today, else the next one coming up.
+  const current = useMemo(
+    () => syllabus.find((t) => t.start_date && t.end_date && t.start_date <= today && today <= t.end_date)
+      ?? syllabus.filter((t) => t.start_date && t.start_date > today).sort((a, b) => a.start_date.localeCompare(b.start_date))[0],
+    [syllabus, today],
+  );
+  const topics = showAll ? syllabus : syllabus.slice(0, 9);
 
   return (
-    <div className="min-h-screen" style={{
-      background: 'linear-gradient(160deg, #ecfdf5 0%, #f0fdfa 50%, #f0fdf4 100%)'
-    }}>
-
-      {/* ── Hero ─────────────────────────────────────────── */}
-      <div className="relative overflow-hidden" style={{
-        background: 'linear-gradient(135deg, #022c22 0%, #064e3b 40%, #0f766e 100%)',
-        borderRadius: '0 0 2.5rem 2.5rem',
-        boxShadow: '0 10px 40px rgba(59,7,100,0.25)'
-      }}>
-        {/* Decorative blurs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-          <div className="absolute -top-24 right-0 w-[500px] h-[500px] rounded-full"
-            style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.3) 0%, transparent 70%)' }} />
-          <div className="absolute top-0 left-0 w-[400px] h-[400px] rounded-full"
-            style={{ background: 'radial-gradient(circle, rgba(20,184,166,0.2) 0%, transparent 70%)' }} />
+    <div className="min-h-dvh bg-canvas">
+      {/* Frosted nav */}
+      <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
+          <span className="flex items-center gap-2 text-[15px] font-semibold">
+            <span className="h-7 w-7 rounded-[8px] grid place-items-center bg-gradient-to-b from-[#2b8cff] to-[#0062d1] text-white"><BookOpen className="h-3.5 w-3.5" strokeWidth={2.4} /></span>
+            Dawat-e-Quran
+          </span>
+          <nav className="flex items-center gap-5 text-[13px] text-label-2">
+            <a href="#syllabus" className="hover:text-label">Syllabus</a>
+            <a href="#upcoming" className="hover:text-label hidden sm:inline">Upcoming</a>
+            <Link href="/portal/representatives" className="hover:text-label">Find a circle</Link>
+          </nav>
         </div>
+      </header>
 
-        <div className="relative z-10 max-w-5xl mx-auto px-5 md:px-8 pt-8 pb-12">
-          {/* Hero content: title + stats card */}
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
-
-            {/* Left: title */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span style={{ color: 'rgba(167,243,208,0.65)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Public Portal</span>
+      {/* Hero */}
+      <section className="bg-surface border-b border-separator">
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-12 sm:pb-16 text-center animate-rise">
+          <p className="text-[15px] sm:text-[17px] font-semibold text-accent">Zone 5 · Islamabad</p>
+          <h1 className="mt-3 text-[40px] sm:text-[64px] font-bold tracking-[-0.035em] leading-[1.05]">Understand the Quran,<br className="hidden sm:block" /> together.</h1>
+          <p className="mt-4 text-[17px] sm:text-[21px] text-label-2 max-w-2xl mx-auto leading-snug">Weekly Quran circles in every union council. Follow the syllabus, read each lesson with translation and tafseer, and find the circle nearest you.</p>
+          <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link href="/portal/representatives" className="btn btn-primary px-6">Find your circle</Link>
+            <a href="#syllabus" className="btn btn-ghost">Browse the syllabus <ChevronRight className="h-4 w-4" /></a>
+          </div>
+          <dl className="mt-10 grid grid-cols-3 max-w-lg mx-auto divide-x divide-separator">
+            {[
+              { label: "Quran circles", value: circleCount },
+              { label: "Union councils", value: ucCount },
+              { label: "Lessons", value: syllabus.length },
+            ].map((s) => (
+              <div key={s.label} className="px-2">
+                <dd className="text-[28px] sm:text-[34px] font-bold tabular tracking-[-0.03em]">{loading ? "–" : s.value}</dd>
+                <dt className="text-[12px] sm:text-[13px] text-label-2">{s.label}</dt>
               </div>
-              <h1 className="font-bold text-white leading-tight mb-3" style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', letterSpacing: '-0.025em' }}>
-                Quran Circle Hub
-              </h1>
-              <p className="font-bold mb-3" style={{ fontSize: 'clamp(1.2rem, 3vw, 1.7rem)', color: 'rgba(167,243,208,0.85)', letterSpacing: '-0.02em' }}>
-                Zone 5, Islamabad
-              </p>
-              <p style={{ color: 'rgba(167,243,208,0.55)', fontSize: '0.875rem', fontWeight: 500, lineHeight: 1.7, maxWidth: '400px' }}>
-                Access circle schedules, track syllabus progress, and find your nearest learning unit.
-              </p>
-            </div>
+            ))}
+          </dl>
+        </div>
+      </section>
 
-            {/* Right: stats glass card */}
-            <div className="w-full md:w-56 flex-shrink-0">
-              <div className="rounded-2xl overflow-hidden" style={{
-                background: 'rgba(255,255,255,0.10)',
-                backdropFilter: 'blur(24px)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15), 0 8px 32px rgba(0,0,0,0.15)'
-              }}>
-                {/* Card header */}
-                <div className="flex items-center gap-2.5 px-5 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.10)' }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)' }}>
-                    <LayoutDashboard className="w-3.5 h-3.5 text-emerald-200" />
-                  </div>
-                  <span className="text-sm font-bold text-white">Zone Overview</span>
-                </div>
-                {/* Stats */}
-                <div className="px-5 py-2">
-                  {[
-                    { label: 'Active Circles', value: circles.length },
-                    { label: 'UC Sectors', value: ucs.length },
-                    { label: 'Topics', value: syllabus.length },
-                  ].map((item, i, arr) => (
-                    <div key={i} className="flex items-center justify-between py-3"
-                      style={{ borderBottom: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none' }}>
-                      <span style={{ color: 'rgba(167,243,208,0.65)', fontSize: '0.75rem', fontWeight: 600 }}>{item.label}</span>
-                      <span className="text-white font-bold text-xl">{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      <main className="max-w-[1100px] mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-14">
+        {/* This week */}
+        {current && (
+          <Link href={`/portal/topic/${current.id}`} className="group block rounded-[1.75rem] overflow-hidden bg-gradient-to-br from-[#0a1f3d] via-[#0b3a75] to-[#0071e3] text-white p-6 sm:p-10 shadow-[var(--shadow-float)] animate-rise">
+            <p className="text-[13px] sm:text-[15px] font-semibold text-white/75">
+              {current.start_date <= today ? "This week’s lesson" : "Next lesson"} · {formatDate(current.start_date)}{current.end_date ? ` – ${formatDate(current.end_date)}` : ""}
+            </p>
+            <p className="mt-2 text-[15px] font-semibold text-white/75">Topic {current.topic_number}</p>
+            <h2 className="mt-1 text-[28px] sm:text-[40px] font-bold tracking-[-0.03em] leading-tight" ><BiText text={cleanTitle(current.title)} /></h2>
+            {current.reference && <p className="mt-3 text-[17px] text-white/85"><QuranRef reference={current.reference} /></p>}
+            <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-white text-[#0058b0] px-5 py-2.5 text-[15px] font-semibold group-hover:gap-2.5 transition-all">Read the lesson <ArrowRight className="h-4 w-4" /></span>
+          </Link>
+        )}
+
+        {/* Syllabus */}
+        <section id="syllabus" className="scroll-mt-20">
+          <div className="flex items-end justify-between gap-4 mb-5">
+            <div>
+              <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.025em]">Syllabus</h2>
+              <p className="text-[15px] text-label-2 mt-1">Every lesson opens with the Arabic text, Urdu translation and tafseer.</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* ── Body ──────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-5 md:px-8 pt-8 pb-16 animate-fade-in">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-
-          {/* ── Curriculum ──────────────────────────────────── */}
-          <div className="lg:col-span-2 space-y-5">
-
-            {/* Section header */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-2xl flex items-center justify-center shadow-md"
-                  style={{ background: 'linear-gradient(135deg, #047857, #10b981)' }}>
-                  <BookOpen className="w-4.5 h-4.5 text-white" />
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#047857' }}>Curriculum</p>
-                  <h2 className="font-bold text-slate-900 text-lg leading-tight tracking-tight">Topics</h2>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full"
-                style={{ background: 'linear-gradient(135deg, rgba(237,233,254,0.9), rgba(209,250,229,0.8))', border: '1px solid rgba(167,243,208,0.4)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#065f46' }}>{syllabus.length} Topics</span>
-              </div>
-            </div>
-
-            {/* Topic cards grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {visibleTopics.map((t) => {
-                const hasRef = !!parseQuranReference(t.reference);
-                return (
-                  <Link
-                    key={t.id}
-                    href={`/portal/topic/${t.id}`}
-                    className="group relative block hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-                  >
-                    <div className="h-full rounded-2xl overflow-hidden" style={{
-                      background: 'rgba(255,255,255,0.80)',
-                      backdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(167,243,208,0.35)',
-                      boxShadow: '0 2px 12px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.95)',
-                    }}>
-                      {/* Top accent line */}
-                      <div className="absolute top-0 left-0 right-0 h-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                        style={{ background: 'linear-gradient(90deg, #047857, #10b981)' }} />
-                      <div className="p-4 md:p-5">
-                        <div className="flex items-start justify-between mb-3">
-                          {/* Topic number badge */}
-                          <div className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 group-hover:scale-105 transition-transform duration-200"
-                            style={{
-                              background: 'linear-gradient(135deg, rgba(245,243,255,0.9), rgba(237,233,254,0.8))',
-                              border: '1px solid rgba(209,250,229,0.6)',
-                              color: '#047857',
-                            }}>
-                            {t.topic_number}
-                          </div>
-                          <BookText className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-200"
-                            style={{ color: '#047857' }} />
-                        </div>
-                        {/* Title */}
-                        <h3 className="font-semibold leading-snug mb-2 transition-colors duration-200 group-hover:text-emerald-900"
-                          style={{ fontSize: '0.875rem', color: '#1e293b' }}>
-                          {t.title}
-                        </h3>
-                        {/* Reference */}
-                        {t.reference ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p style={{ fontSize: '0.72rem', color: '#047857', fontWeight: 600 }}>
-                              {t.reference}
-                            </p>
-                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#6ee7b7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>آیات دیکھیں →</span>
-                          </div>
-                        ) : (
-                          <p style={{ fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 500, fontStyle: 'italic' }}>General Module</p>
-                        )}
-                        {(t.start_date || t.end_date) && (
-                          <div className="mt-2.5 flex items-center gap-1.5 text-slate-500 font-semibold" style={{ fontSize: '0.7rem' }}>
-                            <Calendar className="w-3.5 h-3.5 text-emerald-500" />
-                            <span>
-                              {t.start_date ? new Date(t.start_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' }) : '—'}
-                              {" - "}
-                              {t.end_date ? new Date(t.end_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' }) : '—'}
-                            </span>
-                          </div>
-                        )}
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{Array.from({ length: 6 }, (_, i) => <div key={i} className="skeleton h-32 !rounded-[var(--radius-card)]" />)}</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 stagger">
+                {topics.map((t) => {
+                  const isCurrent = current?.id === t.id;
+                  return (
+                    <Link key={t.id} href={`/portal/topic/${t.id}`} className="card group p-5 flex flex-col hover:shadow-[var(--shadow-float)] hover:-translate-y-0.5 transition-all duration-300">
+                      <div className="flex items-center justify-between">
+                        <span className={`h-8 min-w-8 px-2 rounded-lg grid place-items-center text-[14px] font-bold tabular ${isCurrent ? "bg-accent text-white" : "bg-fill text-label"}`}>{t.topic_number}</span>
+                        {isCurrent && <span className="badge badge-blue">Now</span>}
                       </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
+                      <h3 className="mt-3 text-[17px] font-semibold leading-snug"><BiText text={cleanTitle(t.title)} /></h3>
+                      {t.reference && <p className="mt-1.5 text-[14px] text-label-2"><QuranRef reference={t.reference} /></p>}
+                      <span className="mt-auto pt-4 flex items-center justify-between text-[13px]">
+                        <span className="text-label-2">{t.start_date ? formatDate(t.start_date) : ""}</span>
+                        <span className="font-semibold text-link inline-flex items-center">Read <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+              {syllabus.length > 9 && (
+                <div className="mt-6 text-center">
+                  <button type="button" onClick={() => setShowAll((v) => !v)} className="btn btn-secondary">{showAll ? "Show fewer" : `Show all ${syllabus.length} lessons`}</button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
 
-            {syllabus.length > 8 && (
-              <button
-                onClick={() => setShowAllTopics(!showAllTopics)}
-                className="w-full py-3 rounded-2xl font-semibold text-sm transition-all"
-                style={{
-                  background: 'rgba(255,255,255,0.70)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1.5px dashed rgba(167,243,208,0.5)',
-                  color: '#047857',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
-                }}
-              >
-                {showAllTopics ? 'Show Less' : `Show All ${syllabus.length} Topics`}
-              </button>
+        {/* Upcoming */}
+        <section id="upcoming" className="scroll-mt-20 grid grid-cols-1 lg:grid-cols-5 gap-4 items-start">
+          <div className="lg:col-span-3">
+            <h2 className="text-[28px] sm:text-[34px] font-bold tracking-[-0.025em] mb-5">Upcoming sessions</h2>
+            {upcoming.length === 0 ? (
+              <div className="card p-6 text-[15px] text-label-2 flex items-center gap-3"><CalendarDays className="h-5 w-5 text-label-3" /> No sessions are scheduled yet. Ask your circle’s representative for the next class.</div>
+            ) : (
+              <ul className="card overflow-hidden list-inset">
+                {upcoming.map((s) => {
+                  const place = s.category === "ijtima_arkan" ? s.union_councils?.name : s.quran_circles?.name;
+                  const council = s.quran_circles?.union_councils?.name;
+                  return (
+                    <li key={s.id} className="px-4 sm:px-5 py-3.5 flex items-center gap-3.5">
+                      <span className="w-12 h-12 rounded-xl bg-accent-tint text-[#0058b0] grid place-items-center text-center leading-none flex-shrink-0">
+                        <span><span className="block text-[17px] font-bold tabular">{s.session_date.slice(8, 10)}</span><span className="block text-[10px] font-semibold uppercase mt-0.5">{formatDate(s.session_date).split(" ")[1]}</span></span>
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-semibold truncate">{place ?? CATEGORY_LABEL[s.category]}{council ? ` · ${council}` : ""}</span>
+                        <span className="block text-[13px] text-label-2 truncate">{s.syllabus_topics ? <>Topic {s.syllabus_topics.topic_number}: <BiText text={cleanTitle(s.syllabus_topics.title)} /></> : CATEGORY_LABEL[s.category]}</span>
+                        {s.location && <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] text-label-2"><MapPin className="h-3 w-3" />{s.location}</span>}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
+          <Link href="/portal/representatives" className="lg:col-span-2 lg:mt-[3.75rem] card group p-6 sm:p-7 block hover:shadow-[var(--shadow-float)] transition-shadow">
+            <span className="h-12 w-12 rounded-2xl grid place-items-center bg-accent-tint text-accent"><Users className="h-6 w-6" /></span>
+            <h3 className="mt-4 text-[22px] font-bold tracking-[-0.02em]">Find your circle</h3>
+            <p className="mt-1.5 text-[15px] text-label-2">Search by area or union council and contact the circle’s representative directly by call or WhatsApp.</p>
+            <span className="mt-4 inline-flex items-center text-[15px] font-semibold text-link">Open the directory <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" /></span>
+          </Link>
+        </section>
+      </main>
 
-          {/* ── Sidebar ───────────────────────────────────── */}
-          <div className="space-y-5">
-
-            {/* Upcoming Sessions */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-2xl flex items-center justify-center shadow-md"
-                  style={{ background: 'linear-gradient(135deg, #0f766e, #14b8a6)' }}>
-                  <Calendar className="w-4.5 h-4.5 text-white" />
-                </div>
-                <div>
-                  <p style={{ fontSize: '0.625rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#0f766e' }}>Schedule</p>
-                  <h2 className="font-bold text-slate-900 text-base leading-tight tracking-tight">Upcoming Sessions</h2>
-                </div>
-              </div>
-
-              <div className="space-y-2.5">
-                {upcomingSessions.length > 0 ? upcomingSessions.map((s) => (
-                  <div key={s.id} className="group rounded-2xl overflow-hidden hover:-translate-y-0.5 transition-all duration-200" style={{
-                    background: 'rgba(255,255,255,0.80)',
-                    backdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255,255,255,0.9)',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.95)'
-                  }}>
-                    <div className="p-4">
-                      <div className="flex items-center justify-between mb-2.5">
-                        {/* Date badge */}
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                          style={{ background: 'linear-gradient(135deg, rgba(237,233,254,0.9), rgba(209,250,229,0.7))', border: '1px solid rgba(167,243,208,0.35)' }}>
-                          <Calendar className="w-3 h-3" style={{ color: '#047857' }} />
-                          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#065f46', letterSpacing: '0.04em' }}>
-                            {new Date(s.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' }).toUpperCase()}
-                          </span>
-                        </div>
-                        {/* Active dot */}
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400"
-                          style={{ boxShadow: '0 0 6px rgba(52,211,153,0.7)' }} />
-                      </div>
-                      <h4 className="font-bold text-slate-800 leading-tight mb-1" style={{ fontSize: '0.875rem' }}>
-                        {s.quran_circles?.name}
-                      </h4>
-                      <p className="truncate font-medium" style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                        {s.syllabus_topics?.title || 'General Discussion'}
-                      </p>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="rounded-2xl p-6 text-center" style={{
-                    background: 'rgba(255,255,255,0.65)',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255,255,255,0.85)'
-                  }}>
-                    <p style={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}>No upcoming sessions scheduled</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* CTA card */}
-            <div className="relative overflow-hidden rounded-3xl p-5 group" style={{
-              background: 'linear-gradient(135deg, #022c22 0%, #064e3b 60%, #0f766e 100%)',
-              boxShadow: '0 8px 32px rgba(4,120,87,0.22), inset 0 1px 0 rgba(255,255,255,0.12)'
-            }}>
-              {/* Decorative glow */}
-              <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full pointer-events-none transition-transform duration-700 group-hover:scale-125"
-                style={{ background: 'rgba(255,255,255,0.05)', filter: 'blur(20px)' }} />
-              <div className="absolute top-0 left-0 right-0 h-px"
-                style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent)' }} />
-
-              <div className="relative">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-4"
-                  style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.18)' }}>
-                  <Map className="w-5 h-5 group-hover:scale-110 transition-transform duration-300"
-                    style={{ color: 'rgba(167,243,208,0.9)' }} />
-                </div>
-                <h3 className="font-bold text-white mb-1.5" style={{ fontSize: '0.9375rem', letterSpacing: '-0.01em' }}>
-                  Be in Touch with Your Circle Head
-                </h3>
-                <p className="mb-4 leading-relaxed" style={{ fontSize: '0.75rem', fontWeight: 500, color: 'rgba(167,243,208,0.6)' }}>
-                  Connect with circle heads & Union Council representatives across Zone 5.
-                </p>
-                <Link href="/portal/representatives" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold active:scale-95 transition-all hover:shadow-lg hover:bg-white"
-                  style={{ background: 'rgba(255,255,255,0.92)', color: '#064e3b', fontSize: '0.75rem', letterSpacing: '0.04em', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
-                  Contact Us <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <p className="text-center" style={{ fontSize: '0.75rem', color: '#cbd5e1', fontWeight: 500 }}>
-              Zone 5 · Islamabad, Pakistan
-            </p>
-          </div>
-        </div>
-      </div>
+      <footer className="border-t border-separator">
+        <p className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6 text-[12px] text-label-2">Dawat-e-Quran · Zone 5, Islamabad</p>
+      </footer>
     </div>
   );
 }

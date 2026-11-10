@@ -1,10 +1,13 @@
 "use client";
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase / external APIs */
+
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { attendanceRate, fetchAll, inPeriod, localDate } from "@/lib/data";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Map, Users, Loader2, ChevronRight, TrendingUp, ChevronDown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ChevronRight, Map } from 'lucide-react';
+import { EmptyState, PageHeader, RateBar, Segmented, SkeletonRows } from '@/components/ui';
 
 export default function UCStatus() {
   const [loading, setLoading] = useState(true);
@@ -132,235 +135,126 @@ export default function UCStatus() {
     }) || [];
   }, [rawUcs, rawCircles, rawParticipants, rawAttendance, rawSessions, totalTopics, timeRange, memberType, sessionCategory]);
 
-  const attColor = (v: number) => v > 70 ? 'text-emerald-600' : v > 40 ? 'text-amber-500' : 'text-red-500';
-  const attBg = (v: number) => v > 70 ? 'bg-emerald-500' : v > 40 ? 'bg-amber-400' : 'bg-red-400';
-  const attDot = (v: number) => v > 70 ? 'bg-emerald-400' : v > 40 ? 'bg-amber-400' : 'bg-red-400';
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center shadow-inner border border-emerald-200/50">
-          <Loader2 className="animate-spin w-6 h-6 text-emerald-600" />
-        </div>
-        <div className="text-center">
-          <p className="font-semibold text-slate-800 text-sm">Loading UC Status</p>
-          <p className="text-xs text-slate-400 mt-0.5">Mapping regional sectors...</p>
-        </div>
-      </div>
-    );
-  }
+  const members = [...ucStats].sort((a, b) => b.participants - a.participants);
 
   return (
-    <div className="p-5 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm" />
-            <p className="section-label">Analytics</p>
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Union Council Status</h2>
-          <p className="text-slate-500 mt-1 text-sm leading-relaxed max-w-2xl">
-            Comparative analytics across all Union Councils — attendance, participation, and curriculum progress.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative">
-            <select
-              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
-              value={timeRange}
-              onChange={(e: any) => setTimeRange(e.target.value)}
-            >
-              <option value="complete">All Time</option>
-              <option value="week">Last Week</option>
-              <option value="month">Last Month</option>
-              <option value="3_months">Last 3 Months</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select
-              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
-              value={sessionCategory}
-              onChange={(e: any) => setSessionCategory(e.target.value)}
-            >
-              <option value="all">All Categories</option>
-              <option value="quran_circle">Quran Circle</option>
-              <option value="ijtima_arkan">Ijtima Arkan</option>
-              <option value="dars_e_quran">Dars-e-Quran</option>
-              <option value="other">Other</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select
-              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
-              value={memberType}
-              onChange={(e: any) => setMemberType(e.target.value)}
-            >
-              <option value="all">All Participants</option>
-              <option value="haazir_arkan">Haazir Arkan</option>
-              <option value="aam_afraad">Aam Afraad</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          </div>
-        </div>
-      </header>
+    <div className="px-4 sm:px-6 lg:px-10 pt-6 md:pt-10 max-w-[1200px] mx-auto space-y-6">
+      <PageHeader eyebrow="Analytics" title="Union Councils" subtitle="Attendance, membership and syllabus progress for every union council. Tap a council to see its circles." />
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
-        <div className="card p-5 md:p-6">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
-              <Users className="w-4 h-4 text-blue-600" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900">Personnel Distribution</h3>
-          </div>
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={ucStats}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} />
-                <Tooltip cursor={{ fill: 'rgba(16, 185, 129, 0.05)' }} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 600 }} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '11px', fontWeight: 600 }} />
-                <Bar dataKey="arkan" name="Haazir Arkan" fill="#059669" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="public" name="Aam Afraad" fill="#6366f1" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="card p-5 md:p-6">
-          <div className="flex items-center gap-2.5 mb-5">
-            <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-amber-600" />
-            </div>
-            <h3 className="text-base font-bold text-slate-900">Attendance Rate by UC</h3>
-          </div>
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={ucStats}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} unit="%" />
-                <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 600 }} />
-                <Line type="monotone" dataKey="avgAttendance" name="Avg Attendance" stroke="#f59e0b" strokeWidth={3} dot={{ r: 5, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7, strokeWidth: 0 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 animate-rise">
+        <Segmented
+          label="Time period"
+          value={timeRange}
+          onChange={setTimeRange}
+          options={[{ value: "week", label: "7 days" }, { value: "month", label: "30 days" }, { value: "3_months", label: "3 months" }, { value: "complete", label: "All time" }]}
+        />
+        <div className="grid grid-cols-2 gap-2 sm:flex">
+          <select aria-label="Session type" className="form-input !min-h-[36px] !py-1 !text-[14px] sm:w-48" value={sessionCategory} onChange={(e) => setSessionCategory(e.target.value as typeof sessionCategory)}>
+            <option value="all">All session types</option>
+            <option value="quran_circle">Quran Circle</option>
+            <option value="ijtima_arkan">Ijtima Arkan</option>
+            <option value="dars_e_quran">Dars-e-Quran</option>
+            <option value="other">Other</option>
+          </select>
+          <select aria-label="Members" className="form-input !min-h-[36px] !py-1 !text-[14px] sm:w-40" value={memberType} onChange={(e) => setMemberType(e.target.value as typeof memberType)}>
+            <option value="all">All members</option>
+            <option value="haazir_arkan">Arkan only</option>
+            <option value="aam_afraad">Public only</option>
+          </select>
         </div>
       </div>
 
-      {/* Detailed UC Table */}
-      <div className="glass-table">
-        <div className="px-5 md:px-6 py-4 border-b border-slate-100">
-          <h3 className="text-base font-bold text-slate-900">UC Breakdown</h3>
-        </div>
-        <table className="w-full text-left border-separate border-spacing-0">
-          <thead>
-            <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Union Council</th>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-center hidden sm:table-cell">Circles</th>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-center hidden sm:table-cell">Members</th>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Attendance</th>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider hidden md:table-cell">Syllabus</th>
-              <th className="px-5 md:px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {ucStats.map((uc) => (
-              <React.Fragment key={uc.id}>
-                <tr
-                  onClick={() => setExpandedUC(expandedUC === uc.id ? null : uc.id)}
-                  className={`cursor-pointer transition-colors ${expandedUC === uc.id ? 'bg-emerald-50/50' : 'hover:bg-slate-50/60'}`}
-                >
-                  <td className="px-5 md:px-6 py-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${attDot(uc.avgAttendance)}`} />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800">{uc.name}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{uc.circles} circle{uc.circles !== 1 ? 's' : ''} · {uc.participants} members</p>
+      {loading ? (
+        <div className="card"><SkeletonRows rows={6} /></div>
+      ) : ucStats.length === 0 ? (
+        <div className="card"><EmptyState icon={Map} title="No union councils yet" /></div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-3 sm:gap-4 items-start">
+          {/* Council list */}
+          <section className="card overflow-hidden xl:col-span-3">
+            <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-3">
+              <h2 className="text-[17px] font-semibold">Councils</h2>
+              <p className="text-[13px] text-label-2 mt-0.5">{ucStats.length} councils · attendance and topics taught</p>
+            </div>
+            <ul className="list-inset border-t border-separator">
+              {ucStats.map((uc) => {
+                const open = expandedUC === uc.id;
+                return (
+                  <li key={uc.id}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedUC(open ? null : uc.id)}
+                      aria-expanded={open}
+                      className={`w-full text-left px-4 sm:px-5 py-3.5 grid grid-cols-[1fr_auto_auto] items-center gap-3 transition-colors ${open ? "bg-grouped" : "hover:bg-grouped"}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[15px] font-semibold truncate">{uc.name}</p>
+                        <p className="text-[13px] text-label-2 truncate">
+                          {uc.circles} circle{uc.circles !== 1 ? "s" : ""} · {uc.participants} members · {uc.uniqueTopics}/{totalTopics} topics
+                        </p>
+                        <RateBar rate={uc.avgAttendance} className="mt-2 max-w-[260px]" />
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-5 md:px-6 py-4 text-center hidden sm:table-cell">
-                    <span className="badge badge-blue">{uc.circles}</span>
-                  </td>
-                  <td className="px-5 md:px-6 py-4 text-center hidden sm:table-cell">
-                    <span className="text-sm font-bold text-slate-800">{uc.participants}</span>
-                  </td>
-                  <td className="px-5 md:px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-bold ${attColor(uc.avgAttendance)}`}>{uc.avgAttendance}%</span>
-                      <div className="flex-1 max-w-[80px] h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${attBg(uc.avgAttendance)}`} style={{ width: `${uc.avgAttendance}%` }} />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 md:px-6 py-4 hidden md:table-cell">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex-1 max-w-[100px] h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${uc.progress}%` }} />
-                      </div>
-                      <span className="text-xs font-semibold text-emerald-600">{uc.uniqueTopics}/{totalTopics}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 md:px-6 py-4 text-right">
-                    <div className={`inline-flex items-center justify-center w-7 h-7 rounded-lg transition-all ${expandedUC === uc.id ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                      <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedUC === uc.id ? 'rotate-90' : ''}`} />
-                    </div>
-                  </td>
-                </tr>
-
-                {expandedUC === uc.id && (
-                  <tr>
-                    <td colSpan={6} className="px-5 md:px-6 pb-4 pt-0 bg-emerald-50/30">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-fade-in">
-                        {uc.circleDetails.map((c: any) => (
-                          <div key={c.id} className="card p-4 border border-white/80 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all duration-200">
-                            <h4 className="text-sm font-semibold text-slate-800 mb-3 leading-snug">{c.name}</h4>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-400 font-medium">Members</span>
-                                <span className="font-semibold text-slate-700">{c.participants}</span>
+                      <span className="text-[17px] font-semibold tabular">{uc.avgAttendance}%</span>
+                      <ChevronRight className={`h-4 w-4 text-label-3 transition-transform ${open ? "rotate-90" : ""}`} aria-hidden />
+                    </button>
+                    {open && (
+                      <div className="px-3 sm:px-4 pb-4 bg-grouped animate-fade">
+                        {uc.circleDetails.length === 0 ? (
+                          <p className="px-2 py-3 text-[14px] text-label-2">No circles in this council.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {uc.circleDetails.map((c: any) => (
+                              <div key={c.id} className="rounded-2xl bg-surface p-3.5 shadow-[0_0_0_0.5px_var(--color-separator)]">
+                                <p className="text-[15px] font-semibold leading-snug">{c.name}</p>
+                                <dl className="mt-2.5 grid grid-cols-3 gap-2 text-center">
+                                  <div><dt className="text-[11px] text-label-2">Members</dt><dd className="text-[16px] font-semibold tabular">{c.participants}</dd></div>
+                                  <div><dt className="text-[11px] text-label-2">Attendance</dt><dd className="text-[16px] font-semibold tabular">{c.avgAttendance}%</dd></div>
+                                  <div><dt className="text-[11px] text-label-2">Syllabus</dt><dd className="text-[16px] font-semibold tabular">{c.progress}%</dd></div>
+                                </dl>
+                                <RateBar rate={c.avgAttendance} className="mt-2.5" />
                               </div>
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-400 font-medium">Attendance</span>
-                                <span className={`font-bold ${attColor(c.avgAttendance)}`}>{c.avgAttendance}%</span>
-                              </div>
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-400 font-medium">Syllabus</span>
-                                <span className="font-semibold text-emerald-600">{c.progress}%</span>
-                              </div>
-                              <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden mt-2">
-                                <div className={`h-full rounded-full ${attBg(c.avgAttendance)}`} style={{ width: `${c.avgAttendance}%` }} />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        {uc.circleDetails.length === 0 && (
-                          <div className="col-span-full text-center py-4">
-                            <p className="text-xs text-slate-400">No circles in this UC</p>
+                            ))}
                           </div>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-            {ucStats.length === 0 && (
-              <tr>
-                <td colSpan={6} className="py-16 text-center">
-                  <Map className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm font-semibold text-slate-400">No UC data available</p>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          {/* Membership chart */}
+          <section className="card p-4 sm:p-5 xl:col-span-2">
+            <h2 className="text-[17px] font-semibold">Members by council</h2>
+            <div className="mt-1 mb-3 flex items-center gap-4 text-[13px] text-label-2">
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#0071e3]" />Arkan</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#8ec1f5]" />Public</span>
+            </div>
+            <ResponsiveContainer width="100%" height={Math.max(220, members.length * 30)}>
+              <BarChart data={members} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }} barCategoryGap={6}>
+                <CartesianGrid horizontal={false} stroke="#ececf0" />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "#86868b" }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="name" width={112} tick={{ fontSize: 11, fill: "#1d1d1f" }} tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ fill: "rgba(0,113,227,0.05)" }} content={<MembersTip />} />
+                <Bar dataKey="arkan" name="Arkan" stackId="m" fill="#0071e3" />
+                <Bar dataKey="public" name="Public" stackId="m" fill="#8ec1f5" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MembersTip({ active, payload }: { active?: boolean; payload?: { payload: { name: string; arkan: number; public: number } }[] }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="pill-container !rounded-xl px-3 py-2 text-[12px]">
+      <p className="font-semibold">{d.name}</p>
+      <p className="text-label-2">{d.arkan} Arkan · {d.public} Public</p>
     </div>
   );
 }

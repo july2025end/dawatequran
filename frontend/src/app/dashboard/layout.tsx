@@ -1,152 +1,121 @@
 "use client";
 
-import { Activity, BookOpen, Calendar, Users, ClipboardList, Map, CheckSquare, Globe } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { BookOpen, CalendarDays, CheckSquare, ClipboardList, Globe, LayoutGrid, Map, MoreHorizontal, Users } from "lucide-react";
+import { Sheet } from "@/components/ui";
+
+const NAV = [
+  { name: "Overview", href: "/dashboard", icon: LayoutGrid },
+  { name: "Union Councils", short: "UCs", href: "/dashboard/uc-status", icon: Map },
+  { name: "Reports", href: "/dashboard/jaiza", icon: ClipboardList },
+  { name: "Directory", short: "People", href: "/dashboard/roster", icon: Users },
+  { name: "Schedule", href: "/dashboard/schedule", icon: CalendarDays },
+  { name: "Syllabus", href: "/dashboard/syllabus", icon: BookOpen },
+];
+// No sign-in: each portal has its own address. These are just shortcuts between them.
+const PORTALS = [
+  { name: "Attendance portal", href: "/attendance", icon: CheckSquare },
+  { name: "Public portal", href: "/portal", icon: Globe },
+];
+const TABS = NAV.slice(0, 4);
+const MORE = NAV.slice(4);
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-
-  const menuItems = [
-    { name: 'Dashboard',  href: '/dashboard',           icon: Activity,      short: 'Home'  },
-    { name: 'UC Status',  href: '/dashboard/uc-status', icon: Map,           short: 'UC'    },
-    { name: 'Schedule',   href: '/dashboard/schedule',  icon: Calendar,      short: 'Sched' },
-    { name: 'Jaiza',      href: '/dashboard/jaiza',     icon: ClipboardList, short: 'Jaiza' },
-    { name: 'Syllabus',   href: '/dashboard/syllabus',  icon: BookOpen,      short: 'Syllab'},
-    { name: 'Directory',  href: '/dashboard/roster',    icon: Users,         short: 'Dir'   },
-  ];
-
-
-  // No sign-in: each portal is reached by its own address. These shortcuts just switch portals.
-  const portals = [
-    { name: 'Attendance portal', href: '/attendance', icon: CheckSquare },
-    { name: 'Public portal', href: '/portal', icon: Globe },
-  ];
+  const [moreOpen, setMoreOpen] = useState(false);
+  const isActive = (href: string) => (href === "/dashboard" ? pathname === href : pathname.startsWith(href));
+  const moreActive = MORE.some((m) => isActive(m.href));
 
   return (
-    <div className="h-screen flex flex-col md:flex-row overflow-hidden" style={{
-      background: 'radial-gradient(ellipse 70% 50% at 15% 10%, rgba(16,185,129,0.10) 0%, transparent 55%), radial-gradient(ellipse 50% 40% at 85% 90%, rgba(99,102,241,0.07) 0%, transparent 55%), linear-gradient(135deg, #eef2ff 0%, #f0fdf4 40%, #f0f9ff 100%)'
-    }}>
-
-      {/* ─── Sidebar (Desktop md+) ───────────────────────── */}
-      <aside className="hidden md:flex flex-col h-full flex-shrink-0 w-16 xl:w-64 sidebar-glass shadow-2xl z-40 transition-all duration-300">
-
-        {/* Logo area */}
-        <div className="flex items-center justify-center xl:justify-start gap-3 p-4 xl:px-5 xl:py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
-          <div className="w-10 h-10 flex-shrink-0 rounded-xl flex items-center justify-center border border-white/20 shadow-lg"
-            style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(20px)' }}>
-            <BookOpen className="w-5 h-5 text-white" strokeWidth={2.5} />
-          </div>
-          <div className="hidden xl:block min-w-0">
-            <h1 className="text-sm font-bold text-white leading-tight">Dawat-e-Quran</h1>
-            <p className="text-xs font-semibold mt-0.5" style={{ color: 'rgba(110,231,183,0.8)' }}>Admin Portal</p>
-          </div>
+    <div className="min-h-dvh md:flex">
+      {/* Sidebar: iPad and desktop */}
+      <aside className="hidden md:flex md:w-[232px] lg:w-[260px] flex-shrink-0 flex-col sticky top-0 h-dvh material border-r border-separator">
+        <div className="px-5 pt-6 pb-5">
+          <Brand />
         </div>
-
-        {/* Nav */}
-        <nav className="flex-1 py-4 px-2 xl:px-3 space-y-1 overflow-y-auto scrollbar-hide">
-          <p className="hidden xl:block text-xs font-bold uppercase tracking-widest px-3 mb-3" style={{ color: 'rgba(167,243,208,0.7)', letterSpacing: '0.12em' }}>Navigation</p>
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                title={item.name}
-                className={`flex items-center gap-3 w-full transition-all duration-200 group
-                  justify-center xl:justify-start
-                  rounded-2xl p-2.5 xl:px-3.5 xl:py-2.5
-                  ${isActive
-                    ? 'text-white'
-                    : 'hover:text-emerald-100'
-                  }`}
-                style={isActive ? {
-                  background: 'rgba(255,255,255,0.16)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255,255,255,0.22)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(0,0,0,0.1)'
-                } : {
-                  color: 'rgba(209,250,229,0.82)'
-                }}
-              >
-                <Icon
-                  className={`w-4.5 h-4.5 flex-shrink-0 transition-all duration-200 ${isActive ? 'text-emerald-300' : 'group-hover:text-emerald-300'}`}
-                  strokeWidth={isActive ? 2.5 : 2}
-                />
-                <span className="hidden xl:block text-sm font-semibold truncate">{item.name}</span>
-                {isActive && <div className="hidden xl:block ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0 shadow-sm" style={{ boxShadow: '0 0 6px rgba(52,211,153,0.6)' }} />}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Other portals */}
-        <div className="p-2 xl:p-3 space-y-1" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-          {portals.map((p) => (
-            <Link key={p.href} href={p.href} title={p.name}
-              className="flex items-center gap-3 w-full rounded-2xl p-2.5 xl:px-3.5 xl:py-2.5 justify-center xl:justify-start text-emerald-100/80 hover:text-white hover:bg-white/10 transition-colors">
-              <p.icon className="w-4 h-4 flex-shrink-0" />
-              <span className="hidden xl:block text-sm font-semibold">{p.name}</span>
-            </Link>
+        <nav aria-label="Admin" className="flex-1 overflow-y-auto px-3 space-y-0.5">
+          {NAV.map((item) => (
+            <SideLink key={item.href} {...item} active={isActive(item.href)} />
           ))}
+        </nav>
+        <div className="px-3 pb-5 pt-3 border-t border-separator space-y-0.5">
+          <p className="px-3 pb-1 text-[12px] font-semibold text-label-3">Other portals</p>
+          {PORTALS.map((p) => <SideLink key={p.href} {...p} active={false} />)}
         </div>
       </aside>
 
-      {/* ─── Mobile Top Header ─────────────────────────────── */}
-      <div className="md:hidden sticky top-0 z-50 px-4 py-3.5 flex items-center justify-between shadow-lg" style={{
-        background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #0f766e 100%)',
-        borderBottom: '1px solid rgba(255,255,255,0.12)'
-      }}>
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center border border-white/20"
-            style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(20px)' }}>
-            <BookOpen className="w-4.5 h-4.5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold text-white leading-none">Dawat-e-Quran</h1>
-            <p className="text-xs font-medium leading-none mt-0.5" style={{ color: 'rgba(110,231,183,0.7)' }}>Admin Portal</p>
+      <div className="flex-1 min-w-0">
+        {/* Phone top bar */}
+        <div className="md:hidden sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
+          <div className="h-12 px-4 flex items-center justify-between">
+            <Brand compact />
+            <Link href="/attendance" className="btn btn-tinted btn-sm">Mark attendance</Link>
           </div>
         </div>
-        <Link href="/attendance" className="px-3 py-2 rounded-xl border border-white/20 text-xs font-bold text-white hover:bg-white/10 transition-colors" style={{ background: 'rgba(255,255,255,0.08)' }}>
-          Attendance
-        </Link>
+
+        <main className="pb-28 md:pb-12">{children}</main>
       </div>
 
-      {/* ─── Main Content ────────────────────────────────────── */}
-      <main className="flex-1 h-full overflow-y-auto scroll-smooth">
-        <div className="min-h-full">
-          {children}
+      {/* Phone tab bar */}
+      <nav aria-label="Admin" className="md:hidden fixed inset-x-0 bottom-0 z-40 material border-t border-separator safe-bottom">
+        <div className="grid grid-cols-5 h-[56px]">
+          {TABS.map((t) => (
+            <TabLink key={t.href} href={t.href} icon={t.icon} label={t.short ?? t.name} active={isActive(t.href)} />
+          ))}
+          <button type="button" onClick={() => setMoreOpen(true)} className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium ${moreActive ? "text-accent" : "text-label-2"}`}>
+            <MoreHorizontal className="h-[22px] w-[22px]" strokeWidth={moreActive ? 2.4 : 1.9} />
+            More
+          </button>
         </div>
-      </main>
+      </nav>
 
-      {/* ─── Mobile Bottom Navigation ──────────────────────── */}
-      <div className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm">
-        <div className="glass-pill border border-white/90 shadow-2xl p-1.5 flex items-center justify-between gap-0.5">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-1.5 rounded-full transition-all duration-300 px-3 py-2
-                  ${isActive
-                    ? 'text-white flex-1 justify-center shadow-md'
-                    : 'flex-shrink-0 text-slate-400 hover:text-emerald-600'
-                  }`}
-                style={isActive ? {
-                  background: 'linear-gradient(135deg, #059669 0%, #0d9488 100%)',
-                  boxShadow: '0 4px 14px rgba(5,150,105,0.35)'
-                } : {}}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={isActive ? 2.5 : 2} />
-                {isActive && <span className="text-xs font-bold truncate">{item.short}</span>}
-              </Link>
-            );
-          })}
+      <Sheet open={moreOpen} onClose={() => setMoreOpen(false)} title="More">
+        <div className="card-inset overflow-hidden list-inset mb-2">
+          {[...MORE, ...PORTALS].map((m) => (
+            <Link key={m.href} href={m.href} onClick={() => setMoreOpen(false)} className="flex items-center gap-3 px-4 py-3.5 bg-surface text-[16px] text-label active:bg-fill">
+              <m.icon className="h-5 w-5 text-accent" /> {m.name}
+            </Link>
+          ))}
         </div>
-      </div>
+      </Sheet>
     </div>
+  );
+}
+
+function Brand({ compact }: { compact?: boolean }) {
+  return (
+    <Link href="/dashboard" className="flex items-center gap-2.5">
+      <span className={`${compact ? "h-8 w-8 rounded-[9px]" : "h-10 w-10 rounded-[11px]"} grid place-items-center bg-gradient-to-b from-[#2b8cff] to-[#0062d1] text-white shadow-sm`}>
+        <BookOpen className={compact ? "h-4 w-4" : "h-5 w-5"} strokeWidth={2.2} />
+      </span>
+      <span className="leading-tight">
+        <span className="block text-[15px] font-semibold text-label">Dawat-e-Quran</span>
+        {!compact && <span className="block text-[12px] text-label-2">Admin · Zone 5</span>}
+      </span>
+    </Link>
+  );
+}
+
+function SideLink({ name, href, icon: Icon, active }: { name: string; href: string; icon: typeof Users; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-3 rounded-[10px] px-3 py-2 text-[15px] transition-colors ${active ? "bg-accent text-white font-semibold" : "text-label hover:bg-fill"}`}
+    >
+      <Icon className={`h-[18px] w-[18px] ${active ? "text-white" : "text-accent"}`} strokeWidth={2} />
+      {name}
+    </Link>
+  );
+}
+
+function TabLink({ href, icon: Icon, label, active }: { href: string; icon: typeof Users; label: string; active: boolean }) {
+  return (
+    <Link href={href} aria-current={active ? "page" : undefined} className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium ${active ? "text-accent" : "text-label-2"}`}>
+      <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 1.9} />
+      {label}
+    </Link>
   );
 }
