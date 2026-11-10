@@ -121,15 +121,15 @@ export default function Representatives() {
       >
         {form && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="block sm:col-span-2"><span className="form-label">Name</span><input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+            <label className="block sm:col-span-2"><span className="form-label">Name</span><input dir="auto" className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
             <label className="block"><span className="form-label">Role</span>
               <select className="form-input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                 {[...new Set([...ROLES, form.role])].map((r) => <option key={r}>{r}</option>)}
               </select>
             </label>
-            <label className="block"><span className="form-label">Circle</span><input className="form-input" placeholder="e.g. Circle 2" value={form.circle_name} onChange={(e) => setForm({ ...form, circle_name: e.target.value })} /></label>
-            <label className="block"><span className="form-label">Union council</span><input className="form-input" placeholder="e.g. UC-85" value={form.uc} onChange={(e) => setForm({ ...form, uc: e.target.value })} /></label>
-            <label className="block"><span className="form-label">Area</span><input className="form-input" placeholder="e.g. G-10/1" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} /></label>
+            <label className="block"><span className="form-label">Circle</span><input dir="auto" className="form-input" placeholder="e.g. Circle 2" value={form.circle_name} onChange={(e) => setForm({ ...form, circle_name: e.target.value })} /></label>
+            <label className="block"><span className="form-label">Union council</span><input dir="auto" className="form-input" placeholder="e.g. UC-85" value={form.uc} onChange={(e) => setForm({ ...form, uc: e.target.value })} /></label>
+            <label className="block"><span className="form-label">Area</span><input dir="auto" className="form-input" placeholder="e.g. G-10/1" value={form.sector} onChange={(e) => setForm({ ...form, sector: e.target.value })} /></label>
             <label className="block"><span className="form-label">Phone</span><input className="form-input" type="tel" inputMode="tel" placeholder="+92 3xx xxxxxxx" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
             <label className="block"><span className="form-label">WhatsApp (if different)</span><input className="form-input" type="tel" inputMode="tel" placeholder="923xxxxxxxxx" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} /></label>
           </div>

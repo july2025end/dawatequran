@@ -124,7 +124,7 @@ export default function Schedule() {
                         {CATEGORY_LABEL[s.category] ?? s.category}{council(s) && s.category !== "ijtima_arkan" ? ` · ${council(s)}` : ""}
                         {s.syllabus_topics ? <> · Topic {s.syllabus_topics.topic_number}: <BiText text={cleanTitle(s.syllabus_topics.title)} /></> : ""}
                       </span>
-                      {s.location && <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] text-label-2"><MapPin className="h-3 w-3" />{s.location}</span>}
+                      {s.location && <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] text-label-2"><MapPin className="h-3 w-3" /><BiText text={s.location} /></span>}
                     </span>
                   </button>
                 </li>
@@ -177,10 +177,10 @@ export default function Schedule() {
               </select>
             </label>
             <label className="block sm:col-span-2"><span className="form-label">Location</span>
-              <input className="form-input" placeholder="Masjid, residence…" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+              <input dir="auto" className="form-input" placeholder="Masjid, residence…" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
             </label>
             <label className="block sm:col-span-2"><span className="form-label">Notes</span>
-              <textarea rows={3} className="form-input resize-none" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+              <textarea dir="auto" rows={3} className="form-input resize-none" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             </label>
           </div>
         )}

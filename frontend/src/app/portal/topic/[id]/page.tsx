@@ -430,10 +430,10 @@ function AyahCard({
         {/* Translation: Maulana Maududi */}
         {ayah.maududi && (
           <div className="mb-4">
-            <p className="font-urdu text-[13px] text-accent mb-1 flex items-center gap-1.5 justify-end">
+            <p className="font-urdu text-[13px] text-accent mb-1 flex items-center gap-1.5 justify-start">
               ترجمہ — مولانا مودودیؒ <Globe className="w-3.5 h-3.5" />
             </p>
-            <p className="font-urdu text-end text-label" style={{ fontSize: "1.15rem" }}>{ayah.maududi}</p>
+            <p className="font-urdu text-right text-label" style={{ fontSize: "1.15rem" }}>{ayah.maududi}</p>
           </div>
         )}
 
@@ -444,7 +444,7 @@ function AyahCard({
           className={`flex items-center gap-2 w-full py-2.5 px-4 rounded-xl text-[14px] transition-colors font-urdu ${showTafseer ? "bg-accent-tint text-accent-ink" : "bg-fill text-label hover:bg-fill-strong"}`}
         >
           {tafseerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookText className="w-4 h-4" />}
-          <span className="flex-1 text-end">تفسیر — تفہیم القرآن، مولانا مودودیؒ</span>
+          <span className="flex-1 text-right">تفسیر — تفہیم القرآن، مولانا مودودیؒ</span>
           {showTafseer ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
         </button>
         {showTafseer && (
@@ -456,7 +456,7 @@ function AyahCard({
               </div>
             ) : tafseerText ? (
               // tafseerText is sanitised by /api/tafseer before it reaches the page.
-              <div className="font-urdu text-end text-label" style={{ fontSize: "1.08rem" }} dangerouslySetInnerHTML={{ __html: tafseerText }} />
+              <div className="font-urdu text-right text-label" style={{ fontSize: "1.08rem" }} dangerouslySetInnerHTML={{ __html: tafseerText }} />
             ) : (
               <p className="font-urdu text-center text-sm text-label-2">تفسیر دستیاب نہیں</p>
             )}

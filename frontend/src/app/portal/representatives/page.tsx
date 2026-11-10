@@ -152,7 +152,7 @@ export default function RepresentativesDirectory() {
         ) : (
           groups.map(([uc, reps]) => (
             <section key={uc} className="space-y-2">
-              <h2 className="px-1 text-[13px] font-semibold text-label-2">{uc} · {reps[0].sector}</h2>
+              <h2 className="px-1 text-[13px] font-semibold text-label-2"><bdi>{uc}</bdi> · <bdi>{reps[0].sector}</bdi></h2>
               <ul className="card overflow-hidden list-inset">
                 {reps.map((r) => (
                   <li key={r.id} className="px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -162,7 +162,7 @@ export default function RepresentativesDirectory() {
                       </span>
                       <div className="min-w-0">
                         <p className="text-[16px] font-semibold truncate">{r.name}</p>
-                        <p className="text-[13px] text-label-2 truncate">{t(r.role)}{r.circleName ? ` · ${r.circleName}` : ""}</p>
+                        <p className="text-[13px] text-label-2 truncate">{t(r.role)}{r.circleName ? <> · <bdi>{r.circleName}</bdi></> : null}</p>
                         <p className="text-[13px] tabular text-label-2">{r.phone ? <span className="ltr-text">{r.phone}</span> : t("Number not added yet")}</p>
                       </div>
                     </div>

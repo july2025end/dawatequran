@@ -452,7 +452,7 @@ export default function AttendancePage() {
             name={t("Dawat-e-Quran")}
             href="/attendance"
             size="sm"
-            subtitle={ready ? `${isIjtima ? ucName : activeCircle?.name ?? ""} · ${t(CATEGORY_LABEL[category])}${!isIjtima && ucName ? ` · ${ucName}` : ""}` : t("Mark attendance · Zone 5")}
+            subtitle={ready ? <><bdi>{isIjtima ? ucName : activeCircle?.name ?? ""}</bdi> · {t(CATEGORY_LABEL[category])}{!isIjtima && ucName ? <> · <bdi>{ucName}</bdi></> : null}</> : t("Mark attendance · Zone 5")}
           />
           <div className="flex items-center gap-2">
             <LangToggle />
@@ -550,8 +550,8 @@ export default function AttendancePage() {
                       <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" /> {location || notes ? t("Location and notes") : t("Add location and notes")}
                     </summary>
                     <div className="mt-3 grid grid-cols-1 gap-3">
-                      <input className="form-input" placeholder={t("Location: masjid, residence…")} value={location} onChange={(e) => setLocation(e.target.value)} />
-                      <textarea rows={3} className="form-input resize-none" placeholder={t("Notes: discussion, observations…")} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                      <input dir="auto" className="form-input" placeholder={t("Location: masjid, residence…")} value={location} onChange={(e) => setLocation(e.target.value)} />
+                      <textarea dir="auto" rows={3} className="form-input resize-none" placeholder={t("Notes: discussion, observations…")} value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
                   </details>
                 </section>
@@ -582,7 +582,7 @@ export default function AttendancePage() {
                   {participants.length > 8 && (
                     <label className="relative block">
                       <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-label-3" />
-                      <input type="search" className="form-input !bg-fill !border-transparent !ps-9" placeholder={t("Search members")} value={search} onChange={(e) => setSearch(e.target.value)} />
+                      <input dir="auto" type="search" className="form-input !bg-fill !border-transparent !ps-9" placeholder={t("Search members")} value={search} onChange={(e) => setSearch(e.target.value)} />
                     </label>
                   )}
 
@@ -625,7 +625,7 @@ export default function AttendancePage() {
                 {pastSessions.length > 5 && (
                   <label className="relative block">
                     <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-label-3" />
-                    <input type="search" className="form-input !bg-fill !border-transparent !ps-9" placeholder={t("Search by date, topic, place or name")} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
+                    <input dir="auto" type="search" className="form-input !bg-fill !border-transparent !ps-9" placeholder={t("Search by date, topic, place or name")} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
                   </label>
                 )}
                 {filteredPastSessions.length === 0 ? (
@@ -647,7 +647,7 @@ export default function AttendancePage() {
                             </span>
                             <span className="min-w-0">
                               <span className="block text-[15px] font-semibold truncate">{s.syllabus_topics ? <>{t("Topic")} {s.syllabus_topics.topic_number}: <BiText text={cleanTitle(s.syllabus_topics.title)} /></> : t(CATEGORY_LABEL[s.category]) ?? s.category}</span>
-                              <span className="block text-[13px] text-label-2 truncate">{y}{s.location ? ` · ${s.location}` : ""}</span>
+                              <span className="block text-[13px] text-label-2 truncate">{y}{s.location ? <> · <BiText text={s.location} /></> : null}</span>
                             </span>
                             <span className="text-right leading-tight">
                               <span className="text-[17px] font-semibold tabular">{present}</span><span className="text-[13px] text-label-2">/{att.length}</span>
@@ -707,7 +707,7 @@ export default function AttendancePage() {
       >
         <div className="grid grid-cols-1 gap-3">
           <label className="block"><span className="form-label">{t("Full name")}</span>
-            <input className="form-input" autoComplete="off" value={newAttendee.full_name} onChange={(e) => setNewAttendee({ ...newAttendee, full_name: e.target.value })} />
+            <input dir="auto" className="form-input" autoComplete="off" value={newAttendee.full_name} onChange={(e) => setNewAttendee({ ...newAttendee, full_name: e.target.value })} />
           </label>
           <label className="block"><span className="form-label">{t("Phone (optional)")}</span>
             <input className="form-input" type="tel" inputMode="tel" value={newAttendee.phone} onChange={(e) => setNewAttendee({ ...newAttendee, phone: e.target.value })} />
@@ -743,8 +743,8 @@ export default function AttendancePage() {
         {viewingSession && (
           <div className="space-y-4">
             {viewingSession.syllabus_topics && <p className="text-[15px] font-medium"><BiText text={cleanTitle(viewingSession.syllabus_topics.title)} /></p>}
-            {viewingSession.location && <p className="text-[14px] text-label-2 inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {viewingSession.location}</p>}
-            {viewingSession.notes && <p className="text-[15px] text-label-2 whitespace-pre-wrap">{viewingSession.notes}</p>}
+            {viewingSession.location && <p className="text-[14px] text-label-2 inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> <BiText text={viewingSession.location} /></p>}
+            {viewingSession.notes && <p className="text-[15px] text-label-2 whitespace-pre-wrap" dir="auto">{viewingSession.notes}</p>}
             <p className="text-[13px] font-semibold text-label-2">{t("Attendance · tap a status to change it")}</p>
             <ul className="card-inset overflow-hidden list-inset">
               {[...(viewingSession.attendance || [])].sort((a: any, b: any) => (a.participants?.full_name ?? "").localeCompare(b.participants?.full_name ?? "")).map((a: any) => (
@@ -781,10 +781,10 @@ export default function AttendancePage() {
                 </label>
               )}
               <label className="block sm:col-span-2"><span className="form-label">{t("Location")}</span>
-                <input className="form-input" value={editingSession.location} onChange={(e) => setEditingSession({ ...editingSession, location: e.target.value })} />
+                <input dir="auto" className="form-input" value={editingSession.location} onChange={(e) => setEditingSession({ ...editingSession, location: e.target.value })} />
               </label>
               <label className="block sm:col-span-2"><span className="form-label">{t("Notes")}</span>
-                <textarea rows={3} className="form-input resize-none" value={editingSession.notes} onChange={(e) => setEditingSession({ ...editingSession, notes: e.target.value })} />
+                <textarea dir="auto" rows={3} className="form-input resize-none" value={editingSession.notes} onChange={(e) => setEditingSession({ ...editingSession, notes: e.target.value })} />
               </label>
             </div>
             <div>
@@ -794,7 +794,7 @@ export default function AttendancePage() {
               </div>
               {isAddingEditAttendee && (
                 <div className="card-inset p-3 mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2 animate-fade">
-                  <input className="form-input" placeholder={t("Full name")} value={newEditAttendee.full_name} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, full_name: e.target.value })} />
+                  <input dir="auto" className="form-input" placeholder={t("Full name")} value={newEditAttendee.full_name} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, full_name: e.target.value })} />
                   <input className="form-input" type="tel" inputMode="tel" placeholder={t("Phone (optional)")} value={newEditAttendee.phone} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, phone: e.target.value })} />
                   {editingSession.category === "ijtima_arkan" ? (
                     <select className="form-input" value={newEditAttendee.circle_id} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, circle_id: e.target.value })}>

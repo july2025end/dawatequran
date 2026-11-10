@@ -144,7 +144,7 @@ export function SearchField({ value, onChange, placeholder, className = "" }: { 
     <label className={`relative block ${className}`}>
       <span className="sr-only">{placeholder}</span>
       <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-label-3" aria-hidden />
-      <input type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="form-input !bg-fill !border-transparent !ps-9 focus:!bg-surface focus:!border-accent" />
+      <input dir="auto" type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="form-input !bg-fill !border-transparent !ps-9 focus:!bg-surface focus:!border-accent" />
     </label>
   );
 }

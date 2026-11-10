@@ -162,9 +162,9 @@ export default function PublicPortal() {
                         <span><span className="block text-[17px] font-bold tabular">{s.session_date.slice(8, 10)}</span><span className="block text-[10px] font-semibold uppercase mt-0.5">{formatDate(s.session_date, loc).split(" ")[1]}</span></span>
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-[15px] font-semibold truncate">{place ?? t(CATEGORY_LABEL[s.category])}{council ? ` · ${council}` : ""}</span>
+                        <span className="block text-[15px] font-semibold truncate"><bdi>{place ?? t(CATEGORY_LABEL[s.category])}</bdi>{council ? <> · <bdi>{council}</bdi></> : null}</span>
                         <span className="block text-[13px] text-label-2 truncate">{s.syllabus_topics ? <>{t("Topic")} {s.syllabus_topics.topic_number}: <BiText text={cleanTitle(s.syllabus_topics.title)} /></> : t(CATEGORY_LABEL[s.category])}</span>
-                        {s.location && <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] text-label-2"><MapPin className="h-3 w-3" />{s.location}</span>}
+                        {s.location && <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] text-label-2"><MapPin className="h-3 w-3" /><BiText text={s.location} /></span>}
                       </span>
                     </li>
                   );

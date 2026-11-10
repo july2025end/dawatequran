@@ -173,7 +173,7 @@ export default function Directory() {
                   <span className="block text-[13px] text-label-2 truncate">
                     {p.type === "haazir_arkan" ? "Arkan" : "Public"} · {p.quran_circles?.name ?? "No circle"}{p.quran_circles?.union_councils?.name ? ` · ${p.quran_circles.union_councils.name}` : ""}
                   </span>
-                  {p.remarks && p.remarks.trim().replace(/^[-–—.\s]+$/, "") && <span className="block text-[12px] text-label-3 truncate">{p.remarks}</span>}
+                  {p.remarks && p.remarks.trim().replace(/^[-–—.\s]+$/, "") && <span className="block text-[12px] text-label-3 truncate" dir="auto">{p.remarks}</span>}
                 </span>
                 <span className="hidden sm:block w-28">
                   <RateBar rate={p.attendance_pct} />
@@ -208,7 +208,7 @@ export default function Directory() {
         {f && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block sm:col-span-2"><span className="form-label">Full name</span>
-              <input className="form-input" value={f.full_name} onChange={(e) => setF({ full_name: e.target.value })} autoComplete="off" />
+              <input dir="auto" className="form-input" value={f.full_name} onChange={(e) => setF({ full_name: e.target.value })} autoComplete="off" />
             </label>
             <label className="block"><span className="form-label">Phone</span>
               <input className="form-input" type="tel" inputMode="tel" placeholder="03xx xxxxxxx" value={f.phone} onChange={(e) => setF({ phone: e.target.value })} />
@@ -226,7 +226,7 @@ export default function Directory() {
               </select>
             </label>
             <label className="block sm:col-span-2"><span className="form-label">Remarks</span>
-              <textarea rows={3} className="form-input resize-none" value={f.remarks} onChange={(e) => setF({ remarks: e.target.value })} />
+              <textarea dir="auto" rows={3} className="form-input resize-none" value={f.remarks} onChange={(e) => setF({ remarks: e.target.value })} />
             </label>
             {editing?.id && (
               <label className="sm:col-span-2 flex items-center justify-between gap-3 rounded-xl bg-fill px-3.5 py-3 cursor-pointer">

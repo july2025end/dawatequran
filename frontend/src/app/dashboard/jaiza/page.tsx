@@ -302,10 +302,10 @@ export default function Reports() {
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2 text-[13px]">
               {viewing.syllabus_topics && <span className="badge badge-blue">Topic {viewing.syllabus_topics.topic_number}: <BiText text={cleanTitle(viewing.syllabus_topics.title)} /></span>}
-              {viewing.location && <span className="badge badge-gray"><MapPin className="h-3 w-3" /> {viewing.location}</span>}
+              {viewing.location && <span className="badge badge-gray"><MapPin className="h-3 w-3" /> <BiText text={viewing.location} /></span>}
               {viewing.quran_circles?.murabbi_name && <span className="badge badge-gray">Murabbi: {viewing.quran_circles.murabbi_name}</span>}
             </div>
-            {viewing.notes && <p className="text-[15px] text-label-2 whitespace-pre-wrap">{viewing.notes}</p>}
+            {viewing.notes && <p className="text-[15px] text-label-2 whitespace-pre-wrap" dir="auto">{viewing.notes}</p>}
             <div>
               <p className="text-[13px] font-semibold text-label-2 mb-2">Attendance · tap a status to change it</p>
               {attendance === null ? (
@@ -375,10 +375,10 @@ export default function Reports() {
                 </label>
               )}
               <label className="block sm:col-span-2"><span className="form-label">Location</span>
-                <input className="form-input" value={editing.location} onChange={(e) => setEditing({ ...editing, location: e.target.value })} placeholder="Masjid, residence…" />
+                <input dir="auto" className="form-input" value={editing.location} onChange={(e) => setEditing({ ...editing, location: e.target.value })} placeholder="Masjid, residence…" />
               </label>
               <label className="block sm:col-span-2"><span className="form-label">Notes</span>
-                <textarea rows={3} className="form-input resize-none" value={editing.notes} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} />
+                <textarea dir="auto" rows={3} className="form-input resize-none" value={editing.notes} onChange={(e) => setEditing({ ...editing, notes: e.target.value })} />
               </label>
             </div>
 
@@ -389,7 +389,7 @@ export default function Reports() {
               </div>
               {adding && (
                 <div className="card-inset p-3 mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2 animate-fade">
-                  <input className="form-input" placeholder="Full name" value={member.full_name} onChange={(e) => setMember({ ...member, full_name: e.target.value })} />
+                  <input dir="auto" className="form-input" placeholder="Full name" value={member.full_name} onChange={(e) => setMember({ ...member, full_name: e.target.value })} />
                   <input className="form-input" type="tel" inputMode="tel" placeholder="Phone (optional)" value={member.phone} onChange={(e) => setMember({ ...member, phone: e.target.value })} />
                   {editing.category === "ijtima_arkan" ? (
                     <select className="form-input" value={member.circle_id} onChange={(e) => setMember({ ...member, circle_id: e.target.value })}>
