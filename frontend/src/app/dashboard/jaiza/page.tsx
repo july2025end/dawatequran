@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { fetchAll } from "@/lib/data";
 import { ClipboardList, Search, Edit2, Trash2, MapPin, Users, X, Save, Loader2, ChevronRight, ChevronDown, Plus, Sparkles } from "lucide-react";
 import React from "react";
 
 export default function JaizaReports() {
+  // The dashboard's "Data to tidy up" link opens this page with ?duplicates=1. The list only renders after loading, so SSR and client agree.
+  const [onlyDuplicates, setOnlyDuplicates] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("duplicates") === "1");
   const [reports, setReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,12 +39,17 @@ export default function JaizaReports() {
 
   async function fetchReports() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("sessions")
-      .select(`*, quran_circles (id, name, murabbi_name, union_councils (name)), union_councils (name), syllabus_topics (id, title, topic_number), attendance (status)`)
-      .order("session_date", { ascending: false });
-    if (error) console.error("Error fetching reports:", error);
-    else setReports(data || []);
+    try {
+      const data = await fetchAll<any>((f, t) => supabase
+        .from("sessions")
+        .select(`*, quran_circles (id, name, murabbi_name, union_councils (name)), union_councils (name), syllabus_topics (id, title, topic_number), attendance (status)`)
+        .order("session_date", { ascending: false })
+        .order("id")
+        .range(f, t));
+      setReports(data);
+    } catch (e) {
+      alert("Couldn't load reports: " + (e instanceof Error ? e.message : e));
+    }
     setLoading(false);
   }
 
@@ -203,9 +211,18 @@ export default function JaizaReports() {
     else fetchAttendanceDetails(viewingDetails!);
   }
 
+  // Same circle (or UC for Ijtima), same type, same day: almost always a report submitted twice.
+  const dupIds = (() => {
+    const groups: Record<string, string[]> = {};
+    for (const r of reports) (groups[`${r.category}|${r.circle_id ?? r.uc_id}|${r.session_date}`] ??= []).push(r.id);
+    return new Set(Object.values(groups).filter(g => g.length > 1).flat());
+  })();
+
   const filteredReports = reports.filter(r => {
+    if (onlyDuplicates && !dupIds.has(r.id)) return false;
     const matchesSearch = 
-      r.quran_circles?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.quran_circles?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.union_councils?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.quran_circles?.union_councils?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.syllabus_topics?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.location?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -232,7 +249,7 @@ export default function JaizaReports() {
       </header>
 
       {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 max-w-2xl">
+      <div className="flex flex-col sm:flex-row gap-3 max-w-3xl">
         <div className="relative flex-1">
           <input
             type="text"
@@ -257,6 +274,12 @@ export default function JaizaReports() {
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         </div>
+        {dupIds.size > 0 && (
+          <label className="btn btn-secondary cursor-pointer select-none whitespace-nowrap">
+            <input type="checkbox" className="w-4 h-4 accent-amber-600" checked={onlyDuplicates} onChange={(e) => setOnlyDuplicates(e.target.checked)} />
+            Duplicates only ({dupIds.size})
+          </label>
+        )}
       </div>
 
       {loading ? (
@@ -277,6 +300,7 @@ export default function JaizaReports() {
                         {new Date(report.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })} {report.category === 'ijtima_arkan' && report.attendance_month ? `(${report.attendance_month})` : ''}
                       </span>
                       <span className="badge badge-emerald">{report.category.replace('_', ' ')}</span>
+                      {dupIds.has(report.id) && <span className="badge badge-amber">Possible duplicate</span>}
                     </div>
                     <p className="font-bold text-slate-800 text-sm">{report.category === 'ijtima_arkan' ? (report.union_councils?.name || 'Unknown UC') : report.quran_circles?.name}</p>
                     <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
@@ -351,6 +375,7 @@ export default function JaizaReports() {
                         {new Date(report.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                       <span className="badge badge-emerald mt-1.5">{report.category.replace('_', ' ')}</span>
+                      {dupIds.has(report.id) && <span className="badge badge-amber mt-1.5 ml-1.5">Possible duplicate</span>}
                       {report.category === 'ijtima_arkan' && report.attendance_month && (
                         <span className="badge badge-amber mt-1.5 ml-1.5">{report.attendance_month}</span>
                       )}

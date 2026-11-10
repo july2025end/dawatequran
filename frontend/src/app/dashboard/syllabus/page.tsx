@@ -43,13 +43,15 @@ export default function SyllabusEditor() {
       end_date: formData.end_date || null
     };
 
-    if (editingId) {
-      await supabase.from("syllabus_topics").update(payload).eq("id", editingId);
-      setEditingId(null);
-    } else {
-      await supabase.from("syllabus_topics").insert([payload]);
-      setIsAdding(false);
+    const { error } = editingId
+      ? await supabase.from("syllabus_topics").update(payload).eq("id", editingId)
+      : await supabase.from("syllabus_topics").insert([payload]);
+    if (error) {
+      // topic_number is unique, so the usual cause is reusing a number.
+      alert(error.code === "23505" ? `Topic number ${payload.topic_number} already exists. Choose another number.` : "Couldn't save: " + error.message);
+      return;
     }
+    if (editingId) setEditingId(null); else setIsAdding(false);
     fetchSyllabus();
   }
 

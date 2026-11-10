@@ -2,20 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
 import {
   CheckCircle2, Search, Save, Loader2, Plus, X,
   Calendar, MapPin, ChevronDown, Users, Sparkles, History, ChevronRight,
-  FileText, UserCheck, CalendarDays, Edit2, Trash2, LogOut, ExternalLink,
+  FileText, UserCheck, CalendarDays, Edit2, Trash2, ExternalLink,
   CheckCircle, XCircle
 } from "lucide-react";
 import { getTafheemLink } from "@/lib/quran_utils";
+import { localDate } from "@/lib/data";
 
 export default function AttendancePage() {
-  const router = useRouter();
   const [selectedUC, setSelectedUC] = useState("");
   const [selectedCircle, setSelectedCircle] = useState("");
-  const [sessionDate, setSessionDate] = useState(new Date().toISOString().split('T')[0]);
+  const [sessionDate, setSessionDate] = useState(localDate());
   const [category, setCategory] = useState("quran_circle");
   const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const currentMonth = months[new Date().getMonth()];
@@ -31,7 +30,7 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isAddingAttendee, setIsAddingAttendee] = useState(false);
-  const [newAttendee, setNewAttendee] = useState({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
+  const [newAttendee, setNewAttendee] = useState({ full_name: "", phone: "", remarks: "", type: "aam_afraad", circle_id: "" });
 
   // History & Old Attendances state
   const [pastSessions, setPastSessions] = useState<any[]>([]);
@@ -78,6 +77,7 @@ export default function AttendancePage() {
             .select('*')
             .in('circle_id', currentUcCircles)
             .eq('type', 'haazir_arkan')
+            .eq('is_active', true)
             .order('full_name');
           setParticipants((pData || []).map(p => ({ ...p, status: 'absent' })));
         } else {
@@ -109,6 +109,7 @@ export default function AttendancePage() {
           .from('participants')
           .select('*')
           .eq('circle_id', selectedCircle)
+          .eq('is_active', true)
           .order('full_name');
         setParticipants((pData || []).map(p => ({ ...p, status: 'absent' })));
 
@@ -200,6 +201,8 @@ export default function AttendancePage() {
   async function handleSubmit() {
     if (category === 'ijtima_arkan' ? !selectedUC : !selectedCircle) { alert("Please select required fields."); return; }
     if (!sessionDate) { alert("Please select a date."); return; }
+    const sameDay = pastSessions.find(s => s.session_date?.slice(0, 10) === sessionDate && s.category === category);
+    if (sameDay && !confirm(`A ${category.replace(/_/g, ' ')} report for ${sessionDate} already exists. Save another one anyway?\n\nTo change the existing report, press Cancel and edit it under History.`)) return;
     setSubmitting(true);
     try {
       const { data: session, error: sessionError } = await supabase
@@ -217,9 +220,13 @@ export default function AttendancePage() {
       const attendanceRecords = participants.map(p => ({ session_id: session.id, participant_id: p.id, status: p.status }));
       if (attendanceRecords.length > 0) {
         const { error: attError } = await supabase.from('attendance').insert(attendanceRecords);
-        if (attError) throw attError;
+        if (attError) {
+          // Remove the half-saved session so it can't show up as a class with no attendance.
+          await supabase.from('sessions').delete().eq('id', session.id);
+          throw attError;
+        }
       }
-      alert("Session submitted successfully.");
+      alert(`Saved: ${attendanceRecords.filter(r => r.status === 'present').length} present out of ${attendanceRecords.length}.`);
       setTopic(""); setLocation(""); setNotes("");
       setParticipants(participants.map(p => ({ ...p, status: 'absent' })));
       await refreshPastSessions();
@@ -229,15 +236,18 @@ export default function AttendancePage() {
   }
 
   async function handleAddAttendee() {
-    if (!newAttendee.full_name) { alert("Please enter a name."); return; }
+    if (!newAttendee.full_name.trim()) { alert("Please enter a name."); return; }
+    const isIjtima = category === 'ijtima_arkan';
+    const circleId = isIjtima ? newAttendee.circle_id : selectedCircle;
+    if (!circleId) { alert("Please choose the member's circle."); return; }
     try {
       const { data, error } = await supabase.from('participants')
-        .insert({ full_name: newAttendee.full_name, phone: newAttendee.phone, remarks: newAttendee.remarks, type: newAttendee.type, circle_id: selectedCircle, is_active: true })
+        .insert({ full_name: newAttendee.full_name.trim(), phone: newAttendee.phone, remarks: newAttendee.remarks, type: isIjtima ? 'haazir_arkan' : newAttendee.type, circle_id: circleId, is_active: true })
         .select().single();
       if (error) throw error;
       setParticipants([...participants, { ...data, status: 'present' }]);
       setIsAddingAttendee(false);
-      setNewAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad" });
+      setNewAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad", circle_id: "" });
     } catch (e: any) { alert("Error adding attendee: " + e.message); }
   }
 
@@ -402,10 +412,6 @@ export default function AttendancePage() {
               </p>
             )}
           </div>
-          <button onClick={() => router.push('/')} className="p-2.5 rounded-2xl border border-white/15 active:scale-90 transition-all hover:bg-white/15 flex-shrink-0"
-            style={{ background: 'rgba(255,255,255,0.10)', backdropFilter: 'blur(20px)' }}>
-            <LogOut className="w-5 h-5 text-white" />
-          </button>
         </div>
       </div>
 
@@ -574,11 +580,22 @@ export default function AttendancePage() {
                     <div className="flex items-center justify-between px-1">
                       <div>
                         <h2 className="text-base font-bold text-slate-900">Attendance Checklist</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">Tap to mark present</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{category === 'ijtima_arkan' ? 'Choose Present, Leave or Absent for each member' : 'Tap a name to mark present'}</p>
                       </div>
-                      <div className="pill-container px-3.5 py-2 flex items-center gap-2">
-                        <Users className="w-3.5 h-3.5 text-emerald-600" />
-                        <span className="text-xs font-bold text-emerald-700">{presentCount} / {filteredParticipants.length}</span>
+                      <div className="flex items-center gap-2">
+                        {filteredParticipants.length > 0 && (
+                          <button type="button" onClick={() => {
+                            const shown = new Set(filteredParticipants.map(p => p.id));
+                            const allPresent = filteredParticipants.every(p => p.status === 'present');
+                            setParticipants(participants.map(p => shown.has(p.id) ? { ...p, status: allPresent ? 'absent' : 'present' } : p));
+                          }} className="btn btn-secondary !min-h-[36px] !px-3 !py-1.5 text-xs whitespace-nowrap">
+                            {filteredParticipants.every(p => p.status === 'present') ? 'Clear all' : 'All present'}
+                          </button>
+                        )}
+                        <div className="pill-container px-3.5 py-2 flex items-center gap-2 whitespace-nowrap" aria-live="polite">
+                          <Users className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-xs font-bold text-emerald-700">{presentCount} / {filteredParticipants.length}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -605,7 +622,18 @@ export default function AttendancePage() {
                           </button>
                         </div>
                         <input type="text" placeholder="Full Name *" className="form-input" value={newAttendee.full_name} onChange={(e) => setNewAttendee({ ...newAttendee, full_name: e.target.value })} />
-                        <input type="text" placeholder="Phone (optional)" className="form-input" value={newAttendee.phone} onChange={(e) => setNewAttendee({ ...newAttendee, phone: e.target.value })} />
+                        <input type="tel" inputMode="tel" placeholder="Phone (optional)" className="form-input" value={newAttendee.phone} onChange={(e) => setNewAttendee({ ...newAttendee, phone: e.target.value })} />
+                        {category === 'ijtima_arkan' ? (
+                          <select className="form-input" value={newAttendee.circle_id} onChange={(e) => setNewAttendee({ ...newAttendee, circle_id: e.target.value })}>
+                            <option value="">Member’s circle *</option>
+                            {currentCircles.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                        ) : (
+                          <select className="form-input" value={newAttendee.type} onChange={(e) => setNewAttendee({ ...newAttendee, type: e.target.value })}>
+                            <option value="aam_afraad">Public (Aam Afraad)</option>
+                            <option value="haazir_arkan">Arkan (Haazir Arkan)</option>
+                          </select>
+                        )}
 
                         <div className="flex gap-2 pt-1">
                           <button onClick={() => setIsAddingAttendee(false)} className="btn btn-secondary flex-1 text-xs py-2">Cancel</button>
@@ -627,9 +655,9 @@ export default function AttendancePage() {
                               <p className="text-xs mt-0.5 capitalize font-medium text-slate-500">{p.type?.replace('_', ' ')}</p>
                             </div>
                             <div className="flex items-center gap-1.5 w-full">
-                              <button onClick={() => toggleAttendance(p.id, 'present')} className={`flex-1 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${isPresent ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Present</button>
-                              <button onClick={() => toggleAttendance(p.id, 'leave')} className={`flex-1 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${isLeave ? 'bg-amber-500 text-white shadow-md shadow-amber-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Leave</button>
-                              <button onClick={() => toggleAttendance(p.id, 'absent')} className={`flex-1 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${isAbsent ? 'bg-red-500 text-white shadow-md shadow-red-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Absent</button>
+                              <button onClick={() => toggleAttendance(p.id, 'present')} className={`flex-1 min-h-[40px] py-2 rounded-xl text-xs font-bold transition-all ${isPresent ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Present</button>
+                              <button onClick={() => toggleAttendance(p.id, 'leave')} className={`flex-1 min-h-[40px] py-2 rounded-xl text-xs font-bold transition-all ${isLeave ? 'bg-amber-500 text-white shadow-md shadow-amber-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Leave</button>
+                              <button onClick={() => toggleAttendance(p.id, 'absent')} className={`flex-1 min-h-[40px] py-2 rounded-xl text-xs font-bold transition-all ${isAbsent ? 'bg-red-500 text-white shadow-md shadow-red-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Absent</button>
                             </div>
                           </div>
                         ) : (

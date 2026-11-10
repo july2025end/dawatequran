@@ -3,7 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const ExcelJS = require('exceljs');
 
-const connectionString = 'postgresql://postgres:dawatequran@db.qksaxqetzgqflhqhctrd.supabase.co:5432/postgres';
+// Run with: node --env-file=database/.env database/export_excel.js  (copy database/.env.example to database/.env)
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('DATABASE_URL is not set. See database/.env.example.');
 
 async function generateExcel() {
   console.log(' Connecting to Database...');

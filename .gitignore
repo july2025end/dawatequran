@@ -1,0 +1,8 @@
+# Secrets: database password, Supabase keys
+.env
+.env.*
+!.env.example
+
+# OS files and dependencies
+.DS_Store
+node_modules/

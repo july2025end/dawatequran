@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
+import { attendanceRate, fetchAll, inPeriod, localDate } from "@/lib/data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Map, Users, Activity, Loader2, ChevronRight, TrendingUp, ChevronDown } from 'lucide-react';
+import { Map, Users, Loader2, ChevronRight, TrendingUp, ChevronDown } from 'lucide-react';
 
 export default function UCStatus() {
   const [loading, setLoading] = useState(true);
@@ -19,16 +20,15 @@ export default function UCStatus() {
   const [totalTopics, setTotalTopics] = useState(0);
   const [expandedUC, setExpandedUC] = useState<string | null>(null);
 
-  useEffect(() => { fetchUCStats(); }, []);
-
   async function fetchUCStats() {
     setLoading(true);
     try {
       const { data: ucs } = await supabase.from('union_councils').select('id, name').order('name');
       const { data: circles } = await supabase.from('quran_circles').select('id, name, uc_id');
-      const { data: participants } = await supabase.from('participants').select('id, circle_id, type');
-      const { data: attendance } = await supabase.from('attendance').select(`status, session_id, participants (circle_id, type), sessions!inner (category, session_date)`);
-      const { data: sessions } = await supabase.from('sessions').select('id, circle_id, topic_id, session_date, category');
+      // Read every row: a single request stops at 1,000 and there are thousands of attendance records.
+      const participants = await fetchAll<any>((f, t) => supabase.from('participants').select('id, circle_id, type, is_active').eq('is_active', true).order('id').range(f, t));
+      const attendance = await fetchAll<any>((f, t) => supabase.from('attendance').select(`status, session_id, participant_id, participants (circle_id, type), sessions!inner (category, session_date)`).order('session_id').order('participant_id').range(f, t));
+      const sessions = await fetchAll<any>((f, t) => supabase.from('sessions').select('id, circle_id, uc_id, topic_id, session_date, category').order('id').range(f, t));
       const { count: topicCount } = await supabase.from('syllabus_topics').select('*', { count: 'exact', head: true });
 
       setRawUcs(ucs || []);
@@ -44,19 +44,10 @@ export default function UCStatus() {
     }
   }
 
-  const timeRangeFilter = (dateStr: string) => {
-    if (timeRange === "complete") return true;
-    const date = new Date(dateStr);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const diffTime = now.getTime() - date.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (timeRange === "week") return diffDays <= 7 && diffDays >= 0;
-    if (timeRange === "month") return diffDays <= 30 && diffDays >= 0;
-    if (timeRange === "3_months") return diffDays <= 90 && diffDays >= 0;
-    return true;
-  };
+  useEffect(() => { fetchUCStats(); }, []);
+
+  // Scheduled (future) sessions are not classes held, so every period stops at today.
+  const timeRangeFilter = (dateStr: string) => !!dateStr && dateStr.slice(0, 10) <= localDate() && inPeriod(dateStr, timeRange);
 
   const memberTypeFilter = (type: string) => {
     if (memberType === "all") return true;
@@ -99,18 +90,18 @@ export default function UCStatus() {
       const publicCount = ucParticipants.filter(p => p.type === 'aam_afraad').length;
       
       const ucAttendance = filteredAttendance.filter((a: any) => a.participants && ucCircleIds.includes(a.participants.circle_id)) || [];
-      const presentCount = ucAttendance.filter((a: any) => a.status === 'present').length;
-      const avgAtt = ucAttendance.length > 0 ? Math.round((presentCount / ucAttendance.length) * 100) : 0;
-      
-      const ucSessions = filteredSessions.filter(s => ucCircleIds.includes(s.circle_id)) || [];
+      // Leave is excused, so it doesn't count against attendance.
+      const avgAtt = attendanceRate(ucAttendance.map((a: any) => a.status)) ?? 0;
+
+      // Ijtima Arkan sessions belong to the UC itself, not to a circle.
+      const ucSessions = filteredSessions.filter(s => s.uc_id === uc.id || ucCircleIds.includes(s.circle_id));
       const uniqueTopics = new Set(ucSessions.filter(s => s.topic_id).map(s => s.topic_id)).size;
       const progress = totalTopics ? Math.round((uniqueTopics / totalTopics) * 100) : 0;
 
       const circleDetails = ucCircles.map(c => {
         const cParticipants = ucParticipants.filter(p => p.circle_id === c.id);
         const cAttendanceList = ucAttendance.filter((a: any) => a.participants?.circle_id === c.id);
-        const cPresent = cAttendanceList.filter((a: any) => a.status === 'present').length;
-        const cAvgAtt = cAttendanceList.length > 0 ? Math.round((cPresent / cAttendanceList.length) * 100) : 0;
+        const cAvgAtt = attendanceRate(cAttendanceList.map((a: any) => a.status)) ?? 0;
         const cSessions = filteredSessions.filter((s: any) => s.circle_id === c.id) || [];
         const cUniqueTopics = new Set(cSessions.filter((s: any) => s.topic_id).map((s: any) => s.topic_id)).size;
         const cProgress = totalTopics ? Math.round((cUniqueTopics / totalTopics) * 100) : 0;

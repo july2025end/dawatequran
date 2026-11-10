@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { fetchAll } from "@/lib/data";
 import { Users, Plus, Edit2, Trash2, Save, X, Search, Filter, ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 
 export default function RosterManagement() {
@@ -32,9 +33,9 @@ export default function RosterManagement() {
     const { data: cData } = await supabase
       .from("quran_circles")
       .select(`id, name, union_councils (name)`);
-    const { data: attData } = await supabase
-      .from("attendance")
-      .select("status, participant_id");
+    // All attendance rows, not just the first 1,000, so every member's percentage is right.
+    const attData = await fetchAll<{ status: string; participant_id: string }>((f, t) =>
+      supabase.from("attendance").select("status, participant_id, session_id").order("session_id").order("participant_id").range(f, t));
 
     if (pError) {
       console.error("Error fetching participants:", pError);
@@ -45,6 +46,8 @@ export default function RosterManagement() {
           if (!attMap[a.participant_id]) {
             attMap[a.participant_id] = { present: 0, total: 0 };
           }
+          // Leave is excused: it neither helps nor hurts the percentage.
+          if (a.status === 'leave') return;
           attMap[a.participant_id].total += 1;
           if (a.status === 'present') {
             attMap[a.participant_id].present += 1;
@@ -81,10 +84,19 @@ export default function RosterManagement() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this participant?")) return;
+    const p = participants.find((x) => x.id === id);
+    const name = p?.full_name ?? "this member";
+    if (p?.is_active !== false && confirm(`Mark ${name} as inactive?\n\nThey disappear from attendance sheets, but their attendance history is kept. (Recommended)`)) {
+      const { error } = await supabase.from("participants").update({ is_active: false }).eq("id", id);
+      if (error) alert(error.message); else fetchData();
+      return;
+    }
+    const records = p?.attendance_total ?? 0;
+    if (!confirm(`Permanently delete ${name}${records ? ` and ${records} attendance records` : ""}?\n\nThis cannot be undone.`)) return;
     const { error } = await supabase.from("participants").delete().eq("id", id);
     if (error) alert(error.message); else fetchData();
   }
+
 
   function startEdit(p: any) {
     setEditingId(p.id);
@@ -105,12 +117,12 @@ export default function RosterManagement() {
 
   const sortedParticipants = [...participants].sort((a, b) => {
     if (!sortConfig.key) return 0;
-    let aValue = sortConfig.key === 'uc' 
+    const aValue = sortConfig.key === 'uc' 
       ? a.quran_circles?.union_councils?.name || '' 
       : sortConfig.key === 'attendance'
       ? a.attendance_pct || 0
       : a[sortConfig.key];
-    let bValue = sortConfig.key === 'uc' 
+    const bValue = sortConfig.key === 'uc' 
       ? b.quran_circles?.union_councils?.name || '' 
       : sortConfig.key === 'attendance'
       ? b.attendance_pct || 0
@@ -127,7 +139,7 @@ export default function RosterManagement() {
     return matchesSearch && matchesUC;
   });
 
-  const SortIcon = ({ columnKey }: { columnKey: string }) => {
+  const sortIcon = (columnKey: string) => {
     if (sortConfig.key !== columnKey) return <ChevronUp className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />;
     return sortConfig.direction === 'asc' ? <ChevronUp className="w-3 h-3 text-emerald-600" /> : <ChevronDown className="w-3 h-3 text-emerald-600" />;
   };
@@ -237,16 +249,16 @@ export default function RosterManagement() {
                   <tr style={{ background: 'rgba(248,250,252,0.70)' }}>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider w-8">#</th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('uc')}>
-                      <div className="flex items-center gap-1.5">Circle / UC <SortIcon columnKey="uc" /></div>
+                      <div className="flex items-center gap-1.5">Circle / UC {sortIcon("uc")}</div>
                     </th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('full_name')}>
-                      <div className="flex items-center gap-1.5">Name <SortIcon columnKey="full_name" /></div>
+                      <div className="flex items-center gap-1.5">Name {sortIcon("full_name")}</div>
                     </th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider" onClick={() => handleSort('phone')}>
-                      <div className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors group">Phone <SortIcon columnKey="phone" /></div>
+                      <div className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-600 transition-colors group">Phone {sortIcon("phone")}</div>
                     </th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider cursor-pointer hover:text-emerald-600 transition-colors group" onClick={() => handleSort('attendance')}>
-                      <div className="flex items-center gap-1.5">Attendance <SortIcon columnKey="attendance" /></div>
+                      <div className="flex items-center gap-1.5">Attendance {sortIcon("attendance")}</div>
                     </th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">Remarks</th>
                     <th className="px-6 py-3.5 text-xs font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>

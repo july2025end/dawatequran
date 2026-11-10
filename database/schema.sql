@@ -1,3 +1,10 @@
+-- NOTE (v1): this file shows the original design. The live database has since changed:
+--   quran_circles.murabbi_name (text); syllabus_topics.start_date, end_date (date);
+--   sessions.uc_id (uuid -> union_councils), sessions.attendance_month (text, Ijtima Arkan);
+--   attendance.status is now text: 'present' | 'absent' | 'leave' (see v1_migration.sql);
+--   anonymous (no sign-in) read and write policies were added so the portals work without login.
+-- The app reaches each portal by address, with no sign-in.
+
 -- Supabase PostgreSQL Schema for Dawat-e-Quran Project
 
 -- Enable UUID extension

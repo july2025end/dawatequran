@@ -1,5 +1,7 @@
 const { Client } = require('pg');
-const connectionString = 'postgresql://postgres:dawatequran@db.qksaxqetzgqflhqhctrd.supabase.co:5432/postgres';
+// Run with: node --env-file=database/.env database/update_rls_all.js  (copy database/.env.example to database/.env)
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) throw new Error('DATABASE_URL is not set. See database/.env.example.');
 
 async function updateRLSAll() {
   const client = new Client({ connectionString });

@@ -32,8 +32,11 @@ export default function ScheduleEditor() {
 
   async function handleSave() {
     const data = { session_date: formData.session_date, category: formData.category, location: formData.location, notes: formData.notes, circle_id: formData.circle_id, topic_id: formData.topic_id || null };
-    if (editingId) await supabase.from("sessions").update(data).eq("id", editingId);
-    else await supabase.from("sessions").insert([data]);
+    if (!data.circle_id || !data.session_date) { alert("Please choose a circle and a date."); return; }
+    const { error } = editingId
+      ? await supabase.from("sessions").update(data).eq("id", editingId)
+      : await supabase.from("sessions").insert([data]);
+    if (error) { alert("Couldn't save: " + error.message); return; }
     setEditingId(null); setIsAdding(false); fetchData();
   }
 

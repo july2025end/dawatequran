@@ -1,452 +1,426 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/lib/supabase";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Users, BookOpen, Activity, LayoutGrid, Loader2, TrendingUp, ArrowRight, ChevronDown } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { AlertTriangle, BookOpen, CalendarCheck, ChevronRight, CircleDot, Loader2, RefreshCw, Users } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { CATEGORY_LABEL, Period, attendanceRate, daysAgo, fetchAll, formatDate, inPeriod, localDate } from "@/lib/data";
 
-export default function AdminDashboard() {
+type UC = { id: string; name: string };
+type Circle = { id: string; name: string; uc_id: string; murabbi_name: string | null };
+type Session = { id: string; session_date: string; category: string; circle_id: string | null; uc_id: string | null; topic_id: string | null };
+type Att = { session_id: string; participant_id: string; status: string };
+type Participant = { id: string; type: string; circle_id: string; is_active: boolean };
+type Topic = { id: string; topic_number: number; title: string };
+
+const QUIET_AFTER_DAYS = 14;
+const WEEKS = 12;
+const EMERALD = "#047857";
+
+const PERIODS: { value: Period; label: string }[] = [
+  { value: "week", label: "Last 7 days" },
+  { value: "month", label: "Last 30 days" },
+  { value: "3_months", label: "Last 3 months" },
+  { value: "complete", label: "All time" },
+];
+
+export default function DashboardOverview() {
+  const [data, setData] = useState<{ ucs: UC[]; circles: Circle[]; sessions: Session[]; attendance: Att[]; participants: Participant[]; topics: Topic[] } | null>(null);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<"complete" | "week" | "month" | "3_months">("complete");
-  const [memberType, setMemberType] = useState<"all" | "haazir_arkan" | "aam_afraad">("all");
-  const [sessionCategory, setSessionCategory] = useState<"all" | "quran_circle" | "ijtima_arkan" | "dars_e_quran" | "other">("all");
+  const [period, setPeriod] = useState<Period>("month");
+  const [category, setCategory] = useState("all");
+  const [memberType, setMemberType] = useState("all");
 
-  const [rawCircles, setRawCircles] = useState<any[]>([]);
-  const [rawSessions, setRawSessions] = useState<any[]>([]);
-  const [rawAttendance, setRawAttendance] = useState<any[]>([]);
-  const [rawSyllabus, setRawSyllabus] = useState<any[]>([]);
-  const [rawReports, setRawReports] = useState<any[]>([]);
-
-  const DONUT_COLORS = ['#059669', '#e2e8f0'];
-
-  useEffect(() => {
-    async function fetchDashboardData() {
-      setLoading(true);
-      try {
-        const { data: circlesData } = await supabase.from('quran_circles').select('id, name');
-        setRawCircles(circlesData || []);
-
-        const { data: sessionsData } = await supabase.from('sessions').select('id, session_date, topic_id, category');
-        setRawSessions(sessionsData || []);
-
-        const { data: syllabusData } = await supabase.from('syllabus_topics').select('id, topic_number, title');
-        setRawSyllabus(syllabusData || []);
-
-        const { data: attendanceData } = await supabase
-          .from('attendance')
-          .select(`
-            status,
-            session_id,
-            participant_id,
-            participants (type, quran_circles (union_councils (name))),
-            sessions (session_date, category)
-          `);
-        setRawAttendance(attendanceData || []);
-
-        const { data: reportsData } = await supabase
-          .from('sessions')
-          .select(`
-            id,
-            session_date,
-            category,
-            quran_circles (name, murabbi_name, union_councils (name)),
-            syllabus_topics (title, topic_number),
-            attendance (status, participants (type))
-          `)
-          .order('session_date', { ascending: false });
-        setRawReports(reportsData || []);
-
-      } catch (e) { console.error("Dashboard data fetch error:", e); }
-      finally { setLoading(false); }
+  // No synchronous state updates before the first await, so this is safe to call from an effect.
+  const fetchData = useCallback(async () => {
+    try {
+      const [ucs, circles, topics, sessions, attendance, participants] = await Promise.all([
+        supabase.from("union_councils").select("id, name").order("name"),
+        supabase.from("quran_circles").select("id, name, uc_id, murabbi_name").order("name"),
+        supabase.from("syllabus_topics").select("id, topic_number, title").order("topic_number"),
+        fetchAll<Session>((f, t) => supabase.from("sessions").select("id, session_date, category, circle_id, uc_id, topic_id").order("id").range(f, t)),
+        fetchAll<Att>((f, t) => supabase.from("attendance").select("session_id, participant_id, status").order("session_id").order("participant_id").range(f, t)),
+        fetchAll<Participant>((f, t) => supabase.from("participants").select("id, type, circle_id, is_active").order("id").range(f, t)),
+      ]);
+      const firstError = [ucs, circles, topics].find((r) => r.error)?.error;
+      if (firstError) throw new Error(firstError.message);
+      setData({ ucs: ucs.data ?? [], circles: circles.data ?? [], topics: topics.data ?? [], sessions, attendance, participants });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not load the dashboard.");
+    } finally {
+      setLoading(false);
     }
-    fetchDashboardData();
   }, []);
 
-  const timeRangeFilter = (dateStr: string) => {
-    if (timeRange === "complete") return true;
-    const date = new Date(dateStr);
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const diffTime = now.getTime() - date.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (timeRange === "week") return diffDays <= 7 && diffDays >= 0;
-    if (timeRange === "month") return diffDays <= 30 && diffDays >= 0;
-    if (timeRange === "3_months") return diffDays <= 90 && diffDays >= 0;
-    return true;
-  };
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  const memberTypeFilter = (type: string) => {
-    if (memberType === "all") return true;
-    return type === memberType;
-  };
+  const retry = () => { setLoading(true); setError(""); fetchData(); };
 
-  const computedData = useMemo(() => {
-    const filteredSessions = rawSessions.filter(s => {
-      const matchTime = timeRangeFilter(s.session_date);
-      const matchCategory = sessionCategory === "all" || s.category === sessionCategory;
-      return matchTime && matchCategory;
+  const view = useMemo(() => {
+    if (!data) return null;
+    const today = localDate();
+    const circleById = new Map(data.circles.map((c) => [c.id, c]));
+    const ucOf = (s: Session) => s.uc_id ?? (s.circle_id ? circleById.get(s.circle_id)?.uc_id ?? null : null);
+    const typeOf = new Map(data.participants.map((p) => [p.id, p.type]));
+    const matchCategory = (s: Session) => category === "all" || s.category === category;
+    // Future-dated rows are scheduled classes, not classes held.
+    const held = data.sessions.filter((s) => s.session_date <= today);
+
+    const attBySession = new Map<string, Att[]>();
+    for (const a of data.attendance) {
+      if (memberType !== "all" && typeOf.get(a.participant_id) !== memberType) continue;
+      const list = attBySession.get(a.session_id);
+      if (list) list.push(a); else attBySession.set(a.session_id, [a]);
+    }
+    const statusesFor = (sessions: Session[]) => sessions.flatMap((s) => (attBySession.get(s.id) ?? []).map((a) => a.status));
+
+    const periodSessions = held.filter((s) => matchCategory(s) && inPeriod(s.session_date, period));
+    const statuses = statusesFor(periodSessions);
+    const activeCircleIds = new Set(periodSessions.map((s) => s.circle_id).filter(Boolean));
+    const topicsTaught = new Set(periodSessions.map((s) => s.topic_id).filter(Boolean)).size;
+    const members = data.participants.filter((p) => p.is_active);
+
+    // Weekly trend for the last 12 weeks (Monday-start), independent of the period filter.
+    const monday = new Date();
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const weeks = Array.from({ length: WEEKS }, (_, i) => {
+      const start = new Date(monday);
+      start.setDate(start.getDate() - (WEEKS - 1 - i) * 7);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      const from = localDate(start);
+      const to = localDate(end);
+      const inWeek = held.filter((s) => matchCategory(s) && s.session_date >= from && s.session_date <= to);
+      const st = statusesFor(inWeek);
+      return {
+        label: start.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+        sessions: inWeek.length,
+        rate: attendanceRate(st),
+        present: st.filter((x) => x === "present").length,
+        marked: st.filter((x) => x !== "leave").length,
+      };
     });
 
-    const filteredAttendance = rawAttendance.filter(a => {
-      const sessionDate = a.sessions?.session_date || a.session_date;
-      const sessCategory = a.sessions?.category || a.category;
-      const partType = a.participants?.type;
-      
-      const matchTime = timeRangeFilter(sessionDate);
-      const matchType = memberTypeFilter(partType);
-      const matchCategory = sessionCategory === "all" || sessCategory === sessionCategory;
-      
-      return matchTime && matchType && matchCategory;
-    });
+    // Per-UC summary for the selected period.
+    const ucRows = data.ucs.map((uc) => {
+      const circles = data.circles.filter((c) => c.uc_id === uc.id);
+      const sessions = periodSessions.filter((s) => ucOf(s) === uc.id);
+      const lastHeld = held.filter((s) => ucOf(s) === uc.id).reduce<string | null>((m, s) => (!m || s.session_date > m ? s.session_date : m), null);
+      return {
+        ...uc,
+        circles: circles.length,
+        activeCircles: circles.filter((c) => activeCircleIds.has(c.id)).length,
+        sessions: sessions.length,
+        rate: attendanceRate(statusesFor(sessions)),
+        lastHeld,
+      };
+    }).sort((a, b) => (b.rate ?? -1) - (a.rate ?? -1) || a.name.localeCompare(b.name));
 
-    const circleCount = rawCircles.length;
-    const sessionCount = filteredSessions.length;
-    
-    const totalAttendanceRecords = filteredAttendance.length;
-    const presentCount = filteredAttendance.filter(r => r.status === 'present').length;
-    const avgAtt = totalAttendanceRecords > 0 ? Math.round((presentCount / totalAttendanceRecords) * 100) : 0;
-
-    const totalSyllabus = rawSyllabus.length;
-    const completedTopicIds = new Set(
-      filteredSessions
-        .filter(s => s.topic_id !== null && s.topic_id !== undefined)
-        .map(s => s.topic_id)
-    );
-    const uniqueCompleted = completedTopicIds.size;
-
-    const statsList = [
-      { label: "Total Circles",   value: circleCount || 0,   icon: Users,       color: 'blue',    gradient: 'from-blue-500 to-indigo-600',   bg: 'from-blue-50/80 to-indigo-50/60',   border: 'border-blue-200/50'   },
-      { label: "Classes Held",    value: sessionCount || 0,  icon: BookOpen,    color: 'emerald', gradient: 'from-emerald-500 to-teal-600',  bg: 'from-emerald-50/80 to-teal-50/60', border: 'border-emerald-200/50' },
-      { label: "Avg Attendance",  value: `${avgAtt}%`,       icon: Activity,    color: 'amber',   gradient: 'from-amber-500 to-orange-500',  bg: 'from-amber-50/80 to-orange-50/60', border: 'border-amber-200/50'   },
-      { label: "Syllabus Topics", value: totalSyllabus || 0, icon: LayoutGrid,  color: 'purple',  gradient: 'from-purple-500 to-fuchsia-600',bg: 'from-purple-50/80 to-fuchsia-50/60',border:'border-purple-200/50' },
-    ];
-
-    const ucMap: Record<string, { name: string, members: number, public: number }> = {};
-    filteredAttendance.forEach((record: any) => {
-      if (record.status !== 'present') return;
-      const ucName = record.participants?.quran_circles?.union_councils?.name || 'Unknown';
-      const type = record.participants?.type;
-      if (!ucMap[ucName]) ucMap[ucName] = { name: ucName, members: 0, public: 0 };
-      if (type === 'haazir_arkan') ucMap[ucName].members++;
-      else ucMap[ucName].public++;
-    });
-    const attendanceChartData = Object.values(ucMap).slice(0, 5);
-
-    const topicProgressData = [
-      { name: 'Completed', value: uniqueCompleted },
-      { name: 'Remaining', value: Math.max(0, totalSyllabus - uniqueCompleted) },
-    ];
-
-    const reportsList = rawReports
-      .filter(r => {
-        const matchTime = timeRangeFilter(r.session_date);
-        const matchCategory = sessionCategory === "all" || r.category === sessionCategory;
-        return matchTime && matchCategory;
+    // Circles that have gone quiet: no Quran Circle class in the last two weeks (or ever).
+    const lastByCircle = new Map<string, string>();
+    for (const s of held) {
+      if (s.category !== "quran_circle" || !s.circle_id) continue;
+      const prev = lastByCircle.get(s.circle_id);
+      if (!prev || s.session_date > prev) lastByCircle.set(s.circle_id, s.session_date);
+    }
+    const ucName = new Map(data.ucs.map((u) => [u.id, u.name]));
+    const quiet = data.circles
+      .map((c) => {
+        const last = lastByCircle.get(c.id) ?? null;
+        return { ...c, ucName: ucName.get(c.uc_id) ?? "", last, days: last ? daysAgo(last) : Infinity };
       })
-      .map((r: any) => {
-        const sessionAtt = r.attendance || [];
-        const filteredAtt = sessionAtt.filter((a: any) => memberTypeFilter(a.participants?.type));
-        const present = filteredAtt.filter((a: any) => a.status === 'present').length;
-        const total = filteredAtt.length;
+      .filter((c) => c.days > QUIET_AFTER_DAYS)
+      .sort((a, b) => b.days - a.days);
+
+    // Data health: same circle/UC, same type, same day = probably submitted twice.
+    const seen = new Map<string, number>();
+    for (const s of data.sessions) {
+      const k = `${s.category}|${s.circle_id ?? s.uc_id}|${s.session_date}`;
+      seen.set(k, (seen.get(k) ?? 0) + 1);
+    }
+    const duplicates = [...seen.values()].reduce((n, v) => n + (v > 1 ? v - 1 : 0), 0);
+    const allAttBySession = new Set(data.attendance.map((a) => a.session_id));
+    const empty = held.filter((s) => !allAttBySession.has(s.id)).length;
+
+    const topicById = new Map(data.topics.map((t) => [t.id, t]));
+    const recent = [...held]
+      .filter(matchCategory)
+      .sort((a, b) => b.session_date.localeCompare(a.session_date))
+      .slice(0, 8)
+      .map((s) => {
+        const st = (attBySession.get(s.id) ?? []).map((a) => a.status);
+        const circle = s.circle_id ? circleById.get(s.circle_id) : undefined;
         return {
-          circle:  r.quran_circles?.name || r.quran_circles?.[0]?.name,
-          uc:      r.quran_circles?.union_councils?.name || r.quran_circles?.[0]?.union_councils?.name || 'N/A',
-          murabbi: r.quran_circles?.murabbi_name || r.quran_circles?.[0]?.murabbi_name || 'Admin',
-          topic:   r.category === 'ijtima_arkan' ? 'N/A' : (r.syllabus_topics ? `Topic ${r.syllabus_topics.topic_number || r.syllabus_topics[0]?.topic_number}: ${r.syllabus_topics.title || r.syllabus_topics[0]?.title}` : 'General'),
-          date:    new Date(r.session_date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }),
-          att:     total > 0 ? `${present} / ${total}` : '0 / 0'
+          ...s,
+          place: circle?.name ?? ucName.get(ucOf(s) ?? "") ?? "—",
+          ucName: ucName.get(ucOf(s) ?? "") ?? "",
+          topic: s.topic_id ? topicById.get(s.topic_id) : undefined,
+          present: st.filter((x) => x === "present").length,
+          marked: st.length,
         };
-      })
-      .slice(0, 5);
+      });
 
     return {
-      stats: statsList,
-      attendanceData: attendanceChartData,
-      topicProgress: topicProgressData,
-      recentReports: reportsList
+      sessions: periodSessions.length,
+      rate: attendanceRate(statuses),
+      present: statuses.filter((x) => x === "present").length,
+      marked: statuses.filter((x) => x !== "leave").length,
+      activeCircles: activeCircleIds.size,
+      totalCircles: data.circles.length,
+      topicsTaught,
+      totalTopics: data.topics.length,
+      arkan: members.filter((p) => p.type === "haazir_arkan").length,
+      public: members.filter((p) => p.type === "aam_afraad").length,
+      weeks,
+      ucRows,
+      quiet,
+      duplicates,
+      empty,
+      recent,
     };
-  }, [rawCircles, rawSessions, rawAttendance, rawSyllabus, rawReports, timeRange, memberType, sessionCategory]);
+  }, [data, period, category, memberType]);
 
-  const { stats, attendanceData, topicProgress, recentReports } = computedData;
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg border border-white/80"
-          style={{ background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(20px)' }}>
-          <Loader2 className="animate-spin w-6 h-6 text-emerald-600" />
-        </div>
-        <p className="text-sm font-semibold text-slate-600">Loading dashboard...</p>
-      </div>
-    );
-  }
+  const periodLabel = PERIODS.find((p) => p.value === period)!.label.toLowerCase();
 
   return (
-    <div className="p-5 md:p-6 lg:p-8 max-w-7xl mx-auto animate-fade-in">
-
-      {/* Page Header */}
-      <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+    <div className="px-4 md:px-6 xl:px-8 pt-5 md:pt-8 pb-32 md:pb-10 max-w-7xl mx-auto space-y-5 md:space-y-6">
+      {/* Header + filters */}
+      <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 shadow-sm" />
-            <p className="section-label">Overview</p>
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Zone Dashboard</h2>
-          <p className="text-slate-500 mt-1.5 text-sm leading-relaxed max-w-2xl">
-            Real-time overview of Quran Circle performance, syllabus progress, and participant engagement.
-          </p>
+          <p className="section-label">Zone overview</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 mt-1">How the circles are doing</h1>
+          {view && (
+            <p className="text-sm text-slate-600 mt-1">
+              {view.totalCircles} circles · {view.arkan + view.public} members ({view.arkan} Arkan, {view.public} Public)
+            </p>
+          )}
         </div>
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative">
-            <select
-              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
-              value={timeRange}
-              onChange={(e: any) => setTimeRange(e.target.value)}
-            >
-              <option value="complete">All Time</option>
-              <option value="week">Last Week</option>
-              <option value="month">Last Month</option>
-              <option value="3_months">Last 3 Months</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select
-              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
-              value={sessionCategory}
-              onChange={(e: any) => setSessionCategory(e.target.value)}
-            >
-              <option value="all">All Categories</option>
-              <option value="quran_circle">Quran Circle</option>
-              <option value="ijtima_arkan">Ijtima Arkan</option>
-              <option value="dars_e_quran">Dars-e-Quran</option>
-              <option value="other">Other</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select
-              className="form-input pr-10 py-2.5 text-xs font-semibold bg-white border border-slate-200 rounded-xl appearance-none cursor-pointer"
-              value={memberType}
-              onChange={(e: any) => setMemberType(e.target.value)}
-            >
-              <option value="all">All Participants</option>
-              <option value="haazir_arkan">Haazir Arkan</option>
-              <option value="aam_afraad">Aam Afraad</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          </div>
+        <div className="grid grid-cols-2 sm:flex gap-2">
+          <select aria-label="Time period" className="form-input select-chevron sm:w-44" value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+            {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+          <select aria-label="Session type" className="form-input select-chevron sm:w-52" value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="all">All session types</option>
+            {Object.entries(CATEGORY_LABEL).filter(([k]) => k !== "other").map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <select aria-label="Members" className="form-input select-chevron sm:w-40 col-span-2 sm:col-span-1" value={memberType} onChange={(e) => setMemberType(e.target.value)}>
+            <option value="all">All members</option>
+            <option value="haazir_arkan">Arkan only</option>
+            <option value="aam_afraad">Public only</option>
+          </select>
         </div>
       </header>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 mb-7 stagger">
-        {stats.map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <div key={i} className={`stat-card p-5 md:p-6 bg-gradient-to-br ${s.bg} border ${s.border} hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group cursor-default`}>
-              {/* Shine */}
-              <div className="absolute inset-0 rounded-[1.75rem] overflow-hidden pointer-events-none">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
-              </div>
-              <div className="relative flex items-start justify-between mb-5">
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center bg-gradient-to-br ${s.gradient} shadow-lg group-hover:scale-105 transition-transform duration-300`}>
-                  <Icon className="w-5 h-5 text-white" />
-                </div>
-              </div>
-              <div className="relative">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">{s.label}</p>
-                <p className="text-2xl md:text-3xl font-bold tracking-tight text-slate-800">{s.value}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {loading && !data && (
+        <div className="card p-10 flex items-center justify-center gap-3 text-slate-600">
+          <Loader2 className="w-5 h-5 animate-spin text-emerald-700" /> Loading every session and attendance record…
+        </div>
+      )}
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6 mb-7">
-        {/* Bar Chart */}
-        <div className="card p-5 md:p-6 lg:col-span-2 hover:-translate-y-0.5 transition-all duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md">
-                <TrendingUp className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <p className="section-label">Regional</p>
-                <h3 className="text-base font-bold text-slate-900 tracking-tight leading-none mt-0.5">UC Attendance</h3>
-              </div>
-            </div>
-          </div>
-          <div className="h-[250px] md:h-[290px]">
-            {attendanceData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={attendanceData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.04)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }} />
-                  <Tooltip
-                    cursor={{ fill: 'rgba(16,185,129,0.06)', radius: 8 }}
-                    contentStyle={{ borderRadius: '16px', border: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 8px 32px rgba(0,0,0,0.10)', fontSize: '12px', fontWeight: 600, background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(20px)' }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '11px', fontWeight: 600 }} />
-                  <Bar dataKey="members" name="Haazir Arkan" fill="url(#emeraldGrad)" radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="public" name="Aam Afraad" fill="url(#indigoGrad)" radius={[8, 8, 0, 0]} />
-                  <defs>
-                    <linearGradient id="emeraldGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" />
-                      <stop offset="100%" stopColor="#059669" />
-                    </linearGradient>
-                    <linearGradient id="indigoGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#818cf8" />
-                      <stop offset="100%" stopColor="#6366f1" />
-                    </linearGradient>
-                  </defs>
+      {error && (
+        <div role="alert" className="card p-5 flex flex-col sm:flex-row sm:items-center gap-3 justify-between border-red-200">
+          <p className="text-sm text-red-700"><strong>Couldn’t load the dashboard.</strong> {error}</p>
+          <button onClick={retry} className="btn btn-secondary"><RefreshCw className="w-4 h-4" /> Try again</button>
+        </div>
+      )}
+
+      {view && (
+        <>
+          {/* KPIs */}
+          <section aria-label="Key figures" className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <Kpi icon={CalendarCheck} label="Sessions held" value={String(view.sessions)} note={periodLabel} />
+            <Kpi
+              icon={Users}
+              label="Attendance"
+              value={view.rate === null ? "—" : `${view.rate}%`}
+              note={view.marked ? `${view.present} present of ${view.marked} marked` : "nothing marked yet"}
+              tone={view.rate === null ? undefined : view.rate >= 60 ? "good" : view.rate >= 35 ? "warn" : "bad"}
+            />
+            <Kpi icon={CircleDot} label="Circles active" value={`${view.activeCircles} / ${view.totalCircles}`} note={period === "complete" ? "held at least one class" : `held a class, ${periodLabel}`} />
+            <Kpi icon={BookOpen} label="Topics taught" value={`${view.topicsTaught} / ${view.totalTopics}`} note="syllabus topics covered" />
+          </section>
+
+          {/* Trends */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <ChartCard title="Sessions per week" subtitle={`Last ${WEEKS} weeks`}>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={view.weeks} margin={{ top: 8, right: 4, left: -24, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="#edf0ea" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#5f6f66" }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={16} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#5f6f66" }} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{ fill: "rgba(4,120,87,0.06)" }} content={<WeekTip kind="sessions" />} />
+                  <Bar dataKey="sessions" fill={EMERALD} radius={[4, 4, 0, 0]} maxBarSize={28} />
                 </BarChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full gap-3">
-                <Activity className="w-12 h-12 text-slate-200" />
-                <p className="text-xs font-semibold uppercase tracking-widest text-slate-300">No regional data yet</p>
-              </div>
-            )}
-          </div>
-        </div>
+            </ChartCard>
+            <ChartCard title="Attendance rate per week" subtitle="Present ÷ marked (leave excluded)">
+              <ResponsiveContainer width="100%" height={200}>
+                <LineChart data={view.weeks} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="#edf0ea" />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#5f6f66" }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={16} />
+                  <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v) => `${v}%`} width={40} tick={{ fontSize: 11, fill: "#5f6f66" }} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{ stroke: "#b9c7bd" }} content={<WeekTip kind="rate" />} />
+                  <Line dataKey="rate" stroke={EMERALD} strokeWidth={2} dot={{ r: 4, fill: EMERALD, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          </section>
 
-        {/* Donut Chart */}
-        <div className="card p-5 md:p-6 hover:-translate-y-0.5 transition-all duration-300">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-purple-500 to-fuchsia-600 flex items-center justify-center shadow-md">
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-purple-600 leading-none">Progress</p>
-              <h3 className="text-base font-bold text-slate-900 tracking-tight leading-none mt-0.5">Curriculum</h3>
-            </div>
-          </div>
-          <div className="h-[180px] relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={topicProgress} cx="50%" cy="50%" innerRadius={55} outerRadius={78} paddingAngle={6} dataKey="value" stroke="none">
-                  {topicProgress.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: '14px', border: '1px solid rgba(255,255,255,0.9)', boxShadow: '0 8px 24px rgba(0,0,0,0.10)', fontSize: '12px', fontWeight: 600, background: 'rgba(255,255,255,0.92)' }} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-2xl font-bold text-slate-900">{topicProgress[0]?.value || 0}</span>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">done</span>
-            </div>
-          </div>
-          <div className="space-y-2.5 mt-4">
-            {topicProgress.map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-2xl" style={{ background: 'rgba(248,250,252,0.7)', border: '1px solid rgba(255,255,255,0.8)' }}>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: DONUT_COLORS[i] }} />
-                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{item.name}</span>
+          <section className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+            {/* UC table */}
+            <div className="card xl:col-span-3 overflow-hidden">
+              <div className="p-4 md:p-5 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Union councils</h2>
+                  <p className="text-xs text-slate-600 mt-0.5">Best attendance first · {periodLabel}</p>
                 </div>
-                <span className="text-sm font-bold text-slate-800">{item.value}</span>
+                <Link href="/dashboard/uc-status" className="btn btn-ghost !min-h-[36px] text-xs">Details <ChevronRight className="w-3.5 h-3.5" /></Link>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Sessions Table */}
-      <div className="card overflow-hidden hover:-translate-y-0.5 transition-all duration-300">
-        <div className="p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.7)' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center shadow-md">
-              <Activity className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="section-label">Audit Log</p>
-              <h3 className="text-base font-bold text-slate-900 tracking-tight leading-none mt-0.5">Recent Sessions</h3>
-            </div>
-          </div>
-          <Link href="/dashboard/jaiza" className="btn btn-primary text-xs py-2.5 px-4 flex-shrink-0">
-            View All <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {/* Mobile/Tablet card view */}
-        <div className="lg:hidden divide-y divide-slate-100">
-          {recentReports.length > 0 ? recentReports.map((row, i) => (
-            <div key={i} className="p-4 hover:bg-slate-50/60 transition-colors">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-slate-800 text-sm leading-snug">{row.circle}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{row.uc}</p>
-                </div>
-                <span className="badge badge-emerald flex-shrink-0">{row.att}</span>
-              </div>
-              <div className="mt-2.5 space-y-1">
-                <p className="text-xs text-slate-500 truncate"><span className="font-semibold text-slate-600">Murabbi:</span> {row.murabbi}</p>
-                <p className="text-xs text-slate-500 truncate"><span className="font-semibold text-slate-600">Topic:</span> {row.topic}</p>
-                <p className="text-xs text-slate-400">{row.date}</p>
-              </div>
-            </div>
-          )) : (
-            <div className="py-12 text-center">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm"
-                style={{ background: 'rgba(236,253,245,0.8)', border: '1px solid rgba(167,243,208,0.5)' }}>
-                <BookOpen className="w-6 h-6 text-emerald-300" />
-              </div>
-              <p className="text-sm font-semibold text-slate-500">No sessions recorded yet</p>
-            </div>
-          )}
-        </div>
-
-        {/* Desktop table view */}
-        <div className="hidden lg:block overflow-x-auto">
-          <table className="w-full text-left border-separate border-spacing-0">
-            <thead>
-              <tr style={{ background: 'rgba(248,250,252,0.7)' }}>
-                {['Circle / UC', 'Murabbi', 'Topic', 'Date', 'Attendance'].map((h, i) => (
-                  <th key={h} className={`px-5 md:px-6 py-3.5 text-xs font-bold text-slate-400 uppercase tracking-wider ${i === 4 ? 'text-right' : ''}`}>
-                    {h}
-                  </th>
+              <ul className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
+                {view.ucRows.map((u) => (
+                  <li key={u.id} className="px-4 md:px-5 py-3 grid grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-slate-900 truncate">{u.name}</p>
+                      <p className="text-xs text-slate-600">
+                        {u.activeCircles}/{u.circles} circles active · {u.sessions} sessions
+                        {u.lastHeld && <> · last {relative(u.lastHeld)}</>}
+                      </p>
+                    </div>
+                    <RateBar rate={u.rate} className="col-span-2 sm:col-span-1 row-start-2 sm:row-start-auto" />
+                    <p className="text-sm font-bold tabular-nums text-right text-slate-900 col-start-2 row-start-1 sm:col-start-auto sm:row-start-auto w-12">
+                      {u.rate === null ? "—" : `${u.rate}%`}
+                    </p>
+                  </li>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y" style={{ '--tw-divide-opacity': 1 } as any}>
-              {recentReports.length > 0 ? recentReports.map((row, i) => (
-                <tr key={i} className="group transition-colors" onMouseEnter={e => (e.currentTarget.style.background = 'rgba(248,250,252,0.5)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                  <td className="px-5 py-4" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-slate-800 text-sm group-hover:text-emerald-700 transition-colors">{row.circle}</span>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{row.uc}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-slate-500 text-sm" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>{row.murabbi}</td>
-                  <td className="px-5 py-4 text-slate-500 text-sm max-w-xs" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>
-                    <span className="truncate block">{row.topic}</span>
-                  </td>
-                  <td className="px-5 py-4 text-slate-400 text-sm" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>{row.date}</td>
-                  <td className="px-5 py-4 text-right" style={{ borderBottom: '1px solid rgba(241,245,249,0.8)' }}>
-                    <span className="badge badge-emerald">{row.att}</span>
-                  </td>
-                </tr>
-              )) : (
-                <tr>
-                  <td colSpan={5} className="py-16 text-center">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-sm"
-                      style={{ background: 'rgba(236,253,245,0.8)', border: '1px solid rgba(167,243,208,0.5)' }}>
-                      <BookOpen className="w-6 h-6 text-emerald-300" />
-                    </div>
-                    <p className="text-sm font-semibold text-slate-500">No sessions recorded yet</p>
-                    <p className="text-xs text-slate-400 mt-1">Session reports will appear here after submission</p>
-                  </td>
-                </tr>
+              </ul>
+            </div>
+
+            {/* Needs attention */}
+            <div className="card xl:col-span-2 overflow-hidden flex flex-col">
+              <div className="p-4 md:p-5">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" aria-hidden /> Needs attention
+                </h2>
+                <p className="text-xs text-slate-600 mt-0.5">Circles with no Quran Circle class in {QUIET_AFTER_DAYS}+ days</p>
+              </div>
+              {view.quiet.length === 0 ? (
+                <p className="px-5 pb-5 text-sm text-emerald-800">Every circle held a class in the last {QUIET_AFTER_DAYS} days.</p>
+              ) : (
+                <ul className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)] max-h-[22rem] overflow-y-auto">
+                  {view.quiet.map((c) => (
+                    <li key={c.id} className="px-4 md:px-5 py-2.5 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 truncate">{c.name}</p>
+                        <p className="text-xs text-slate-600 truncate">{c.ucName}{c.murabbi_name ? ` · ${c.murabbi_name}` : ""}</p>
+                      </div>
+                      <span className={`badge ${c.last ? "badge-amber" : "badge-rose"}`}>{c.last ? `${c.days} days` : "No class yet"}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              {(view.duplicates > 0 || view.empty > 0) && (
+                <div className="mt-auto m-4 p-3 rounded-xl bg-[var(--gold-light)] text-xs text-[#6b4a0e] space-y-1">
+                  <p className="font-bold">Data to tidy up</p>
+                  {view.duplicates > 0 && <p>{view.duplicates} sessions look like duplicates (same circle, type and date).</p>}
+                  {view.empty > 0 && <p>{view.empty} past sessions have no attendance marked.</p>}
+                  <Link href={view.duplicates > 0 ? "/dashboard/jaiza?duplicates=1" : "/dashboard/jaiza"} className="inline-flex items-center gap-1 font-bold underline underline-offset-2">Review in Jaiza <ChevronRight className="w-3 h-3" /></Link>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Recent sessions */}
+          <section className="card overflow-hidden">
+            <div className="p-4 md:p-5 flex items-center justify-between gap-3">
+              <h2 className="text-base font-bold text-slate-900">Latest reports</h2>
+              <Link href="/dashboard/jaiza" className="btn btn-ghost !min-h-[36px] text-xs">All reports <ChevronRight className="w-3.5 h-3.5" /></Link>
+            </div>
+            {view.recent.length === 0 ? (
+              <p className="px-5 pb-5 text-sm text-slate-600">No sessions match these filters yet.</p>
+            ) : (
+              <ul className="divide-y divide-[var(--border-subtle)] border-t border-[var(--border-subtle)]">
+                {view.recent.map((s) => (
+                  <li key={s.id} className="px-4 md:px-5 py-3 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                    <div className="w-12 text-center leading-tight">
+                      <p className="text-lg font-bold text-slate-900 tabular-nums">{s.session_date.slice(8, 10)}</p>
+                      <p className="text-[11px] font-semibold text-slate-600 uppercase">{formatDate(s.session_date).split(" ")[1]}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{s.place}</p>
+                      <p className="text-xs text-slate-600 truncate">
+                        <span className="badge badge-slate mr-1.5">{CATEGORY_LABEL[s.category] ?? s.category}</span>
+                        {s.topic ? `Topic ${s.topic.topic_number}: ${s.topic.title}` : s.ucName}
+                      </p>
+                    </div>
+                    <p className="text-right">
+                      <span className="text-sm font-bold text-slate-900 tabular-nums">{s.present}</span>
+                      <span className="text-xs text-slate-600">/{s.marked}</span>
+                      <span className="block text-[11px] text-slate-600">present</span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
+function relative(iso: string) {
+  const d = daysAgo(iso);
+  return d === 0 ? "today" : d === 1 ? "yesterday" : `${d} days ago`;
+}
+
+function Kpi({ icon: Icon, label, value, note, tone }: { icon: typeof Users; label: string; value: string; note: string; tone?: "good" | "warn" | "bad" }) {
+  const toneClass = tone === "good" ? "text-emerald-800" : tone === "warn" ? "text-amber-700" : tone === "bad" ? "text-red-700" : "text-slate-900";
+  return (
+    <div className="card p-4 md:p-5">
+      <p className="flex items-center gap-2 text-xs font-bold text-slate-600 uppercase tracking-wide">
+        <Icon className="w-4 h-4 text-emerald-700" aria-hidden /> {label}
+      </p>
+      <p className={`mt-2 text-2xl md:text-3xl font-bold tabular-nums ${toneClass}`}>{value}</p>
+      <p className="mt-1 text-xs text-slate-600">{note}</p>
+    </div>
+  );
+}
+
+function ChartCard({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+  return (
+    <div className="card p-4 md:p-5">
+      <h2 className="text-base font-bold text-slate-900">{title}</h2>
+      <p className="text-xs text-slate-600 mt-0.5 mb-3">{subtitle}</p>
+      {children}
+    </div>
+  );
+}
+
+function RateBar({ rate, className = "" }: { rate: number | null; className?: string }) {
+  const color = rate === null ? "#d6dcd3" : rate >= 60 ? EMERALD : rate >= 35 ? "#b7791f" : "#c2410c";
+  return (
+    <div className={`h-2 rounded-full bg-[var(--border-subtle)] overflow-hidden ${className}`} role="img" aria-label={rate === null ? "No attendance marked" : `${rate}% attendance`}>
+      <div className="h-full rounded-full" style={{ width: `${rate ?? 0}%`, background: color }} />
+    </div>
+  );
+}
+
+type WeekPoint = { label: string; sessions: number; rate: number | null; present: number; marked: number };
+
+function WeekTip({ active, payload, kind }: { active?: boolean; payload?: { payload: WeekPoint }[]; kind: "sessions" | "rate" }) {
+  if (!active || !payload?.length) return null;
+  const w = payload[0].payload;
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 shadow-md text-xs">
+      <p className="font-bold text-slate-900">Week of {w.label}</p>
+      {kind === "sessions" ? (
+        <p className="text-slate-700">{w.sessions} session{w.sessions === 1 ? "" : "s"} held</p>
+      ) : (
+        <p className="text-slate-700">{w.rate === null ? "No attendance marked" : `${w.rate}% · ${w.present} of ${w.marked} present`}</p>
+      )}
     </div>
   );
 }

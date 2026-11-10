@@ -1,12 +1,11 @@
 "use client";
 
-import { Activity, BookOpen, Calendar, Users, LogOut, ClipboardList, Map } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { Activity, BookOpen, Calendar, Users, ClipboardList, Map, CheckSquare, Globe } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const menuItems = [
     { name: 'Dashboard',  href: '/dashboard',           icon: Activity,      short: 'Home'  },
@@ -17,7 +16,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Directory',  href: '/dashboard/roster',    icon: Users,         short: 'Dir'   },
   ];
 
-  const handleLogout = () => router.push('/');
+
+  // No sign-in: each portal is reached by its own address. These shortcuts just switch portals.
+  const portals = [
+    { name: 'Attendance portal', href: '/attendance', icon: CheckSquare },
+    { name: 'Public portal', href: '/portal', icon: Globe },
+  ];
 
   return (
     <div className="h-screen flex flex-col md:flex-row overflow-hidden" style={{
@@ -41,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Nav */}
         <nav className="flex-1 py-4 px-2 xl:px-3 space-y-1 overflow-y-auto scrollbar-hide">
-          <p className="hidden xl:block text-xs font-bold uppercase tracking-widest px-3 mb-3" style={{ color: 'rgba(110,231,183,0.35)', letterSpacing: '0.12em' }}>Navigation</p>
+          <p className="hidden xl:block text-xs font-bold uppercase tracking-widest px-3 mb-3" style={{ color: 'rgba(167,243,208,0.7)', letterSpacing: '0.12em' }}>Navigation</p>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -63,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   border: '1px solid rgba(255,255,255,0.22)',
                   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 8px rgba(0,0,0,0.1)'
                 } : {
-                  color: 'rgba(167,243,208,0.55)'
+                  color: 'rgba(209,250,229,0.82)'
                 }}
               >
                 <Icon
@@ -77,19 +81,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           })}
         </nav>
 
-        {/* Logout */}
-        <div className="p-2 xl:p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-          <button
-            onClick={handleLogout}
-            title="Sign Out"
-            className="flex items-center gap-3 w-full rounded-2xl p-2.5 xl:px-3.5 xl:py-2.5 transition-all group justify-center xl:justify-start"
-            style={{ color: 'rgba(252,165,165,0.6)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.12)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            <LogOut className="w-4.5 h-4.5 flex-shrink-0 group-hover:text-red-300 transition-colors" strokeWidth={2} />
-            <span className="hidden xl:block text-sm font-semibold group-hover:text-red-300 transition-colors">Sign Out</span>
-          </button>
+        {/* Other portals */}
+        <div className="p-2 xl:p-3 space-y-1" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
+          {portals.map((p) => (
+            <Link key={p.href} href={p.href} title={p.name}
+              className="flex items-center gap-3 w-full rounded-2xl p-2.5 xl:px-3.5 xl:py-2.5 justify-center xl:justify-start text-emerald-100/80 hover:text-white hover:bg-white/10 transition-colors">
+              <p.icon className="w-4 h-4 flex-shrink-0" />
+              <span className="hidden xl:block text-sm font-semibold">{p.name}</span>
+            </Link>
+          ))}
         </div>
       </aside>
 
@@ -108,10 +108,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <p className="text-xs font-medium leading-none mt-0.5" style={{ color: 'rgba(110,231,183,0.7)' }}>Admin Portal</p>
           </div>
         </div>
-        <button onClick={handleLogout} className="p-2.5 rounded-xl border border-white/15 active:scale-90 transition-all hover:bg-white/10"
-          style={{ background: 'rgba(255,255,255,0.08)' }}>
-          <LogOut className="w-4 h-4 text-white" />
-        </button>
+        <Link href="/attendance" className="px-3 py-2 rounded-xl border border-white/20 text-xs font-bold text-white hover:bg-white/10 transition-colors" style={{ background: 'rgba(255,255,255,0.08)' }}>
+          Attendance
+        </Link>
       </div>
 
       {/* ─── Main Content ────────────────────────────────────── */}
