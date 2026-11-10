@@ -1,9 +1,10 @@
 "use client";
 
 // Shared Apple-style building blocks used by every portal.
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
-import { CheckCircle2, Info, Search, X, XCircle } from "lucide-react";
+import { BookOpen, CheckCircle2, Info, Moon, Search, Sun, X, XCircle } from "lucide-react";
 
 /* ─── Toasts: replace alert() with a calm, non-blocking message ─── */
 type ToastKind = "success" | "error" | "info";
@@ -156,7 +157,7 @@ export function Stat({ label, value, note, tone }: { label: string; value: React
 
 /** Percentage bar; colour follows the value and the number is always shown next to it. */
 export function RateBar({ rate, className = "" }: { rate: number | null; className?: string }) {
-  const color = rate === null ? "transparent" : rate >= 60 ? "#30a14e" : rate >= 35 ? "#f5a623" : "#ff453a";
+  const color = rate === null ? "transparent" : rate >= 60 ? "#30a14e" : rate >= 35 ? "#f5a623" : "#ff453a"; // readable on light and dark
   return (
     <div className={`h-1.5 rounded-full bg-fill overflow-hidden ${className}`} role="img" aria-label={rate === null ? "No attendance marked" : `${rate}% attendance`}>
       <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${rate ?? 0}%`, background: color }} />
@@ -190,5 +191,56 @@ export function QuranRef({ reference, className = "" }: { reference: string | nu
       <span>{english} {from}–{to}</span>
       <bdi dir="rtl" className="font-quran-inline">{arabic}</bdi>
     </span>
+  );
+}
+
+/* ─── Theme ─── */
+// The inline script in layout.tsx sets <html data-theme> before first paint; these keep React in step.
+function subscribeTheme(cb: () => void) {
+  const obs = new MutationObserver(cb);
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => obs.disconnect();
+}
+export function useIsDark() {
+  return useSyncExternalStore(subscribeTheme, () => document.documentElement.dataset.theme === "dark", () => false);
+}
+
+/** Chart colours for the current theme (SVG attributes can't read CSS variables reliably). */
+export function useChartColors() {
+  const dark = useIsDark();
+  return dark
+    ? { primary: "#0a84ff", secondary: "#5e9fd8", grid: "rgba(84,84,88,0.55)", axis: "#a1a1a6", label: "#f5f5f7", cursor: "rgba(10,132,255,0.12)", dotRing: "#1c1c1e" }
+    : { primary: "#0071e3", secondary: "#8ec1f5", grid: "#ececf0", axis: "#86868b", label: "#1d1d1f", cursor: "rgba(0,113,227,0.06)", dotRing: "#ffffff" };
+}
+
+export function ThemeToggle({ className = "" }: { className?: string }) {
+  const toggle = () => {
+    const root = document.documentElement;
+    const next = root.dataset.theme === "dark" ? "light" : "dark";
+    root.dataset.theme = next;
+    root.style.colorScheme = next;
+    try { localStorage.setItem("theme", next); } catch { /* private mode: still switches for this visit */ }
+  };
+  return (
+    <button type="button" onClick={toggle} className={`btn btn-secondary btn-icon !min-h-[34px] !min-w-[34px] ${className}`} aria-label="Switch between light and dark mode" title="Light / dark mode">
+      <Moon className="theme-icon-dark h-[17px] w-[17px]" aria-hidden />
+      <Sun className="theme-icon-light h-[17px] w-[17px]" aria-hidden />
+    </button>
+  );
+}
+
+/* ─── Brand: the app name appears on every page ─── */
+export function Brand({ subtitle, href = "/portal", size = "md" }: { subtitle?: ReactNode; href?: string; size?: "sm" | "md" }) {
+  const box = size === "sm" ? "h-8 w-8 rounded-[9px]" : "h-10 w-10 rounded-[11px]";
+  return (
+    <Link href={href} className="flex items-center gap-2.5 min-w-0">
+      <span className={`${box} flex-shrink-0 grid place-items-center bg-gradient-to-b from-[#2b8cff] to-[#0062d1] text-white shadow-sm`}>
+        <BookOpen className={size === "sm" ? "h-4 w-4" : "h-5 w-5"} strokeWidth={2.2} aria-hidden />
+      </span>
+      <span className="min-w-0 leading-tight">
+        <span className="block text-[15px] font-semibold text-label truncate">Dawat-e-Quran</span>
+        {subtitle && <span className="block text-[12px] text-label-2 truncate">{subtitle}</span>}
+      </span>
+    </Link>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { BookOpen, Check, ChevronRight, ExternalLink, History, Loader2, MapPin, Search, Trash2, UserPlus, Users } from "lucide-react";
-import { BiText, EmptyState, QuranRef, Segmented, Sheet, toast } from "@/components/ui";
+import { BiText, Brand, EmptyState, QuranRef, Segmented, Sheet, ThemeToggle, toast } from "@/components/ui";
 import { getTafheemLink } from "@/lib/quran_utils";
 import { CATEGORY_LABEL, cleanTitle, localDate } from "@/lib/data";
 
@@ -402,15 +402,12 @@ export default function AttendancePage() {
       {/* Frosted title bar */}
       <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="h-8 w-8 flex-shrink-0 rounded-[9px] grid place-items-center bg-gradient-to-b from-[#2b8cff] to-[#0062d1] text-white"><BookOpen className="h-4 w-4" strokeWidth={2.2} /></span>
-            <div className="min-w-0 leading-tight">
-              <p className="text-[15px] font-semibold truncate">{ready ? (isIjtima ? ucName : activeCircle?.name) : "Mark attendance"}</p>
-              <p className="text-[12px] text-label-2 truncate">
-                {ready ? `${CATEGORY_LABEL[category]}${!isIjtima && ucName ? ` · ${ucName}` : ""}${activeCircle?.murabbi_name && !isIjtima ? ` · ${activeCircle.murabbi_name}` : ""}` : "Dawat-e-Quran · Zone 5"}
-              </p>
-            </div>
-          </div>
+          <Brand
+            href="/attendance"
+            size="sm"
+            subtitle={ready ? `${isIjtima ? ucName : activeCircle?.name ?? ""} · ${CATEGORY_LABEL[category]}${!isIjtima && ucName ? ` · ${ucName}` : ""}` : "Mark attendance · Zone 5"}
+          />
+          <ThemeToggle />
         </div>
       </header>
 
@@ -485,7 +482,7 @@ export default function AttendancePage() {
                   )}
                   {topicRow?.reference && !isIjtima && (
                     <div className="sm:col-span-2 flex items-center justify-between gap-3 rounded-xl bg-accent-tint px-3.5 py-2.5">
-                      <QuranRef reference={topicRow.reference} className="text-[14px] font-medium text-[#0058b0]" />
+                      <QuranRef reference={topicRow.reference} className="text-[14px] font-medium text-accent-ink" />
                       {tafheem && <a href={tafheem} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-link inline-flex items-center gap-1 flex-shrink-0">Tafheem <ExternalLink className="h-3.5 w-3.5" /></a>}
                     </div>
                   )}
@@ -542,7 +539,7 @@ export default function AttendancePage() {
                         ) : (
                           <li key={p.id}>
                             <button type="button" onClick={() => toggleAttendance(p.id)} aria-pressed={present} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${present ? "bg-success-tint" : "active:bg-fill"}`}>
-                              <span className={`h-7 w-7 flex-shrink-0 rounded-full grid place-items-center transition-colors ${present ? "bg-[#30a14e] text-white" : "border-2 border-[#c7c7cc]"}`}>
+                              <span className={`h-7 w-7 flex-shrink-0 rounded-full grid place-items-center transition-colors ${present ? "bg-[#30a14e] text-white" : "border-2 border-[var(--color-check-off)]"}`}>
                                 {present && <Check className="h-4 w-4" strokeWidth={3} />}
                               </span>
                               <span className="min-w-0 flex-1">

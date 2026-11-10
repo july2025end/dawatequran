@@ -21,13 +21,23 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f5f5f7",
-  colorScheme: "light",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f5f7" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
+  colorScheme: "light dark",
 };
+
+// Runs before first paint: the visitor's saved choice, otherwise the device setting (and follows it live).
+const themeScript = `(function(){try{var s=localStorage.getItem("theme");var m=window.matchMedia("(prefers-color-scheme: dark)");var r=document.documentElement;var a=function(){var t=localStorage.getItem("theme")||(m.matches?"dark":"light");r.dataset.theme=t;r.style.colorScheme=t;};a();m.addEventListener("change",function(){if(!localStorage.getItem("theme"))a();});}catch(e){}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${notoUrdu.variable} ${amiriQuran.variable}`}>
+    // suppressHydrationWarning: data-theme is set by themeScript before React loads.
+    <html lang="en" className={`${inter.variable} ${notoUrdu.variable} ${amiriQuran.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-dvh bg-canvas text-label antialiased">
         {children}
         <Toaster />

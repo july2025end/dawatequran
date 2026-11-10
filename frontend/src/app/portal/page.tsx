@@ -1,6 +1,6 @@
 "use client";
 
-import { BiText, QuranRef } from "@/components/ui";
+import { BiText, Brand, QuranRef, ThemeToggle } from "@/components/ui";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, BookOpen, CalendarDays, ChevronRight, MapPin, Users } from "lucide-react";
@@ -51,14 +51,12 @@ export default function PublicPortal() {
       {/* Frosted nav */}
       <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
-          <span className="flex items-center gap-2 text-[15px] font-semibold">
-            <span className="h-7 w-7 rounded-[8px] grid place-items-center bg-gradient-to-b from-[#2b8cff] to-[#0062d1] text-white"><BookOpen className="h-3.5 w-3.5" strokeWidth={2.4} /></span>
-            Dawat-e-Quran
-          </span>
-          <nav className="flex items-center gap-5 text-[13px] text-label-2">
-            <a href="#syllabus" className="hover:text-label">Syllabus</a>
+          <Brand size="sm" />
+          <nav className="flex items-center gap-4 sm:gap-5 text-[13px] text-label-2">
+            <a href="#syllabus" className="hover:text-label hidden sm:inline">Syllabus</a>
             <a href="#upcoming" className="hover:text-label hidden sm:inline">Upcoming</a>
             <Link href="/portal/representatives" className="hover:text-label">Find a circle</Link>
+            <ThemeToggle />
           </nav>
         </div>
       </header>
@@ -155,7 +153,7 @@ export default function PublicPortal() {
                   const council = s.quran_circles?.union_councils?.name;
                   return (
                     <li key={s.id} className="px-4 sm:px-5 py-3.5 flex items-center gap-3.5">
-                      <span className="w-12 h-12 rounded-xl bg-accent-tint text-[#0058b0] grid place-items-center text-center leading-none flex-shrink-0">
+                      <span className="w-12 h-12 rounded-xl bg-accent-tint text-accent-ink grid place-items-center text-center leading-none flex-shrink-0">
                         <span><span className="block text-[17px] font-bold tabular">{s.session_date.slice(8, 10)}</span><span className="block text-[10px] font-semibold uppercase mt-0.5">{formatDate(s.session_date).split(" ")[1]}</span></span>
                       </span>
                       <span className="min-w-0">

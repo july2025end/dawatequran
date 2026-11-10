@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, Copy, MessageCircle, Phone, Users } from "lucide-react";
-import { EmptyState, SearchField, toast } from "@/components/ui";
+import { Brand, EmptyState, SearchField, ThemeToggle, toast } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 
 // Comprehensive verified representatives directory for Zone 5
@@ -609,8 +609,12 @@ export default function RepresentativesDirectory() {
   return (
     <div className="min-h-dvh bg-canvas">
       <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
-        <div className="max-w-[900px] mx-auto px-4 sm:px-6 h-12 flex items-center">
-          <Link href="/portal" className="inline-flex items-center gap-1 text-[15px] text-link"><ArrowLeft className="h-4 w-4" /> Portal</Link>
+        <div className="max-w-[900px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+          <Brand size="sm" subtitle="Find your circle" />
+          <div className="flex items-center gap-2">
+            <Link href="/portal" className="btn btn-ghost btn-sm"><ArrowLeft className="h-4 w-4" /> Portal</Link>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 
@@ -662,7 +666,7 @@ export default function RepresentativesDirectory() {
                       <div className="flex gap-2 sm:flex-shrink-0">
                         <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} className="btn btn-tinted btn-sm flex-1 sm:flex-none"><Phone className="h-4 w-4" /> Call</a>
                         {r.whatsapp && (
-                          <a href={`https://wa.me/${r.whatsapp}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm flex-1 sm:flex-none bg-[#e7f7ec] text-[#1a7f37] hover:bg-[#d6f1df]"><MessageCircle className="h-4 w-4" /> WhatsApp</a>
+                          <a href={`https://wa.me/${r.whatsapp}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm flex-1 sm:flex-none bg-success-tint text-success hover:brightness-95"><MessageCircle className="h-4 w-4" /> WhatsApp</a>
                         )}
                         <button type="button" onClick={() => handleCopy(r.phone, r.id)} className="btn btn-secondary btn-sm btn-icon !min-w-[34px]" aria-label={`Copy ${r.name}'s number`}>
                           {copiedId === r.id ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}

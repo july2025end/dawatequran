@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, ChevronRight, ClipboardList, RefreshCw } from "lucide-react";
-import { BiText, EmptyState, PageHeader, RateBar, Segmented, SkeletonRows, Stat } from "@/components/ui";
+import { BiText, EmptyState, PageHeader, RateBar, Segmented, SkeletonRows, Stat, useChartColors } from "@/components/ui";
 import { supabase } from "@/lib/supabase";
 import { CATEGORY_LABEL, Period, attendanceRate, cleanTitle, daysAgo, fetchAll, formatDate, inPeriod, localDate } from "@/lib/data";
 
@@ -17,7 +17,6 @@ type Topic = { id: string; topic_number: number; title: string };
 
 const QUIET_AFTER_DAYS = 14;
 const WEEKS = 12;
-const BLUE = "#0071e3";
 
 const PERIODS: { value: Period; label: string; long: string }[] = [
   { value: "week", label: "7 days", long: "last 7 days" },
@@ -33,6 +32,7 @@ export default function DashboardOverview() {
   const [period, setPeriod] = useState<Period>("month");
   const [category, setCategory] = useState("all");
   const [memberType, setMemberType] = useState("all");
+  const chart = useChartColors();
 
   // No synchronous state updates before the first await, so this is safe to call from an effect.
   const fetchData = useCallback(async () => {
@@ -185,7 +185,7 @@ export default function DashboardOverview() {
   }, [data, period, category, memberType]);
 
   const periodLabel = PERIODS.find((p) => p.value === period)!.long;
-  const axis = { fontSize: 11, fill: "#86868b" };
+  const axis = { fontSize: 11, fill: chart.axis };
 
   return (
     <div className="px-4 sm:px-6 lg:px-10 pt-6 md:pt-10 max-w-[1200px] mx-auto space-y-6">
@@ -242,22 +242,22 @@ export default function DashboardOverview() {
             <ChartCard title="Sessions per week" subtitle={`Last ${WEEKS} weeks`}>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={view.weeks} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="#ececf0" />
+                  <CartesianGrid vertical={false} stroke={chart.grid} />
                   <XAxis dataKey="label" tick={axis} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={18} />
                   <YAxis allowDecimals={false} width={28} tick={axis} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{ fill: "rgba(0,113,227,0.06)" }} content={<WeekTip kind="sessions" />} />
-                  <Bar dataKey="sessions" fill={BLUE} radius={[4, 4, 0, 0]} maxBarSize={26} />
+                  <Tooltip cursor={{ fill: chart.cursor }} content={<WeekTip kind="sessions" />} />
+                  <Bar dataKey="sessions" fill={chart.primary} radius={[4, 4, 0, 0]} maxBarSize={26} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartCard>
             <ChartCard title="Attendance rate per week" subtitle="Present ÷ marked · leave excluded">
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={view.weeks} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid vertical={false} stroke="#ececf0" />
+                  <CartesianGrid vertical={false} stroke={chart.grid} />
                   <XAxis dataKey="label" tick={axis} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={18} />
                   <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(v) => `${v}%`} width={40} tick={axis} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{ stroke: "#d2d2d7" }} content={<WeekTip kind="rate" />} />
-                  <Line dataKey="rate" stroke={BLUE} strokeWidth={2} dot={{ r: 4, fill: BLUE, stroke: "#fff", strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls />
+                  <Tooltip cursor={{ stroke: chart.grid }} content={<WeekTip kind="rate" />} />
+                  <Line dataKey="rate" stroke={chart.primary} strokeWidth={2} dot={{ r: 4, fill: chart.primary, stroke: chart.dotRing, strokeWidth: 2 }} activeDot={{ r: 6 }} connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </ChartCard>
@@ -303,7 +303,7 @@ export default function DashboardOverview() {
                 </ul>
               )}
               {(view.duplicates > 0 || view.empty > 0) && (
-                <div className="mt-auto m-3 sm:m-4 p-3.5 rounded-2xl bg-warning-tint text-[13px] text-[#7a3d00] space-y-1">
+                <div className="mt-auto m-3 sm:m-4 p-3.5 rounded-2xl bg-warning-tint text-[13px] text-warning-ink space-y-1">
                   <p className="font-semibold">Data to tidy up</p>
                   {view.duplicates > 0 && <p>{view.duplicates} sessions look like duplicates (same circle, type and date).</p>}
                   {view.empty > 0 && <p>{view.empty} past sessions have no attendance marked.</p>}

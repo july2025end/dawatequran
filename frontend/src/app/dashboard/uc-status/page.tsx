@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { attendanceRate, fetchAll, inPeriod, localDate } from "@/lib/data";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChevronRight, Map } from 'lucide-react';
-import { EmptyState, PageHeader, RateBar, Segmented, SkeletonRows } from '@/components/ui';
+import { EmptyState, PageHeader, RateBar, Segmented, SkeletonRows, useChartColors } from '@/components/ui';
 
 export default function UCStatus() {
   const [loading, setLoading] = useState(true);
@@ -136,6 +136,7 @@ export default function UCStatus() {
   }, [rawUcs, rawCircles, rawParticipants, rawAttendance, rawSessions, totalTopics, timeRange, memberType, sessionCategory]);
 
   const members = [...ucStats].sort((a, b) => b.participants - a.participants);
+  const chart = useChartColors();
 
   return (
     <div className="px-4 sm:px-6 lg:px-10 pt-6 md:pt-10 max-w-[1200px] mx-auto space-y-6">
@@ -228,17 +229,17 @@ export default function UCStatus() {
           <section className="card p-4 sm:p-5 xl:col-span-2">
             <h2 className="text-[17px] font-semibold">Members by council</h2>
             <div className="mt-1 mb-3 flex items-center gap-4 text-[13px] text-label-2">
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#0071e3]" />Arkan</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#8ec1f5]" />Public</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: chart.primary }} />Arkan</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: chart.secondary }} />Public</span>
             </div>
             <ResponsiveContainer width="100%" height={Math.max(220, members.length * 30)}>
               <BarChart data={members} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }} barCategoryGap={6}>
-                <CartesianGrid horizontal={false} stroke="#ececf0" />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "#86868b" }} tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="name" width={112} tick={{ fontSize: 11, fill: "#1d1d1f" }} tickLine={false} axisLine={false} />
-                <Tooltip cursor={{ fill: "rgba(0,113,227,0.05)" }} content={<MembersTip />} />
-                <Bar dataKey="arkan" name="Arkan" stackId="m" fill="#0071e3" />
-                <Bar dataKey="public" name="Public" stackId="m" fill="#8ec1f5" radius={[0, 4, 4, 0]} />
+                <CartesianGrid horizontal={false} stroke={chart.grid} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: chart.axis }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="name" width={112} tick={{ fontSize: 11, fill: chart.label }} tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ fill: chart.cursor }} content={<MembersTip />} />
+                <Bar dataKey="arkan" name="Arkan" stackId="m" fill={chart.primary} />
+                <Bar dataKey="public" name="Public" stackId="m" fill={chart.secondary} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </section>

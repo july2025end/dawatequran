@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback, use } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
 import { parseQuranReference } from "@/lib/quran_utils";
-import { BiText, QuranRef } from "@/components/ui";
+import { BiText, Brand, QuranRef, ThemeToggle } from "@/components/ui";
 import { cleanTitle } from "@/lib/data";
 import Link from "next/link";
 import {
@@ -440,7 +440,7 @@ function AyahCard({
         <button
           onClick={handleToggleTafseer}
           aria-expanded={showTafseer}
-          className={`flex items-center gap-2 w-full py-2.5 px-4 rounded-xl text-[14px] transition-colors font-urdu ${showTafseer ? "bg-accent-tint text-[#0058b0]" : "bg-fill text-label hover:bg-fill-strong"}`}
+          className={`flex items-center gap-2 w-full py-2.5 px-4 rounded-xl text-[14px] transition-colors font-urdu ${showTafseer ? "bg-accent-tint text-accent-ink" : "bg-fill text-label hover:bg-fill-strong"}`}
         >
           {tafseerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookText className="w-4 h-4" />}
           <span className="flex-1 text-right">تفسیر — تفہیم القرآن، مولانا مودودیؒ</span>
@@ -612,9 +612,10 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
       {/* Frosted bar with the player, always reachable while reading */}
       <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
-          <Link href="/portal" className="inline-flex items-center gap-1 text-[15px] text-link flex-shrink-0"><ArrowLeft className="h-4 w-4" /> Portal</Link>
+          <Brand size="sm" subtitle={<span className="inline-flex items-center gap-0.5"><ArrowLeft className="h-3 w-3" /> Portal</span>} />
+          <div className="flex items-center gap-2">
           {ayaat.length > 0 && (
-            <div className="flex items-center gap-2">
+            <>
               <button onClick={handlePlayAll} className={`btn btn-sm ${isPlaying ? "btn-secondary" : "btn-primary"}`}>
                 {isPlaying ? <><Pause className="w-4 h-4" /> Stop</> : <><Play className="w-4 h-4" /> Play all</>}
               </button>
@@ -625,8 +626,10 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
               >
                 {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               </button>
-            </div>
+            </>
           )}
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

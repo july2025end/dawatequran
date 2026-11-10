@@ -26,6 +26,14 @@
   --color-accent-press: #006edb;
   --color-link: #0066cc;
   --color-accent-tint: rgba(0, 113, 227, 0.1);
+  --color-accent-ink: #0058b0;        /* text on accent-tint */
+  --color-warning-ink: #7a3d00;       /* text on warning-tint */
+  --color-field: #ffffff;
+  --color-field-border: rgba(0, 0, 0, 0.14);
+  --color-material: rgba(251, 251, 253, 0.8);
+  --color-elevated: rgba(255, 255, 255, 0.86);
+  --color-segment: #ffffff;
+  --color-check-off: #c7c7cc;
 
   /* Status (text-safe shades + tints) */
   --color-success: #1e7e34;
@@ -44,11 +52,51 @@
 
   --radius-card: 1.25rem;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 24px rgba(0, 0, 0, 0.05);
+  --shadow-card-dark: 0 0 0 0.5px rgba(255, 255, 255, 0.1);
   --shadow-float: 0 2px 6px rgba(0, 0, 0, 0.06), 0 16px 48px rgba(0, 0, 0, 0.14);
 
   --animate-rise: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-fade: fade 0.25s ease both;
   --animate-sheet: sheet 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+
+/* ─── Dark mode ───────────────────────────────────────
+   Set on <html data-theme="dark"> by the inline script in layout.tsx (system setting,
+   or the visitor's own choice from the toggle). Apple's dark system colours. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: #000000;
+  --color-surface: #1c1c1e;
+  --color-grouped: #2c2c2e;
+  --color-fill: rgba(118, 118, 128, 0.24);
+  --color-fill-strong: rgba(118, 118, 128, 0.36);
+  --color-separator: rgba(84, 84, 88, 0.65);
+  --color-label: #f5f5f7;
+  --color-label-2: #a1a1a6;
+  --color-label-3: #7c7c80;
+  --color-accent: #0a84ff;
+  --color-accent-hover: #409cff;
+  --color-accent-press: #0a7aea;
+  --color-link: #3ca0ff;
+  --color-accent-tint: rgba(10, 132, 255, 0.2);
+  --color-accent-ink: #7cc0ff;
+  --color-success: #32d74b;
+  --color-success-tint: rgba(50, 215, 75, 0.16);
+  --color-warning: #ffb340;
+  --color-warning-tint: rgba(255, 159, 10, 0.16);
+  --color-warning-ink: #ffcf80;
+  --color-danger: #ff6961;
+  --color-danger-tint: rgba(255, 69, 58, 0.18);
+  --color-slate-400: #a1a1a6;
+  --color-field: #2c2c2e;
+  --color-field-border: rgba(255, 255, 255, 0.1);
+  --color-material: rgba(28, 28, 30, 0.72);
+  --color-elevated: rgba(44, 44, 46, 0.9);
+  --color-segment: #636366;
+  --color-check-off: #48484a;
+  --shadow-card: var(--shadow-card-dark);
+  --shadow-float: 0 0 0 0.5px rgba(255, 255, 255, 0.1), 0 16px 48px rgba(0, 0, 0, 0.6);
 }
 
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -59,6 +107,7 @@
 /* ─── Base ───────────────────────────────────────────── */
 @layer base {
   html { color-scheme: light; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body { transition: background-color 0.3s ease, color 0.3s ease; }
   body {
     font-family: var(--font-sans);
     background: var(--color-canvas);
@@ -94,6 +143,7 @@
 .tafseer-content p:last-child { margin-bottom: 0; }
 .tafseer-content n { font-weight: 700; color: var(--color-accent); margin-left: 0.25rem; }
 
+@layer components {
 /* ─── Surfaces ────────────────────────────────────────── */
 .card, .glass-card, .stat-card, .glass-table {
   background: var(--color-surface);
@@ -103,7 +153,7 @@
 .glass-table { overflow: hidden; }
 .card-inset { background: var(--color-canvas); border-radius: 1rem; }
 .pill-container, .glass-pill {
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--color-elevated);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
   border: 0.5px solid var(--color-separator);
@@ -112,7 +162,7 @@
 }
 /* Frosted bars (navigation, tab bar, sticky footers) */
 .material {
-  background: rgba(251, 251, 253, 0.8);
+  background: var(--color-material);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
 }
@@ -122,8 +172,8 @@
 .form-input {
   width: 100%;
   min-height: 44px;
-  background: var(--color-surface);
-  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: var(--color-field);
+  border: 1px solid var(--color-field-border);
   border-radius: 0.75rem;
   padding: 0.6rem 0.875rem;
   font-size: 16px; /* iOS Safari zooms into anything smaller */
@@ -161,7 +211,7 @@ select.form-input {
 .btn-ghost { background: transparent; color: var(--color-link); }
 .btn-ghost:hover:not(:disabled) { background: var(--color-accent-tint); }
 .btn-danger { background: var(--color-danger-tint); color: var(--color-danger); }
-.btn-danger:hover:not(:disabled) { background: #ffdcda; }
+.btn-danger:hover:not(:disabled) { filter: brightness(0.96); }
 .btn-sm { min-height: 34px; padding: 0.35rem 0.85rem; font-size: 13px; }
 .btn-icon { min-height: 40px; min-width: 40px; padding: 0; border-radius: 9999px; }
 
@@ -173,11 +223,11 @@ select.form-input {
   font-size: 13px; font-weight: 500; color: var(--color-label); white-space: nowrap;
   transition: background-color 0.2s, box-shadow 0.2s;
 }
-.segmented button[aria-pressed="true"] { background: var(--color-surface); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.04); }
+.segmented button[aria-pressed="true"] { background: var(--color-segment); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.04); }
 
 /* Badges */
 .badge { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 12px; font-weight: 600; padding: 0.15rem 0.55rem; border-radius: 9999px; white-space: nowrap; letter-spacing: -0.005em; }
-.badge-blue, .badge-purple, .badge-emerald { background: var(--color-accent-tint); color: #0058b0; }
+.badge-blue, .badge-purple, .badge-emerald { background: var(--color-accent-tint); color: var(--color-accent-ink); }
 .badge-green   { background: var(--color-success-tint); color: var(--color-success); }
 .badge-amber   { background: var(--color-warning-tint); color: var(--color-warning); }
 .badge-rose, .badge-red { background: var(--color-danger-tint); color: var(--color-danger); }
@@ -189,7 +239,7 @@ select.form-input {
 .list-inset > * + * { border-top: 0.5px solid var(--color-separator); }
 
 /* Skeleton shimmer */
-.skeleton { background: linear-gradient(90deg, #ececf0 0%, #f6f6f8 50%, #ececf0 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: 0.6rem; }
+.skeleton { background: linear-gradient(90deg, var(--color-fill) 0%, var(--color-grouped) 50%, var(--color-fill) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: 0.6rem; }
 
 /* Legacy animation names used by older markup */
 .animate-fade-in-up, .animate-float-up { animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
@@ -205,6 +255,7 @@ select.form-input {
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .tabular { font-variant-numeric: tabular-nums; }
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+}
 
 /* ─── Arabic Word Tooltip ─────────────────────────────── */
 .arabic-word-wrapper {
@@ -226,7 +277,7 @@ select.form-input {
 .arabic-word:hover,
 .arabic-word.is-active {
   background: rgba(0, 113, 227, 0.10);
-  color: #0058b0;
+  color: var(--color-accent-ink);
   text-shadow: 0 0 12px rgba(0, 113, 227, 0.25);
 }
 
@@ -248,7 +299,7 @@ select.form-input {
   min-width: 90px;
   max-width: 220px;
   padding: 0.5rem 0.85rem 0.55rem;
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--color-elevated);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1.5px solid rgba(0, 113, 227, 0.25);
@@ -256,7 +307,7 @@ select.form-input {
   box-shadow:
     0 10px 32px rgba(0, 0, 0, 0.14),
     0 2px 10px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 1);
+    inset 0 0 0 0.5px var(--color-separator);
   pointer-events: none;
   animation: tooltipFadeIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
   white-space: nowrap;
@@ -270,7 +321,7 @@ select.form-input {
   left: 50%;
   transform: translateX(-50%);
   border: 7px solid transparent;
-  border-top-color: rgba(255, 255, 255, 0.97);
+  border-top-color: var(--color-elevated);
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.08));
 }
 
@@ -280,7 +331,7 @@ select.form-input {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #6e6e73;
+  color: var(--color-label-2);
   margin-bottom: 0.2rem;
   text-align: center;
   direction: ltr;
@@ -290,7 +341,7 @@ select.form-input {
   display: block;
   text-align: center;
   direction: rtl;
-  color: #1d1d1f;
+  color: var(--color-label);
   font-size: 0.95rem;
   line-height: 1.6;
 }
@@ -310,3 +361,9 @@ select.form-input {
   animation: shimmer 1.2s linear infinite;
   margin: 0 auto;
 }
+
+/* Theme toggle shows the icon for the mode you'd switch to. */
+.theme-icon-dark { display: inline; }
+.theme-icon-light { display: none; }
+:root[data-theme="dark"] .theme-icon-dark { display: none; }
+:root[data-theme="dark"] .theme-icon-light { display: inline; }

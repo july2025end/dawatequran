@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, CalendarDays, CheckSquare, ClipboardList, Globe, LayoutGrid, Map, MoreHorizontal, Users } from "lucide-react";
-import { Sheet } from "@/components/ui";
+import { Brand, Sheet, ThemeToggle } from "@/components/ui";
 
 const NAV = [
   { name: "Overview", href: "/dashboard", icon: LayoutGrid },
@@ -32,8 +32,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-dvh md:flex">
       {/* Sidebar: iPad and desktop */}
       <aside className="hidden md:flex md:w-[232px] lg:w-[260px] flex-shrink-0 flex-col sticky top-0 h-dvh material border-r border-separator">
-        <div className="px-5 pt-6 pb-5">
-          <Brand />
+        <div className="px-5 pt-6 pb-5 flex items-center justify-between gap-2">
+          <Brand href="/dashboard" subtitle="Admin · Zone 5" />
+          <ThemeToggle />
         </div>
         <nav aria-label="Admin" className="flex-1 overflow-y-auto px-3 space-y-0.5">
           {NAV.map((item) => (
@@ -50,8 +51,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Phone top bar */}
         <div className="md:hidden sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
           <div className="h-12 px-4 flex items-center justify-between">
-            <Brand compact />
-            <Link href="/attendance" className="btn btn-tinted btn-sm">Mark attendance</Link>
+            <Brand href="/dashboard" size="sm" subtitle="Admin" />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Link href="/attendance" className="btn btn-tinted btn-sm">Mark attendance</Link>
+            </div>
           </div>
         </div>
 
@@ -81,20 +85,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </Sheet>
     </div>
-  );
-}
-
-function Brand({ compact }: { compact?: boolean }) {
-  return (
-    <Link href="/dashboard" className="flex items-center gap-2.5">
-      <span className={`${compact ? "h-8 w-8 rounded-[9px]" : "h-10 w-10 rounded-[11px]"} grid place-items-center bg-gradient-to-b from-[#2b8cff] to-[#0062d1] text-white shadow-sm`}>
-        <BookOpen className={compact ? "h-4 w-4" : "h-5 w-5"} strokeWidth={2.2} />
-      </span>
-      <span className="leading-tight">
-        <span className="block text-[15px] font-semibold text-label">Dawat-e-Quran</span>
-        {!compact && <span className="block text-[12px] text-label-2">Admin · Zone 5</span>}
-      </span>
-    </Link>
   );
 }
 
