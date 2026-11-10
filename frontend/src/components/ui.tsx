@@ -76,15 +76,20 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, wide }
   open: boolean; onClose: () => void; title: ReactNode; subtitle?: ReactNode; children: ReactNode; footer?: ReactNode; wide?: boolean;
 }) {
   const panel = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => { closeRef.current = onClose; });
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Read onClose through a ref: callers pass a new arrow function on every render, and
+    // re-running this effect on each keystroke used to pull focus out of the input being typed in.
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    panel.current?.focus();
+    // Focus the sheet once on open, unless a field inside it (autoFocus) already has focus.
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus();
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-  }, [open, onClose]);
+  }, [open]);
   if (!open || typeof document === "undefined") return null;
   return createPortal(
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center sm:p-6">
