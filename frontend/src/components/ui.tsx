@@ -224,7 +224,11 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     const next = root.dataset.theme === "dark" ? "light" : "dark";
     root.dataset.theme = next;
     root.style.colorScheme = next;
-    try { localStorage.setItem("theme", next); } catch { /* private mode: still switches for this visit */ }
+    try {
+      // Override only for this visit; choosing the device's own mode goes back to following the device.
+      const system = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      if (next === system) sessionStorage.removeItem("theme"); else sessionStorage.setItem("theme", next);
+    } catch { /* storage blocked: the switch still applies to this page */ }
   };
   return (
     <button type="button" onClick={toggle} className={`btn btn-secondary btn-icon !min-h-[34px] !min-w-[34px] ${className}`} aria-label="Switch between light and dark mode" title="Light / dark mode">

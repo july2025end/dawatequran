@@ -28,8 +28,9 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
 };
 
-// Runs before first paint: the visitor's saved choice, otherwise the device setting (and follows it live).
-const themeScript = `(function(){try{var s=localStorage.getItem("theme");var m=window.matchMedia("(prefers-color-scheme: dark)");var r=document.documentElement;var a=function(){var t=localStorage.getItem("theme")||(m.matches?"dark":"light");r.dataset.theme=t;r.style.colorScheme=t;};a();m.addEventListener("change",function(){if(!localStorage.getItem("theme"))a();});}catch(e){}})();`;
+// Runs before first paint. The device's light/dark setting is the default on every visit;
+// the toggle only overrides it for the current visit (sessionStorage), and live device changes are followed.
+const themeScript = `(function(){try{localStorage.removeItem("theme");var m=window.matchMedia("(prefers-color-scheme: dark)");var r=document.documentElement;var a=function(){var t=sessionStorage.getItem("theme")||(m.matches?"dark":"light");r.dataset.theme=t;r.style.colorScheme=t;};a();m.addEventListener("change",function(){sessionStorage.removeItem("theme");a();});}catch(e){}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
