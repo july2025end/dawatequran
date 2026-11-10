@@ -383,3 +383,14 @@ html[lang="ur"] .form-input { font-family: inherit; }
 /* Direction-sensitive icons point the other way in right-to-left. */
 [dir="rtl"] .lucide-chevron-right, [dir="rtl"] .lucide-chevron-left,
 [dir="rtl"] .lucide-arrow-right, [dir="rtl"] .lucide-arrow-left { transform: scaleX(-1); }
+
+/* Nastaliq marks (the madd on آ, dots of ق) rise well above the line; one-line labels hide
+   overflow, so give them the height of a Nastaliq line in Urdu mode. */
+html[lang="ur"] .truncate { line-height: 2.1; }
+html[lang="ur"] .leading-tight, html[lang="ur"] .leading-snug, html[lang="ur"] .leading-none { line-height: 1.85; }
+html[lang="ur"] .segmented { overflow-y: visible; }
+
+/* Phone numbers, dates and passwords always read left to right, even inside Urdu text. */
+.ltr-text { direction: ltr; unicode-bidi: isolate; }
+[dir="rtl"] input[type="tel"], [dir="rtl"] input[type="number"], [dir="rtl"] input[type="password"],
+[dir="rtl"] input[type="date"], [dir="rtl"] input[type="email"] { direction: ltr; text-align: right; }

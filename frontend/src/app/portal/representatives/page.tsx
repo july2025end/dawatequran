@@ -163,7 +163,7 @@ export default function RepresentativesDirectory() {
                       <div className="min-w-0">
                         <p className="text-[16px] font-semibold truncate">{r.name}</p>
                         <p className="text-[13px] text-label-2 truncate">{t(r.role)}{r.circleName ? ` · ${r.circleName}` : ""}</p>
-                        <p className="text-[13px] tabular text-label-2">{r.phone || "Number not added yet"}</p>
+                        <p className="text-[13px] tabular text-label-2">{r.phone ? <span className="ltr-text">{r.phone}</span> : t("Number not added yet")}</p>
                       </div>
                     </div>
                     {r.phone && (
