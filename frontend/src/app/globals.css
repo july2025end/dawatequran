@@ -369,3 +369,17 @@ select.form-input {
 .theme-icon-light { display: none; }
 :root[data-theme="dark"] .theme-icon-dark { display: none; }
 :root[data-theme="dark"] .theme-icon-light { display: inline; }
+
+/* ─── Urdu interface (public and murabbi pages set <html lang="ur" dir="rtl">) ─── */
+html[lang="ur"] body {
+  /* Nastaliq covers only Arabic-script characters, so English names and numbers fall through to Inter. */
+  font-family: var(--font-noto-urdu), var(--font-inter), sans-serif;
+  line-height: 1.95;
+  letter-spacing: 0;
+}
+/* Nastaliq needs room above and below; tighten only the large headings. */
+html[lang="ur"] h1, html[lang="ur"] h2, html[lang="ur"] h3 { line-height: 1.6; letter-spacing: 0; }
+html[lang="ur"] .form-input { font-family: inherit; }
+/* Direction-sensitive icons point the other way in right-to-left. */
+[dir="rtl"] .lucide-chevron-right, [dir="rtl"] .lucide-chevron-left,
+[dir="rtl"] .lucide-arrow-right, [dir="rtl"] .lucide-arrow-left { transform: scaleX(-1); }

@@ -1,12 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Amiri_Quran, Inter, Noto_Nastaliq_Urdu } from "next/font/google";
+import { Amiri_Quran, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "@/components/ui";
 import "./globals.css";
 
 // English uses Apple's system font (SF Pro) on Apple devices; Inter is the close match everywhere else.
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 // Urdu: Jameel Noori Nastaleeq when installed (common in Pakistan), otherwise Noto Nastaliq.
-const notoUrdu = Noto_Nastaliq_Urdu({ weight: ["400", "700"], subsets: ["arabic"], variable: "--font-noto-urdu", display: "swap" });
+// Self-hosted Noto Nastaliq Urdu (OFL), limited to Arabic-script characters so English letters
+// fall through to SF Pro / Inter instead of the Nastaliq face's own Latin glyphs.
+const notoUrdu = localFont({
+  src: [{ path: "./fonts/NotoNastaliqUrdu.woff2", weight: "400 700", style: "normal" }],
+  variable: "--font-noto-urdu",
+  display: "swap",
+  fallback: [],
+  adjustFontFallback: false,
+  declarations: [{ prop: "unicode-range", value: "U+0600-06FF, U+0750-077F, U+0870-08FF, U+200C-200E, U+FB50-FDFF, U+FE70-FEFC" }],
+});
 // Quran: the IndoPak face in /public/fonts first, Amiri Quran as the web fallback.
 const amiriQuran = Amiri_Quran({ weight: ["400"], subsets: ["arabic"], variable: "--font-amiri", display: "swap" });
 

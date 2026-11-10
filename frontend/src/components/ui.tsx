@@ -143,8 +143,8 @@ export function SearchField({ value, onChange, placeholder, className = "" }: { 
   return (
     <label className={`relative block ${className}`}>
       <span className="sr-only">{placeholder}</span>
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-label-3" aria-hidden />
-      <input type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="form-input !bg-fill !border-transparent !pl-9 focus:!bg-surface focus:!border-accent" />
+      <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-label-3" aria-hidden />
+      <input type="search" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="form-input !bg-fill !border-transparent !ps-9 focus:!bg-surface focus:!border-accent" />
     </label>
   );
 }
@@ -239,7 +239,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
 }
 
 /* ─── Brand: the app name appears on every page ─── */
-export function Brand({ subtitle, href = "/portal", size = "md" }: { subtitle?: ReactNode; href?: string; size?: "sm" | "md" }) {
+export function Brand({ subtitle, href = "/portal", size = "md", name = "Dawat-e-Quran" }: { subtitle?: ReactNode; href?: string; size?: "sm" | "md"; name?: string }) {
   const box = size === "sm" ? "h-8 w-8 rounded-[9px]" : "h-10 w-10 rounded-[11px]";
   return (
     <Link href={href} className="flex items-center gap-2.5 min-w-0">
@@ -247,7 +247,7 @@ export function Brand({ subtitle, href = "/portal", size = "md" }: { subtitle?: 
         <BookOpen className={size === "sm" ? "h-4 w-4" : "h-5 w-5"} strokeWidth={2.2} aria-hidden />
       </span>
       <span className="min-w-0 leading-tight">
-        <span className="block text-[15px] font-semibold text-label truncate">Dawat-e-Quran</span>
+        <span className="block text-[15px] font-semibold text-label truncate">{name}</span>
         {subtitle && <span className="block text-[12px] text-label-2 truncate">{subtitle}</span>}
       </span>
     </Link>

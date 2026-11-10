@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase / external APIs */
 
+import { LangToggle, useLangDocument, useT } from "@/lib/i18n";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, Copy, MessageCircle, Phone, Users } from "lucide-react";
@@ -12,6 +13,8 @@ import { DEFAULT_REPRESENTATIVES, loadRepresentatives, whatsappNumber, type Repr
 
 
 export default function RepresentativesDirectory() {
+  const t = useT();
+  const lang = useLangDocument();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUC, setSelectedUC] = useState("All");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -89,10 +92,10 @@ export default function RepresentativesDirectory() {
     try {
       await navigator.clipboard.writeText(phone);
       setCopiedId(id);
-      toast("Number copied");
+      toast(t("Number copied"));
       setTimeout(() => setCopiedId(null), 1800);
     } catch {
-      toast("Couldn’t copy the number", "error");
+      toast(t("Couldn’t copy the number"), "error");
     }
   };
 
@@ -110,9 +113,10 @@ export default function RepresentativesDirectory() {
     <div className="min-h-dvh bg-canvas">
       <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
         <div className="max-w-[900px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
-          <Brand size="sm" subtitle="Find your circle" />
+          <Brand size="sm" name={t("Dawat-e-Quran")} subtitle={t("Find your circle")} />
           <div className="flex items-center gap-2">
-            <Link href="/portal" className="btn btn-ghost btn-sm"><ArrowLeft className="h-4 w-4" /> Portal</Link>
+            <Link href="/portal" className="btn btn-ghost btn-sm"><ArrowLeft className="h-4 w-4" /> {t("Portal")}</Link>
+            <LangToggle />
             <ThemeToggle />
           </div>
         </div>
@@ -120,13 +124,13 @@ export default function RepresentativesDirectory() {
 
       <main className="max-w-[900px] mx-auto px-4 sm:px-6 pt-8 pb-16 space-y-5">
         <div className="animate-rise">
-          <p className="eyebrow">Zone 5 · Islamabad</p>
-          <h1 className="text-[34px] sm:text-[44px] font-bold tracking-[-0.03em] leading-tight">Find your circle</h1>
-          <p className="mt-1.5 text-[17px] text-label-2">Contact the representative of the Quran circle in your area by call or WhatsApp.</p>
+          <p className="eyebrow">{t("Zone 5 · Islamabad")}</p>
+          <h1 className="text-[34px] sm:text-[44px] font-bold tracking-[-0.03em] leading-tight">{t("Find your circle")}</h1>
+          <p className="mt-1.5 text-[17px] text-label-2">{t("Contact the representative of the Quran circle in your area by call or WhatsApp.")}</p>
         </div>
 
         <div className="space-y-3 animate-rise">
-          <SearchField value={searchQuery} onChange={setSearchQuery} placeholder="Search name, area, council or circle" />
+          <SearchField value={searchQuery} onChange={setSearchQuery} placeholder={t("Search name, area, council or circle")} />
           <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
             {ucList.map((uc) => (
               <button
@@ -136,15 +140,15 @@ export default function RepresentativesDirectory() {
                 aria-pressed={selectedUC === uc}
                 className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-[14px] font-medium transition-colors ${selectedUC === uc ? "bg-label text-white" : "bg-surface text-label shadow-[0_0_0_0.5px_var(--color-separator)] hover:bg-fill"}`}
               >
-                {uc === "All" ? "All councils" : uc}
+                {uc === "All" ? t("All councils") : uc}
               </button>
             ))}
           </div>
-          <p className="text-[13px] text-label-2">{filteredReps.length} representative{filteredReps.length === 1 ? "" : "s"}</p>
+          <p className="text-[13px] text-label-2">{lang === "ur" ? `${filteredReps.length} نمائندے` : `${filteredReps.length} representative${filteredReps.length === 1 ? "" : "s"}`}</p>
         </div>
 
         {groups.length === 0 ? (
-          <div className="card"><EmptyState icon={Users} title="No one matches that search" text="Try an area name such as G-9 or a council number such as UC-85." /></div>
+          <div className="card"><EmptyState icon={Users} title={t("No one matches that search")} text={t("Try an area name such as G-9 or a council number such as UC-85.")} /></div>
         ) : (
           groups.map(([uc, reps]) => (
             <section key={uc} className="space-y-2">
@@ -158,15 +162,15 @@ export default function RepresentativesDirectory() {
                       </span>
                       <div className="min-w-0">
                         <p className="text-[16px] font-semibold truncate">{r.name}</p>
-                        <p className="text-[13px] text-label-2 truncate">{r.role}{r.circleName ? ` · ${r.circleName}` : ""}</p>
+                        <p className="text-[13px] text-label-2 truncate">{t(r.role)}{r.circleName ? ` · ${r.circleName}` : ""}</p>
                         <p className="text-[13px] tabular text-label-2">{r.phone || "Number not added yet"}</p>
                       </div>
                     </div>
                     {r.phone && (
                       <div className="flex gap-2 sm:flex-shrink-0">
-                        <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} className="btn btn-tinted btn-sm flex-1 sm:flex-none"><Phone className="h-4 w-4" /> Call</a>
+                        <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} className="btn btn-tinted btn-sm flex-1 sm:flex-none"><Phone className="h-4 w-4" /> {t("Call")}</a>
                         {whatsappNumber(r.phone, r.whatsapp) && (
-                          <a href={`https://wa.me/${whatsappNumber(r.phone, r.whatsapp)}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm flex-1 sm:flex-none bg-success-tint text-success hover:brightness-95"><MessageCircle className="h-4 w-4" /> WhatsApp</a>
+                          <a href={`https://wa.me/${whatsappNumber(r.phone, r.whatsapp)}`} target="_blank" rel="noopener noreferrer" className="btn btn-sm flex-1 sm:flex-none bg-success-tint text-success hover:brightness-95"><MessageCircle className="h-4 w-4" /> {t("WhatsApp")}</a>
                         )}
                         <button type="button" onClick={() => handleCopy(r.phone, r.id)} className="btn btn-secondary btn-sm btn-icon !min-w-[34px]" aria-label={`Copy ${r.name}'s number`}>
                           {copiedId === r.id ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}

@@ -2,6 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase / external APIs */
 
+import { LangToggle, useLangDocument, useT } from "@/lib/i18n";
 import { useState, useEffect, useRef, useCallback, use } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/lib/supabase";
@@ -432,7 +433,7 @@ function AyahCard({
             <p className="font-urdu text-[13px] text-accent mb-1 flex items-center gap-1.5 justify-end">
               ترجمہ — مولانا مودودیؒ <Globe className="w-3.5 h-3.5" />
             </p>
-            <p className="font-urdu text-right text-label" style={{ fontSize: "1.15rem" }}>{ayah.maududi}</p>
+            <p className="font-urdu text-end text-label" style={{ fontSize: "1.15rem" }}>{ayah.maududi}</p>
           </div>
         )}
 
@@ -443,7 +444,7 @@ function AyahCard({
           className={`flex items-center gap-2 w-full py-2.5 px-4 rounded-xl text-[14px] transition-colors font-urdu ${showTafseer ? "bg-accent-tint text-accent-ink" : "bg-fill text-label hover:bg-fill-strong"}`}
         >
           {tafseerLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookText className="w-4 h-4" />}
-          <span className="flex-1 text-right">تفسیر — تفہیم القرآن، مولانا مودودیؒ</span>
+          <span className="flex-1 text-end">تفسیر — تفہیم القرآن، مولانا مودودیؒ</span>
           {showTafseer ? <ChevronUp className="w-4 h-4 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 flex-shrink-0" />}
         </button>
         {showTafseer && (
@@ -455,7 +456,7 @@ function AyahCard({
               </div>
             ) : tafseerText ? (
               // tafseerText is sanitised by /api/tafseer before it reaches the page.
-              <div className="font-urdu text-right text-label" style={{ fontSize: "1.08rem" }} dangerouslySetInnerHTML={{ __html: tafseerText }} />
+              <div className="font-urdu text-end text-label" style={{ fontSize: "1.08rem" }} dangerouslySetInnerHTML={{ __html: tafseerText }} />
             ) : (
               <p className="font-urdu text-center text-sm text-label-2">تفسیر دستیاب نہیں</p>
             )}
@@ -468,6 +469,8 @@ function AyahCard({
 
 /* ─── Main Page ─────────────────────────────────────────── */
 export default function TopicPage(props: { params: Promise<{ id: string }> }) {
+  const t = useT();
+  const lang = useLangDocument();
   const { id } = use(props.params);
 
   const [topic, setTopic] = useState<TopicData | null>(null);
@@ -601,7 +604,7 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
       <div className="min-h-dvh bg-canvas grid place-items-center px-6">
         <div className="text-center">
           <p className="text-[17px] font-semibold">{error || "This lesson could not be found."}</p>
-          <Link href="/portal" className="btn btn-primary mt-5"><ArrowLeft className="w-4 h-4" /> Back to the portal</Link>
+          <Link href="/portal" className="btn btn-primary mt-5"><ArrowLeft className="w-4 h-4" /> {t("Back to the portal")}</Link>
         </div>
       </div>
     );
@@ -612,12 +615,12 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
       {/* Frosted bar with the player, always reachable while reading */}
       <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
-          <Brand size="sm" subtitle={<span className="inline-flex items-center gap-0.5"><ArrowLeft className="h-3 w-3" /> Portal</span>} />
+          <Brand size="sm" name={t("Dawat-e-Quran")} subtitle={<span className="inline-flex items-center gap-0.5"><ArrowLeft className="h-3 w-3" /> {t("Portal")}</span>} />
           <div className="flex items-center gap-2">
           {ayaat.length > 0 && (
             <>
               <button onClick={handlePlayAll} className={`btn btn-sm ${isPlaying ? "btn-secondary" : "btn-primary"}`}>
-                {isPlaying ? <><Pause className="w-4 h-4" /> Stop</> : <><Play className="w-4 h-4" /> Play all</>}
+                {isPlaying ? <><Pause className="w-4 h-4" /> {t("Stop")}</> : <><Play className="w-4 h-4" /> {t("Play all")}</>}
               </button>
               <button
                 onClick={() => { const m = !isMuted; setIsMuted(m); if (audioRef.current) audioRef.current.muted = m; }}
@@ -628,6 +631,7 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
               </button>
             </>
           )}
+            <LangToggle />
             <ThemeToggle />
           </div>
         </div>
@@ -635,14 +639,14 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
 
       {/* Title */}
       <section className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-6 animate-rise">
-        <p className="text-[15px] font-semibold text-accent">Lesson {topic.topic_number}{topic.start_date ? ` · ${fmt(topic.start_date)}${topic.end_date ? ` – ${fmt(topic.end_date)}` : ""}` : ""}</p>
+        <p className="text-[15px] font-semibold text-accent">{t("Lesson")} {topic.topic_number}{topic.start_date ? ` · ${fmt(topic.start_date)}${topic.end_date ? ` – ${fmt(topic.end_date)}` : ""}` : ""}</p>
         <h1 className="mt-2 text-[30px] sm:text-[44px] font-bold tracking-[-0.03em] leading-tight" ><BiText text={cleanTitle(topic.title)} /></h1>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px] text-label-2">
           <QuranRef reference={topic.reference} className="font-medium text-label" />
-          {ayaat.length > 0 && <span className="badge badge-gray">{ayaat.length} ayaat</span>}
-          <span className="badge badge-gray">Recitation: Mishary Alafasy</span>
+          {ayaat.length > 0 && <span className="badge badge-gray">{ayaat.length} {t("ayaat")}</span>}
+          <span className="badge badge-gray">{t("Recitation: Mishary Alafasy")}</span>
         </div>
-        <p className="mt-3 text-[13px] text-label-2">Tap any Arabic word to see its Urdu meaning.</p>
+        <p className="mt-3 text-[13px] text-label-2">{t("Tap any Arabic word to see its Urdu meaning.")}</p>
       </section>
 
       {/* Ayaat */}

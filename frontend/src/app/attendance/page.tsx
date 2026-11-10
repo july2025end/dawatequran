@@ -1,5 +1,6 @@
 "use client";
 
+import { LangToggle, URDU_MONTHS, useLangDocument, useT } from "@/lib/i18n";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Check, ChevronRight, ExternalLink, History, Loader2, LogOut, MapPin, Search, Trash2, UserPlus, Users } from "lucide-react";
@@ -15,6 +16,8 @@ import { flushPending, isNetworkError, pendingReports, queueReport, sendReport }
 const notify = (m: string) => toast(m, /error|please|couldn|choose|enter/i.test(m) ? "error" : "success");
 
 export default function AttendancePage() {
+  const t = useT();
+  const lang = useLangDocument();
   const [selectedUC, setSelectedUC] = useState("");
   const [selectedCircle, setSelectedCircle] = useState("");
   const [sessionDate, setSessionDate] = useState(localDate());
@@ -241,8 +244,8 @@ export default function AttendancePage() {
   }
 
   async function handleSubmit() {
-    if (category === 'ijtima_arkan' ? !selectedUC : !selectedCircle) { notify("Please select required fields."); return; }
-    if (!sessionDate) { notify("Please select a date."); return; }
+    if (category === 'ijtima_arkan' ? !selectedUC : !selectedCircle) { toast(t("Please select required fields."), "error"); return; }
+    if (!sessionDate) { toast(t("Please select a date."), "error"); return; }
     const sameDay = pastSessions.find(s => s.session_date?.slice(0, 10) === sessionDate && s.category === category);
     if (sameDay && !confirm(`A ${category.replace(/_/g, ' ')} report for ${sessionDate} already exists. Save another one anyway?\n\nTo change the existing report, press Cancel and edit it under History.`)) return;
     const session = {
@@ -274,16 +277,16 @@ export default function AttendancePage() {
         setThanks({ present, total: records.length, streak, place, offline: true });
         reset();
       } else {
-        notify("Error: " + e.message);
+        toast(`${t("Couldn’t save")}: ${e.message}`, "error");
       }
     } finally { setSubmitting(false); }
   }
 
   async function handleAddAttendee() {
-    if (!newAttendee.full_name.trim()) { notify("Please enter a name."); return; }
+    if (!newAttendee.full_name.trim()) { toast(t("Please enter a name."), "error"); return; }
     const isIjtima = category === 'ijtima_arkan';
     const circleId = isIjtima ? newAttendee.circle_id : selectedCircle;
-    if (!circleId) { notify("Please choose the member's circle."); return; }
+    if (!circleId) { toast(t("Please choose the member's circle."), "error"); return; }
     try {
       const { data, error } = await supabase.from('participants')
         .insert({ full_name: newAttendee.full_name.trim(), phone: newAttendee.phone, remarks: newAttendee.remarks, type: isIjtima ? 'haazir_arkan' : newAttendee.type, circle_id: circleId, is_active: true })
@@ -292,7 +295,7 @@ export default function AttendancePage() {
       setParticipants([...participants, { ...data, status: 'present' }]);
       setIsAddingAttendee(false);
       setNewAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad", circle_id: "" });
-    } catch (e: any) { notify("Error adding attendee: " + e.message); }
+    } catch (e: any) { toast(`${t("Couldn’t save")}: ${e.message}`, "error"); }
   }
 
   // Quick 1-click toggle for past attendance in expanded details
@@ -305,7 +308,7 @@ export default function AttendancePage() {
       if (error) throw error;
       await refreshPastSessions();
     } catch (err: any) {
-      notify("Error updating attendance: " + err.message);
+      toast(`${t("Couldn’t save")}: ${err.message}`, "error");
     }
   }
 
@@ -362,9 +365,9 @@ export default function AttendancePage() {
 
       setEditingSession(null);
       await refreshPastSessions();
-      notify("Old attendance report updated successfully!");
+      toast(t("Report updated"));
     } catch (err: any) {
-      notify("Error updating report: " + err.message);
+      toast(`${t("Couldn’t save")}: ${err.message}`, "error");
     } finally {
       setSavingEdit(false);
     }
@@ -378,16 +381,16 @@ export default function AttendancePage() {
       if (error) throw error;
       await refreshPastSessions();
     } catch (err: any) {
-      notify("Error deleting session: " + err.message);
+      toast(`${t("Couldn’t save")}: ${err.message}`, "error");
     }
   }
 
   // Add new participant inside Edit Modal
   async function handleAddAttendeeInEditModal() {
-    if (!newEditAttendee.full_name.trim()) { notify("Please enter a participant name."); return; }
+    if (!newEditAttendee.full_name.trim()) { toast(t("Please enter a name."), "error"); return; }
     const isIjtima = editingSession?.category === 'ijtima_arkan';
     const circleId = isIjtima ? newEditAttendee.circle_id : (editingSession?.circle_id || selectedCircle);
-    if (!circleId) { notify("Please choose the member's circle."); return; }
+    if (!circleId) { toast(t("Please choose the member's circle."), "error"); return; }
 
     setAddingEditAttendee(true);
     try {
@@ -409,7 +412,7 @@ export default function AttendancePage() {
       setIsAddingEditAttendee(false);
       setNewEditAttendee({ full_name: "", phone: "", remarks: "", type: "aam_afraad", circle_id: "" });
     } catch (err: any) {
-      notify("Error adding attendee: " + err.message);
+      toast(`${t("Couldn’t save")}: ${err.message}`, "error");
     } finally {
       setAddingEditAttendee(false);
     }
@@ -434,9 +437,9 @@ export default function AttendancePage() {
   })();
 
   const statusOptions = [
-    { value: "present", label: "Present" },
-    ...(isIjtima ? [{ value: "leave", label: "Leave" }] : []),
-    { value: "absent", label: "Absent" },
+    { value: "present", label: t("Present") },
+    ...(isIjtima ? [{ value: "leave", label: t("Leave") }] : []),
+    { value: "absent", label: t("Absent") },
   ];
   const statusBadge = (s: string) => (s === "present" ? "badge-green" : s === "leave" ? "badge-amber" : "badge-red");
 
@@ -446,14 +449,16 @@ export default function AttendancePage() {
       <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
           <Brand
+            name={t("Dawat-e-Quran")}
             href="/attendance"
             size="sm"
-            subtitle={ready ? `${isIjtima ? ucName : activeCircle?.name ?? ""} · ${CATEGORY_LABEL[category]}${!isIjtima && ucName ? ` · ${ucName}` : ""}` : "Mark attendance · Zone 5"}
+            subtitle={ready ? `${isIjtima ? ucName : activeCircle?.name ?? ""} · ${t(CATEGORY_LABEL[category])}${!isIjtima && ucName ? ` · ${ucName}` : ""}` : t("Mark attendance · Zone 5")}
           />
           <div className="flex items-center gap-2">
+            <LangToggle />
             <ThemeToggle />
-            <Link href="/" className="btn btn-secondary btn-sm !text-danger" aria-label="Sign out">
-              <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Sign out</span>
+            <Link href="/" className="btn btn-secondary btn-sm !text-danger" aria-label={t("Sign out")}>
+              <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">{t("Sign out")}</span>
             </Link>
           </div>
         </div>
@@ -462,37 +467,37 @@ export default function AttendancePage() {
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-5 space-y-5">
         {pendingCount > 0 && (
           <div role="status" className="card p-3.5 flex items-center justify-between gap-3 bg-warning-tint">
-            <p className="text-[14px] text-warning-ink"><span className="font-semibold">{pendingCount} report{pendingCount === 1 ? "" : "s"} saved on this phone.</span> {pendingCount === 1 ? "It" : "They"} will be sent when you’re online.</p>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={async () => { const r = await flushPending(); setPendingCount(r.left); toast(r.sent ? `${r.sent} sent` : "Still offline, will try again", r.sent ? "success" : "info"); }}>Send now</button>
+            <p className="text-[14px] text-warning-ink">{lang === "ur" ? <><span className="font-semibold">{pendingCount} رپورٹ اس فون پر محفوظ ہے۔</span> انٹرنیٹ آتے ہی بھیج دی جائے گی۔</> : <><span className="font-semibold">{pendingCount} report{pendingCount === 1 ? "" : "s"} saved on this phone.</span> {pendingCount === 1 ? "It" : "They"} will be sent when you’re online.</>}</p>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={async () => { const r = await flushPending(); setPendingCount(r.left); toast(r.sent ? `${r.sent} sent` : "Still offline, will try again", r.sent ? "success" : "info"); }}>{t("Send now")}</button>
           </div>
         )}
         {/* Choose session */}
         <section className="card p-4 sm:p-5 space-y-4 animate-rise">
           <div>
-            <p className="form-label">Session type</p>
+            <p className="form-label">{t("Session type")}</p>
             <Segmented
               label="Session type"
               value={category}
               onChange={(v) => { setCategory(v); setExpandedSessionId(null); }}
               options={[
-                { value: "quran_circle", label: "Quran Circle" },
-                { value: "dars_e_quran", label: "Dars" },
-                { value: "ijtima_arkan", label: "Ijtima Arkan" },
-                { value: "other", label: "Other" },
+                { value: "quran_circle", label: t("Quran Circle") },
+                { value: "dars_e_quran", label: t("Dars") },
+                { value: "ijtima_arkan", label: t("Ijtima Arkan") },
+                { value: "other", label: t("Other") },
               ]}
             />
           </div>
           <div className={`grid gap-3 ${isIjtima ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
-            <label className="block"><span className="form-label">Union council</span>
+            <label className="block"><span className="form-label">{t("Union council")}</span>
               <select className="form-input" value={selectedUC} disabled={loading} onChange={(e) => { setSelectedUC(e.target.value); setSelectedCircle(""); }}>
-                <option value="">{loading ? "Loading…" : "Choose your council"}</option>
+                <option value="">{loading ? t("Loading…") : t("Choose your council")}</option>
                 {ucs.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </label>
             {!isIjtima && (
-              <label className="block"><span className="form-label">Quran circle</span>
+              <label className="block"><span className="form-label">{t("Quran circle")}</span>
                 <select className="form-input" value={selectedCircle} disabled={!selectedUC} onChange={(e) => setSelectedCircle(e.target.value)}>
-                  <option value="">{selectedUC ? "Choose your circle" : "Choose a council first"}</option>
+                  <option value="">{selectedUC ? t("Choose your circle") : t("Choose a council first")}</option>
                   {currentCircles.map((c) => <option key={c.id} value={c.id}>{c.name}{c.murabbi_name ? ` · ${c.murabbi_name}` : ""}</option>)}
                 </select>
               </label>
@@ -501,52 +506,52 @@ export default function AttendancePage() {
         </section>
 
         {!ready ? (
-          <div className="card"><EmptyState icon={Users} title={isIjtima ? "Choose your council" : "Choose your circle"} text="Your members and past reports appear here once you choose." /></div>
+          <div className="card"><EmptyState icon={Users} title={isIjtima ? t("Choose your council") : t("Choose your circle")} text={t("Your members and past reports appear here once you choose.")} /></div>
         ) : loadingCircleData ? (
-          <div className="card p-10 flex items-center justify-center gap-2 text-label-2"><Loader2 className="h-5 w-5 animate-spin text-accent" /> Loading members…</div>
+          <div className="card p-10 flex items-center justify-center gap-2 text-label-2"><Loader2 className="h-5 w-5 animate-spin text-accent" /> {t("Loading members…")}</div>
         ) : (
           <>
             <Segmented
               label="View"
               value={activeTab}
               onChange={setActiveTab}
-              options={[{ value: "new", label: "New report" }, { value: "history", label: `History (${pastSessions.length})` }]}
+              options={[{ value: "new", label: t("New report") }, { value: "history", label: `${t("History")} (${pastSessions.length})` }]}
             />
 
             {activeTab === "new" ? (
               <>
                 {/* Session details */}
                 <section className="card p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-rise">
-                  <label className="block"><span className="form-label">Date</span>
+                  <label className="block"><span className="form-label">{t("Date")}</span>
                     <input type="date" className="form-input" value={sessionDate} max={localDate()} onChange={(e) => setSessionDate(e.target.value)} />
                   </label>
                   {isIjtima ? (
-                    <label className="block"><span className="form-label">Attendance for month</span>
+                    <label className="block"><span className="form-label">{t("Attendance for month")}</span>
                       <select className="form-input" value={attendanceMonth} onChange={(e) => setAttendanceMonth(e.target.value)}>
-                        {months.map((m) => <option key={m} value={m}>{m}</option>)}
+                        {months.map((m, i) => <option key={m} value={m}>{lang === "ur" ? URDU_MONTHS[i] : m}</option>)}
                       </select>
                     </label>
                   ) : (
-                    <label className="block"><span className="form-label">Topic taught{!topicTouched && !topic && suggestedTopicId ? <span className="ml-1.5 badge badge-blue">Suggested</span> : null}</span>
+                    <label className="block"><span className="form-label">{t("Topic taught")}{!topicTouched && !topic && suggestedTopicId ? <span className="ms-1.5 badge badge-blue">{t("Suggested")}</span> : null}</span>
                       <select className="form-input" value={effectiveTopic} onChange={(e) => { setTopic(e.target.value); setTopicTouched(true); }}>
-                        <option value="">Choose a topic (optional)</option>
-                        {syllabus.map((t) => <option key={t.id} value={t.id}>Topic {t.topic_number}: {cleanTitle(t.title)}</option>)}
+                        <option value="">{t("Choose a topic (optional)")}</option>
+                        {syllabus.map((tp) => <option key={tp.id} value={tp.id}>{t("Topic")} {tp.topic_number}: {cleanTitle(tp.title)}</option>)}
                       </select>
                     </label>
                   )}
                   {topicRow?.reference && !isIjtima && (
                     <div className="sm:col-span-2 flex items-center justify-between gap-3 rounded-xl bg-accent-tint px-3.5 py-2.5">
                       <QuranRef reference={topicRow.reference} className="text-[14px] font-medium text-accent-ink" />
-                      {tafheem && <a href={tafheem} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-link inline-flex items-center gap-1 flex-shrink-0">Tafheem <ExternalLink className="h-3.5 w-3.5" /></a>}
+                      {tafheem && <a href={tafheem} target="_blank" rel="noopener noreferrer" className="text-[14px] font-semibold text-link inline-flex items-center gap-1 flex-shrink-0">{t("Tafheem")} <ExternalLink className="h-3.5 w-3.5" /></a>}
                     </div>
                   )}
                   <details className="sm:col-span-2 group">
                     <summary className="cursor-pointer list-none text-[14px] font-medium text-link inline-flex items-center gap-1">
-                      <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" /> {location || notes ? "Location and notes" : "Add location and notes"}
+                      <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90" /> {location || notes ? t("Location and notes") : t("Add location and notes")}
                     </summary>
                     <div className="mt-3 grid grid-cols-1 gap-3">
-                      <input className="form-input" placeholder="Location: masjid, residence…" value={location} onChange={(e) => setLocation(e.target.value)} />
-                      <textarea rows={3} className="form-input resize-none" placeholder="Notes: discussion, observations…" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                      <input className="form-input" placeholder={t("Location: masjid, residence…")} value={location} onChange={(e) => setLocation(e.target.value)} />
+                      <textarea rows={3} className="form-input resize-none" placeholder={t("Notes: discussion, observations…")} value={notes} onChange={(e) => setNotes(e.target.value)} />
                     </div>
                   </details>
                 </section>
@@ -555,34 +560,34 @@ export default function AttendancePage() {
                 <section className="space-y-2.5">
                   <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2 px-1">
                     <div>
-                      <h2 className="text-[20px] font-bold">Members</h2>
-                      <p className="text-[13px] text-label-2">{isIjtima ? "Choose Present, Leave or Absent for each member" : "Tap a name to mark present"}</p>
+                      <h2 className="text-[20px] font-bold">{t("Members")}</h2>
+                      <p className="text-[13px] text-label-2">{isIjtima ? t("Choose Present, Leave or Absent for each member") : t("Tap a name to mark present")}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {filteredParticipants.length > 0 && (
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
                           const shown = new Set(filteredParticipants.map((p) => p.id));
                           setParticipants(participants.map((p) => (shown.has(p.id) ? { ...p, status: allPresent ? "absent" : "present" } : p)));
-                        }}>{allPresent ? "Clear all" : "All present"}</button>
+                        }}>{allPresent ? t("Clear all") : t("All present")}</button>
                       )}
                       {lastPresentIds.size > 0 && (
-                        <button type="button" className="btn btn-secondary btn-sm" title="Tick the members who came last time" onClick={() => setParticipants(participants.map((p) => ({ ...p, status: lastPresentIds.has(p.id) ? "present" : "absent" })))}>
-                          Same as last time
+                        <button type="button" className="btn btn-secondary btn-sm" title={t("Tick the members who came last time")} onClick={() => setParticipants(participants.map((p) => ({ ...p, status: lastPresentIds.has(p.id) ? "present" : "absent" })))}>
+                          {t("Same as last time")}
                         </button>
                       )}
-                      <button type="button" className="btn btn-tinted btn-sm" onClick={() => setIsAddingAttendee(true)}><UserPlus className="h-4 w-4" /> Add</button>
+                      <button type="button" className="btn btn-tinted btn-sm" onClick={() => setIsAddingAttendee(true)}><UserPlus className="h-4 w-4" /> {t("Add")}</button>
                     </div>
                   </div>
 
                   {participants.length > 8 && (
                     <label className="relative block">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-label-3" />
-                      <input type="search" className="form-input !bg-fill !border-transparent !pl-9" placeholder="Search members" value={search} onChange={(e) => setSearch(e.target.value)} />
+                      <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-label-3" />
+                      <input type="search" className="form-input !bg-fill !border-transparent !ps-9" placeholder={t("Search members")} value={search} onChange={(e) => setSearch(e.target.value)} />
                     </label>
                   )}
 
                   {filteredParticipants.length === 0 ? (
-                    <div className="card"><EmptyState icon={Users} title={search ? "No one matches that search" : "No members yet"} text={search ? undefined : "Add the first member with the Add button."} /></div>
+                    <div className="card"><EmptyState icon={Users} title={search ? t("No one matches that search") : t("No members yet")} text={search ? undefined : t("Add the first member with the Add button.")} /></div>
                   ) : (
                     <ul className="card overflow-hidden list-inset">
                       {filteredParticipants.map((p) => {
@@ -591,21 +596,21 @@ export default function AttendancePage() {
                           <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
                             <div className="min-w-0">
                               <p className="text-[16px] font-medium truncate"><BiText text={p.full_name} /></p>
-                              <p className="text-[12px] text-label-2">Arkan</p>
+                              <p className="text-[12px] text-label-2">{t("Arkan")}</p>
                             </div>
                             <Segmented label={`Status for ${p.full_name}`} value={p.status} onChange={(v) => toggleAttendance(p.id, v)} options={statusOptions} />
                           </li>
                         ) : (
                           <li key={p.id}>
-                            <button type="button" onClick={() => toggleAttendance(p.id)} aria-pressed={present} className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${present ? "bg-success-tint" : "active:bg-fill"}`}>
+                            <button type="button" onClick={() => toggleAttendance(p.id)} aria-pressed={present} className={`w-full flex items-center gap-3 px-4 py-3 text-start transition-colors ${present ? "bg-success-tint" : "active:bg-fill"}`}>
                               <span className={`h-7 w-7 flex-shrink-0 rounded-full grid place-items-center transition-colors ${present ? "bg-[#30a14e] text-white" : "border-2 border-[var(--color-check-off)]"}`}>
                                 {present && <Check className="h-4 w-4" strokeWidth={3} />}
                               </span>
                               <span className="min-w-0 flex-1">
                                 <span className="block text-[16px] font-medium truncate"><BiText text={p.full_name} /></span>
-                                <span className="block text-[12px] text-label-2">{p.type === "haazir_arkan" ? "Arkan" : "Public"}</span>
+                                <span className="block text-[12px] text-label-2">{p.type === "haazir_arkan" ? t("Arkan") : t("Public")}</span>
                               </span>
-                              {present && <span className="text-[13px] font-semibold text-success">Present</span>}
+                              {present && <span className="text-[13px] font-semibold text-success">{t("Present")}</span>}
                             </button>
                           </li>
                         );
@@ -619,12 +624,12 @@ export default function AttendancePage() {
               <section className="space-y-2.5">
                 {pastSessions.length > 5 && (
                   <label className="relative block">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-label-3" />
-                    <input type="search" className="form-input !bg-fill !border-transparent !pl-9" placeholder="Search by date, topic, place or name" value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
+                    <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-label-3" />
+                    <input type="search" className="form-input !bg-fill !border-transparent !ps-9" placeholder={t("Search by date, topic, place or name")} value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} />
                   </label>
                 )}
                 {filteredPastSessions.length === 0 ? (
-                  <div className="card"><EmptyState icon={History} title="No reports yet" text="Reports you submit appear here, and you can correct them later." /></div>
+                  <div className="card"><EmptyState icon={History} title={t("No reports yet")} text={t("Reports you submit appear here, and you can correct them later.")} /></div>
                 ) : (
                   <ul className="card overflow-hidden list-inset">
                     {filteredPastSessions.map((s) => {
@@ -633,7 +638,7 @@ export default function AttendancePage() {
                       const [y, m, d] = s.session_date.slice(0, 10).split("-");
                       return (
                         <li key={s.id}>
-                          <button type="button" onClick={() => setExpandedSessionId(s.id)} className="w-full text-left px-4 py-3 grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 active:bg-fill hover:bg-grouped">
+                          <button type="button" onClick={() => setExpandedSessionId(s.id)} className="w-full text-start px-4 py-3 grid grid-cols-[auto_1fr_auto_auto] items-center gap-3 active:bg-fill hover:bg-grouped">
                             <span className="w-11 h-11 rounded-xl bg-fill grid place-items-center text-center leading-none">
                               <span>
                                 <span className="block text-[16px] font-bold tabular">{d}</span>
@@ -641,12 +646,12 @@ export default function AttendancePage() {
                               </span>
                             </span>
                             <span className="min-w-0">
-                              <span className="block text-[15px] font-semibold truncate">{s.syllabus_topics ? <>Topic {s.syllabus_topics.topic_number}: <BiText text={cleanTitle(s.syllabus_topics.title)} /></> : CATEGORY_LABEL[s.category] ?? s.category}</span>
+                              <span className="block text-[15px] font-semibold truncate">{s.syllabus_topics ? <>{t("Topic")} {s.syllabus_topics.topic_number}: <BiText text={cleanTitle(s.syllabus_topics.title)} /></> : t(CATEGORY_LABEL[s.category]) ?? s.category}</span>
                               <span className="block text-[13px] text-label-2 truncate">{y}{s.location ? ` · ${s.location}` : ""}</span>
                             </span>
                             <span className="text-right leading-tight">
                               <span className="text-[17px] font-semibold tabular">{present}</span><span className="text-[13px] text-label-2">/{att.length}</span>
-                              <span className="block text-[11px] text-label-2">present</span>
+                              <span className="block text-[11px] text-label-2">{t("present")}</span>
                             </span>
                             <ChevronRight className="h-4 w-4 text-label-3" />
                           </button>
@@ -667,26 +672,26 @@ export default function AttendancePage() {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
             <p className="text-[14px] leading-tight" aria-live="polite">
               <span className="text-[20px] font-bold tabular">{presentCount}</span>
-              <span className="text-label-2"> of {filteredParticipants.length} present{leaveCount ? ` · ${leaveCount} on leave` : ""}</span>
+              <span className="text-label-2">{lang === "ur" ? ` / ${filteredParticipants.length} حاضر${leaveCount ? ` · ${leaveCount} رخصت` : ""}` : ` of ${filteredParticipants.length} present${leaveCount ? ` · ${leaveCount} on leave` : ""}`}</span>
             </p>
             <button type="button" onClick={handleSubmit} disabled={submitting || participants.length === 0} className="btn btn-primary px-6">
-              {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</> : "Submit report"}
+              {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> {t("Saving…")}</> : t("Submit report")}
             </button>
           </div>
         </div>
       )}
 
       {/* Thank you */}
-      <Sheet open={!!thanks} onClose={() => setThanks(null)} title={thanks?.offline ? "Saved on this phone" : "JazakAllah khair"} footer={<button type="button" className="btn btn-primary w-full sm:w-auto" onClick={() => setThanks(null)}>Done</button>}>
+      <Sheet open={!!thanks} onClose={() => setThanks(null)} title={thanks?.offline ? t("Saved on this phone") : t("JazakAllah khair")} footer={<button type="button" className="btn btn-primary w-full sm:w-auto" onClick={() => setThanks(null)}>{t("Done")}</button>}>
         {thanks && (
           <div className="text-center py-2">
             <div className={`mx-auto h-16 w-16 rounded-full grid place-items-center ${thanks.offline ? "bg-warning-tint text-warning" : "bg-success-tint text-success"}`}><Check className="h-8 w-8" strokeWidth={3} /></div>
             <p className="mt-4 text-[34px] font-bold tabular tracking-[-0.03em]">{thanks.present}<span className="text-[20px] text-label-2 font-semibold"> / {thanks.total}</span></p>
-            <p className="text-[15px] text-label-2">present at {thanks.place}</p>
+            <p className="text-[15px] text-label-2">{lang === "ur" ? `${thanks.place} میں حاضر` : `present at ${thanks.place}`}</p>
             {thanks.offline ? (
-              <p className="mt-4 text-[14px] text-label-2">There’s no internet connection right now. The report is kept on this phone and will be sent automatically when you’re back online.</p>
+              <p className="mt-4 text-[14px] text-label-2">{t("There’s no internet connection right now. The report is kept on this phone and will be sent automatically when you’re back online.")}</p>
             ) : thanks.streak > 1 ? (
-              <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-accent-tint px-3.5 py-1.5 text-[14px] font-semibold text-accent-ink">{thanks.streak} weeks in a row with a report</p>
+              <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-accent-tint px-3.5 py-1.5 text-[14px] font-semibold text-accent-ink">{lang === "ur" ? `مسلسل ${thanks.streak} ہفتوں سے رپورٹ جمع` : `${thanks.streak} weeks in a row with a report`}</p>
             ) : null}
           </div>
         )}
@@ -696,27 +701,27 @@ export default function AttendancePage() {
       <Sheet
         open={isAddingAttendee}
         onClose={() => setIsAddingAttendee(false)}
-        title="Add member"
-        subtitle={isIjtima ? "New Arkan member of this council" : `New member of ${activeCircle?.name ?? "this circle"}`}
-        footer={<><button type="button" className="btn btn-secondary" onClick={() => setIsAddingAttendee(false)}>Cancel</button><button type="button" className="btn btn-primary" onClick={handleAddAttendee}>Add and mark present</button></>}
+        title={t("Add member")}
+        subtitle={isIjtima ? t("New Arkan member of this council") : lang === "ur" ? `${activeCircle?.name ?? "حلقہ"} کا نیا رکن` : `New member of ${activeCircle?.name ?? "this circle"}`}
+        footer={<><button type="button" className="btn btn-secondary" onClick={() => setIsAddingAttendee(false)}>{t("Cancel")}</button><button type="button" className="btn btn-primary" onClick={handleAddAttendee}>{t("Add and mark present")}</button></>}
       >
         <div className="grid grid-cols-1 gap-3">
-          <label className="block"><span className="form-label">Full name</span>
+          <label className="block"><span className="form-label">{t("Full name")}</span>
             <input className="form-input" autoComplete="off" value={newAttendee.full_name} onChange={(e) => setNewAttendee({ ...newAttendee, full_name: e.target.value })} />
           </label>
-          <label className="block"><span className="form-label">Phone (optional)</span>
+          <label className="block"><span className="form-label">{t("Phone (optional)")}</span>
             <input className="form-input" type="tel" inputMode="tel" value={newAttendee.phone} onChange={(e) => setNewAttendee({ ...newAttendee, phone: e.target.value })} />
           </label>
           {isIjtima ? (
-            <label className="block"><span className="form-label">Member’s circle</span>
+            <label className="block"><span className="form-label">{t("Member’s circle")}</span>
               <select className="form-input" value={newAttendee.circle_id} onChange={(e) => setNewAttendee({ ...newAttendee, circle_id: e.target.value })}>
-                <option value="">Choose a circle</option>
+                <option value="">{t("Choose a circle")}</option>
                 {currentCircles.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </label>
           ) : (
-            <div><span className="form-label">Member type</span>
-              <Segmented label="Member type" value={newAttendee.type} onChange={(v) => setNewAttendee({ ...newAttendee, type: v })} options={[{ value: "aam_afraad", label: "Public" }, { value: "haazir_arkan", label: "Arkan" }]} />
+            <div><span className="form-label">{t("Member type")}</span>
+              <Segmented label="Member type" value={newAttendee.type} onChange={(v) => setNewAttendee({ ...newAttendee, type: v })} options={[{ value: "aam_afraad", label: t("Public") }, { value: "haazir_arkan", label: t("Arkan") }]} />
             </div>
           )}
         </div>
@@ -726,12 +731,12 @@ export default function AttendancePage() {
       <Sheet
         open={!!viewingSession}
         onClose={() => setExpandedSessionId(null)}
-        title={viewingSession?.syllabus_topics ? `Topic ${viewingSession.syllabus_topics.topic_number}` : CATEGORY_LABEL[viewingSession?.category] ?? "Report"}
+        title={viewingSession?.syllabus_topics ? `${t("Topic")} ${viewingSession.syllabus_topics.topic_number}` : t(CATEGORY_LABEL[viewingSession?.category]) ?? "Report"}
         subtitle={viewingSession ? new Date(viewingSession.session_date.slice(0, 10) + "T00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : ""}
         footer={viewingSession && (
           <>
-            <button type="button" className="btn btn-danger mr-auto" onClick={async () => { await handleDeleteSession(viewingSession.id); setExpandedSessionId(null); }}><Trash2 className="h-4 w-4" /> Delete</button>
-            <button type="button" className="btn btn-primary" onClick={() => { startEditingSession(viewingSession); setExpandedSessionId(null); }}>Edit report</button>
+            <button type="button" className="btn btn-danger me-auto" onClick={async () => { await handleDeleteSession(viewingSession.id); setExpandedSessionId(null); }}><Trash2 className="h-4 w-4" /> {t("Delete")}</button>
+            <button type="button" className="btn btn-primary" onClick={() => { startEditingSession(viewingSession); setExpandedSessionId(null); }}>{t("Edit report")}</button>
           </>
         )}
       >
@@ -740,12 +745,12 @@ export default function AttendancePage() {
             {viewingSession.syllabus_topics && <p className="text-[15px] font-medium"><BiText text={cleanTitle(viewingSession.syllabus_topics.title)} /></p>}
             {viewingSession.location && <p className="text-[14px] text-label-2 inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {viewingSession.location}</p>}
             {viewingSession.notes && <p className="text-[15px] text-label-2 whitespace-pre-wrap">{viewingSession.notes}</p>}
-            <p className="text-[13px] font-semibold text-label-2">Attendance · tap a status to change it</p>
+            <p className="text-[13px] font-semibold text-label-2">{t("Attendance · tap a status to change it")}</p>
             <ul className="card-inset overflow-hidden list-inset">
               {[...(viewingSession.attendance || [])].sort((a: any, b: any) => (a.participants?.full_name ?? "").localeCompare(b.participants?.full_name ?? "")).map((a: any) => (
                 <li key={a.participant_id} className="flex items-center justify-between gap-3 px-3.5 py-2.5 bg-surface">
                   <span className="text-[15px] truncate"><BiText text={a.participants?.full_name ?? "Removed member"} /></span>
-                  <button type="button" onClick={() => togglePastAttendance(viewingSession.id, a.participant_id, a.status)} className={`badge ${statusBadge(a.status)} !text-[13px] !px-3 !py-1.5 min-w-[78px] justify-center capitalize`}>{a.status}</button>
+                  <button type="button" onClick={() => togglePastAttendance(viewingSession.id, a.participant_id, a.status)} className={`badge ${statusBadge(a.status)} !text-[13px] !px-3 !py-1.5 min-w-[78px] justify-center capitalize`}>{t(a.status)}</button>
                 </li>
               ))}
             </ul>
@@ -758,51 +763,51 @@ export default function AttendancePage() {
         open={!!editingSession}
         onClose={() => setEditingSession(null)}
         wide
-        title="Edit report"
-        footer={<><button type="button" className="btn btn-secondary" onClick={() => setEditingSession(null)}>Cancel</button><button type="button" className="btn btn-primary" disabled={savingEdit} onClick={handleSaveEditedSession}>{savingEdit && <Loader2 className="h-4 w-4 animate-spin" />} Save changes</button></>}
+        title={t("Edit report")}
+        footer={<><button type="button" className="btn btn-secondary" onClick={() => setEditingSession(null)}>{t("Cancel")}</button><button type="button" className="btn btn-primary" disabled={savingEdit} onClick={handleSaveEditedSession}>{savingEdit && <Loader2 className="h-4 w-4 animate-spin" />} Save changes</button></>}
       >
         {editingSession && (
           <div className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label className="block"><span className="form-label">Date</span>
+              <label className="block"><span className="form-label">{t("Date")}</span>
                 <input type="date" className="form-input" value={editingSession.session_date} onChange={(e) => setEditingSession({ ...editingSession, session_date: e.target.value })} />
               </label>
               {editingSession.category !== "ijtima_arkan" && (
-                <label className="block"><span className="form-label">Topic</span>
+                <label className="block"><span className="form-label">{t("Topic")}</span>
                   <select className="form-input" value={editingSession.topic_id} onChange={(e) => setEditingSession({ ...editingSession, topic_id: e.target.value })}>
-                    <option value="">No topic</option>
-                    {syllabus.map((t) => <option key={t.id} value={t.id}>Topic {t.topic_number}: {cleanTitle(t.title)}</option>)}
+                    <option value="">{t("No topic")}</option>
+                    {syllabus.map((tp) => <option key={tp.id} value={tp.id}>{t("Topic")} {tp.topic_number}: {cleanTitle(tp.title)}</option>)}
                   </select>
                 </label>
               )}
-              <label className="block sm:col-span-2"><span className="form-label">Location</span>
+              <label className="block sm:col-span-2"><span className="form-label">{t("Location")}</span>
                 <input className="form-input" value={editingSession.location} onChange={(e) => setEditingSession({ ...editingSession, location: e.target.value })} />
               </label>
-              <label className="block sm:col-span-2"><span className="form-label">Notes</span>
+              <label className="block sm:col-span-2"><span className="form-label">{t("Notes")}</span>
                 <textarea rows={3} className="form-input resize-none" value={editingSession.notes} onChange={(e) => setEditingSession({ ...editingSession, notes: e.target.value })} />
               </label>
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[13px] font-semibold text-label-2">Attendance ({Object.values(editingAttendance).filter((s) => s === "present").length} present)</p>
-                <button type="button" className="btn btn-tinted btn-sm" onClick={() => setIsAddingEditAttendee((v) => !v)}><UserPlus className="h-4 w-4" /> Add member</button>
+                <button type="button" className="btn btn-tinted btn-sm" onClick={() => setIsAddingEditAttendee((v) => !v)}><UserPlus className="h-4 w-4" /> {t("Add member")}</button>
               </div>
               {isAddingEditAttendee && (
                 <div className="card-inset p-3 mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2 animate-fade">
-                  <input className="form-input" placeholder="Full name" value={newEditAttendee.full_name} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, full_name: e.target.value })} />
-                  <input className="form-input" type="tel" inputMode="tel" placeholder="Phone (optional)" value={newEditAttendee.phone} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, phone: e.target.value })} />
+                  <input className="form-input" placeholder={t("Full name")} value={newEditAttendee.full_name} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, full_name: e.target.value })} />
+                  <input className="form-input" type="tel" inputMode="tel" placeholder={t("Phone (optional)")} value={newEditAttendee.phone} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, phone: e.target.value })} />
                   {editingSession.category === "ijtima_arkan" ? (
                     <select className="form-input" value={newEditAttendee.circle_id} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, circle_id: e.target.value })}>
-                      <option value="">Member’s circle</option>
+                      <option value="">{t("Member’s circle")}</option>
                       {currentCircles.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   ) : (
                     <select className="form-input" value={newEditAttendee.type} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, type: e.target.value })}>
-                      <option value="aam_afraad">Public (Aam Afraad)</option>
-                      <option value="haazir_arkan">Arkan (Haazir Arkan)</option>
+                      <option value="aam_afraad">{t("Public (Aam Afraad)")}</option>
+                      <option value="haazir_arkan">{t("Arkan (Haazir Arkan)")}</option>
                     </select>
                   )}
-                  <button type="button" className="btn btn-primary" disabled={addingEditAttendee} onClick={handleAddAttendeeInEditModal}>Add and mark present</button>
+                  <button type="button" className="btn btn-primary" disabled={addingEditAttendee} onClick={handleAddAttendeeInEditModal}>{t("Add and mark present")}</button>
                 </div>
               )}
               <ul className="card-inset overflow-hidden list-inset">

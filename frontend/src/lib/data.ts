@@ -66,9 +66,9 @@ export const MEMBER_LABEL: Record<string, string> = {
   aam_afraad: "Public",
 };
 
-export function formatDate(isoDate: string): string {
+export function formatDate(isoDate: string, locale = "en-GB"): string {
   const [y, m, d] = isoDate.slice(0, 10).split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(y, m - 1, d).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
 }
 
 /** Titles are stored as "Topic 1: ثنائے رب (…)"; screens add the number themselves, so drop it here. */
