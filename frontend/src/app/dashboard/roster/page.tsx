@@ -164,7 +164,7 @@ export default function Directory() {
           {shown.map((p) => (
             <li key={p.id} className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-grouped transition-colors">
               <button type="button" onClick={() => openEdit(p)} className="flex flex-1 min-w-0 items-center gap-3 text-left" aria-label={`Edit ${p.full_name}`}>
-                <span className={`h-10 w-10 flex-shrink-0 rounded-full grid place-items-center text-[14px] font-semibold ${p.type === "haazir_arkan" ? "bg-accent text-white" : "bg-fill text-label"}`}>{initials(p.full_name)}</span>
+                <span className={`h-10 w-10 flex-shrink-0 rounded-full grid place-items-center text-[14px] font-semibold ${p.type === "haazir_arkan" ? "bg-accent-fill text-white" : "bg-fill text-label"}`}>{initials(p.full_name)}</span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="text-[15px] font-semibold truncate"><BiText text={p.full_name} /></span>

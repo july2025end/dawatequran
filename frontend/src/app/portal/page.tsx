@@ -118,7 +118,7 @@ export default function PublicPortal() {
                   return (
                     <Link key={t.id} href={`/portal/topic/${t.id}`} className="card group p-5 flex flex-col hover:shadow-[var(--shadow-float)] hover:-translate-y-0.5 transition-all duration-300">
                       <div className="flex items-center justify-between">
-                        <span className={`h-8 min-w-8 px-2 rounded-lg grid place-items-center text-[14px] font-bold tabular ${isCurrent ? "bg-accent text-white" : "bg-fill text-label"}`}>{t.topic_number}</span>
+                        <span className={`h-8 min-w-8 px-2 rounded-lg grid place-items-center text-[14px] font-bold tabular ${isCurrent ? "bg-accent-fill text-white" : "bg-fill text-label"}`}>{t.topic_number}</span>
                         {isCurrent && <span className="badge badge-blue">Now</span>}
                       </div>
                       <h3 className="mt-3 text-[17px] font-semibold leading-snug"><BiText text={cleanTitle(t.title)} /></h3>

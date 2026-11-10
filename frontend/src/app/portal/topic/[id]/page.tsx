@@ -411,7 +411,7 @@ function AyahCard({
       <div className="p-4 sm:p-6">
         {/* Ayah number + listen */}
         <div className="flex items-center justify-between mb-4">
-          <span className={`font-urdu inline-flex items-center rounded-full px-3 py-0.5 text-[13px] ${isActive ? "bg-accent text-white" : "bg-fill text-label-2"}`}>آیت {ayah.numberInSurah}</span>
+          <span className={`font-urdu inline-flex items-center rounded-full px-3 py-0.5 text-[13px] ${isActive ? "bg-accent-fill text-white" : "bg-fill text-label-2"}`}>آیت {ayah.numberInSurah}</span>
           <button
             onClick={() => (isActive && isPlaying ? onPause() : onPlay(surahNum, ayah.numberInSurah, ayah.number))}
             className={`btn btn-sm font-urdu ${isActive && isPlaying ? "btn-primary" : "btn-tinted"}`}

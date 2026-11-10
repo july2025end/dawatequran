@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BookOpen, ChevronRight, Plus } from "lucide-react";
+import { BookOpen, CalendarRange, ChevronRight, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { SURAHS } from "@/lib/surahs";
 import { cleanTitle, formatDate, localDate } from "@/lib/data";
@@ -25,6 +25,7 @@ export default function Syllabus() {
   const [query, setQuery] = useState("");
   const [form, setForm] = useState<Form | null>(null);
   const [saving, setSaving] = useState(false);
+  const [fill, setFill] = useState<{ start: string; days: number } | null>(null);
 
   useEffect(() => { fetchSyllabus(); }, []);
 
@@ -81,13 +82,47 @@ export default function Syllabus() {
 
   const nextNumber = topics.reduce((m, t) => Math.max(m, t.topic_number ?? 0), 0) + 1;
 
+  // Auto-fill: give every undated topic, in number order, a run of days after the start date.
+  const undated = topics.filter((t) => !t.start_date).sort((a, b) => a.topic_number - b.topic_number);
+  const addDays = (iso: string, n: number) => { const [y, m, d] = iso.split("-").map(Number); return localDate(new Date(y, m - 1, d + n)); };
+  const plan = fill && fill.start && fill.days > 0
+    ? undated.map((t, i) => ({ t, start: addDays(fill.start, i * fill.days), end: addDays(fill.start, i * fill.days + fill.days - 1) }))
+    : [];
+
+  function openFill() {
+    // Start the day after the last dated topic ends, or today if none have dates.
+    const lastEnd = topics.map((t) => t.end_date).filter(Boolean).sort().at(-1);
+    setFill({ start: lastEnd ? addDays(lastEnd, 1) : localDate(), days: 7 });
+  }
+
+  async function applyFill() {
+    if (!plan.length) return;
+    if (!confirm(`Set teaching dates for ${plan.length} topics, from ${formatDate(plan[0].start)} to ${formatDate(plan.at(-1)!.end)}? Topics that already have dates are not changed.`)) return;
+    setSaving(true);
+    let done = 0;
+    for (const p of plan) {
+      const { error } = await supabase.from("syllabus_topics").update({ start_date: p.start, end_date: p.end }).eq("id", p.t.id);
+      if (error) { toast(`Stopped after ${done} topics: ${error.message}`, "error"); break; }
+      done++;
+    }
+    setSaving(false);
+    if (done === plan.length) toast(`Dates set for ${done} topics`);
+    setFill(null);
+    fetchSyllabus();
+  }
+
   return (
     <div className="px-4 sm:px-6 lg:px-10 pt-6 md:pt-10 max-w-[1000px] mx-auto space-y-5">
       <PageHeader
         eyebrow="Curriculum"
         title="Syllabus"
         subtitle={loading ? "Loading topics…" : `${topics.length} topics with their Quran passages and teaching dates.`}
-        actions={<button type="button" onClick={() => setForm({ id: null, topic_number: nextNumber, title: "", sura: 1, from: 1, to: 7, start_date: "", end_date: "" })} className="btn btn-primary"><Plus className="h-4 w-4" /> Add topic</button>}
+        actions={
+          <>
+            {undated.length > 0 && <button type="button" onClick={openFill} className="btn btn-secondary"><CalendarRange className="h-4 w-4" /> Auto-fill {undated.length} dates</button>}
+            <button type="button" onClick={() => setForm({ id: null, topic_number: nextNumber, title: "", sura: 1, from: 1, to: 7, start_date: "", end_date: "" })} className="btn btn-primary"><Plus className="h-4 w-4" /> Add topic</button>
+          </>
+        }
       />
       <div className="animate-rise"><SearchField value={query} onChange={setQuery} placeholder="Search topic, surah or number" /></div>
 
@@ -102,7 +137,7 @@ export default function Syllabus() {
             return (
               <li key={t.id} className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-grouped transition-colors">
                 <button type="button" onClick={() => edit(t)} className="flex flex-1 min-w-0 items-center gap-3.5 text-left" aria-label={`Edit topic ${t.topic_number}`}>
-                  <span className={`h-10 w-10 flex-shrink-0 rounded-xl grid place-items-center text-[15px] font-bold tabular ${current ? "bg-accent text-white" : "bg-fill text-label"}`}>{t.topic_number}</span>
+                  <span className={`h-10 w-10 flex-shrink-0 rounded-xl grid place-items-center text-[15px] font-bold tabular ${current ? "bg-accent-fill text-white" : "bg-fill text-label"}`}>{t.topic_number}</span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="text-[15px] font-semibold truncate"><BiText text={cleanTitle(t.title)} /></span>
@@ -118,6 +153,38 @@ export default function Syllabus() {
           })}
         </ul>
       )}
+
+      <Sheet
+        open={!!fill}
+        onClose={() => setFill(null)}
+        title="Auto-fill teaching dates"
+        subtitle={`${undated.length} topics have no dates. They are filled in topic order; dated topics stay as they are.`}
+        footer={<><button type="button" className="btn btn-secondary" onClick={() => setFill(null)}>Cancel</button><button type="button" className="btn btn-primary" disabled={saving || !plan.length} onClick={applyFill}>{saving ? "Saving…" : `Set ${plan.length} dates`}</button></>}
+      >
+        {fill && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block"><span className="form-label">First topic starts</span>
+                <input type="date" className="form-input" value={fill.start} onChange={(e) => setFill({ ...fill, start: e.target.value })} />
+              </label>
+              <label className="block"><span className="form-label">Days per topic</span>
+                <input type="number" inputMode="numeric" min={1} max={60} className="form-input" value={fill.days} onChange={(e) => setFill({ ...fill, days: Math.max(1, Number(e.target.value) || 1) })} />
+              </label>
+            </div>
+            <div>
+              <p className="form-label">Preview</p>
+              <ul className="card-inset overflow-hidden list-inset max-h-72 overflow-y-auto">
+                {plan.map((p) => (
+                  <li key={p.t.id} className="flex items-center justify-between gap-3 px-3.5 py-2 bg-surface text-[14px]">
+                    <span className="min-w-0 truncate"><span className="font-semibold tabular mr-2">{p.t.topic_number}</span><BiText text={cleanTitle(p.t.title)} /></span>
+                    <span className="text-label-2 tabular flex-shrink-0">{formatDate(p.start)} – {formatDate(p.end)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+      </Sheet>
 
       <Sheet
         open={!!form}

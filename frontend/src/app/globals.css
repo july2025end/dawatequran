@@ -18,7 +18,7 @@
   /* Text: label 15:1, label-2 5.0:1, label-3 for large/meta text only */
   --color-label: #1d1d1f;
   --color-label-2: #6e6e73;
-  --color-label-3: #86868b;
+  --color-label-3: #6e6e73;          /* small meta text must stay ≥ 4.5:1 */
 
   /* Accent */
   --color-accent: #0071e3;
@@ -26,6 +26,7 @@
   --color-accent-press: #006edb;
   --color-link: #0066cc;
   --color-accent-tint: rgba(0, 113, 227, 0.1);
+  --color-accent-fill: #0071e3;       /* backgrounds behind white text */
   --color-accent-ink: #0058b0;        /* text on accent-tint */
   --color-warning-ink: #7a3d00;       /* text on warning-tint */
   --color-field: #ffffff;
@@ -74,12 +75,13 @@
   --color-separator: rgba(84, 84, 88, 0.65);
   --color-label: #f5f5f7;
   --color-label-2: #a1a1a6;
-  --color-label-3: #7c7c80;
+  --color-label-3: #8e8e93;
   --color-accent: #0a84ff;
   --color-accent-hover: #409cff;
   --color-accent-press: #0a7aea;
   --color-link: #3ca0ff;
   --color-accent-tint: rgba(10, 132, 255, 0.2);
+  --color-accent-fill: #0a6fd6;       /* white text on #0a84ff is only 3.6:1 */
   --color-accent-ink: #7cc0ff;
   --color-success: #32d74b;
   --color-success-tint: rgba(50, 215, 75, 0.16);
@@ -202,8 +204,8 @@ select.form-input {
 }
 .btn:active:not(:disabled) { transform: scale(0.97); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-primary { background: var(--color-accent); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); }
+.btn-primary { background: var(--color-accent-fill); color: #fff; }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
 .btn-secondary { background: var(--color-fill); color: var(--color-label); }
 .btn-secondary:hover:not(:disabled) { background: var(--color-fill-strong); }
 .btn-tinted { background: var(--color-accent-tint); color: var(--color-link); }

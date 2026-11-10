@@ -104,7 +104,7 @@ function SideLink({ name, href, icon: Icon, active }: { name: string; href: stri
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex items-center gap-3 rounded-[10px] px-3 py-2 text-[15px] transition-colors ${active ? "bg-accent text-white font-semibold" : "text-label hover:bg-fill"}`}
+      className={`flex items-center gap-3 rounded-[10px] px-3 py-2 text-[15px] transition-colors ${active ? "bg-accent-fill text-white font-semibold" : "text-label hover:bg-fill"}`}
     >
       <Icon className={`h-[18px] w-[18px] ${active ? "text-white" : "text-accent"}`} strokeWidth={2} />
       {name}
