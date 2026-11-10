@@ -7,6 +7,7 @@ import Link from "next/link";
 import { BiText, Brand, EmptyState, QuranRef, Segmented, Sheet, ThemeToggle, toast } from "@/components/ui";
 import { getTafheemLink } from "@/lib/quran_utils";
 import { CATEGORY_LABEL, cleanTitle, localDate } from "@/lib/data";
+import { flushPending, isNetworkError, pendingReports, queueReport, sendReport } from "@/lib/offline";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- rows come straight from Supabase joins */
 
@@ -31,6 +32,22 @@ export default function AttendancePage() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [topicTouched, setTopicTouched] = useState(false);
+  const [thanks, setThanks] = useState<{ present: number; total: number; streak: number; place: string; offline: boolean } | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Reports saved without signal are sent as soon as the phone is back online.
+  useEffect(() => {
+    const trySend = async () => {
+      if (!pendingReports().length) { setPendingCount(0); return; }
+      const { sent, left } = await flushPending();
+      setPendingCount(left);
+      if (sent) toast(`${sent} saved report${sent === 1 ? "" : "s"} sent`);
+    };
+    trySend();
+    window.addEventListener("online", trySend);
+    return () => window.removeEventListener("online", trySend);
+  }, []);
   const [isAddingAttendee, setIsAddingAttendee] = useState(false);
   const [newAttendee, setNewAttendee] = useState({ full_name: "", phone: "", remarks: "", type: "aam_afraad", circle_id: "" });
 
@@ -143,6 +160,29 @@ export default function AttendancePage() {
   });
   const presentCount = filteredParticipants.filter(p => p.status === 'present').length;
 
+  // Suggested topic: the one the syllabus dates put on this day, otherwise the next after the last one taught.
+  const suggestedTopicId = (() => {
+    if (category === 'ijtima_arkan') return "";
+    const dated = syllabus.find(t => t.start_date && t.end_date && t.start_date <= sessionDate && sessionDate <= t.end_date);
+    if (dated) return dated.id;
+    const lastTaught = pastSessions.find(s => s.syllabus_topics?.topic_number);
+    return lastTaught ? syllabus.find(t => t.topic_number === lastTaught.syllabus_topics.topic_number + 1)?.id ?? "" : "";
+  })();
+  const effectiveTopic = topicTouched ? topic : (topic || suggestedTopicId);
+
+  // Members ticked at the most recent report, for "Same as last time".
+  const lastPresentIds = new Set((pastSessions[0]?.attendance ?? []).filter((a: any) => a.status === 'present').map((a: any) => a.participant_id));
+
+  /** Consecutive weeks (Monday-start) up to this one with at least one report of this type. */
+  function weekStreak(dates: string[]) {
+    const weekOf = (iso: string) => { const [y, m, d] = iso.slice(0, 10).split("-").map(Number); const dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); return localDate(dt); };
+    const weeks = new Set(dates.map(weekOf));
+    const cur = new Date(); cur.setHours(0, 0, 0, 0); cur.setDate(cur.getDate() - ((cur.getDay() + 6) % 7));
+    let n = 0;
+    while (weeks.has(localDate(cur))) { n++; cur.setDate(cur.getDate() - 7); }
+    return n;
+  }
+
   const filteredPastSessions = pastSessions.filter(s => {
     const query = historySearch.toLowerCase();
     const dateStr = s.session_date ? s.session_date.toString() : "";
@@ -205,35 +245,37 @@ export default function AttendancePage() {
     if (!sessionDate) { notify("Please select a date."); return; }
     const sameDay = pastSessions.find(s => s.session_date?.slice(0, 10) === sessionDate && s.category === category);
     if (sameDay && !confirm(`A ${category.replace(/_/g, ' ')} report for ${sessionDate} already exists. Save another one anyway?\n\nTo change the existing report, press Cancel and edit it under History.`)) return;
+    const session = {
+      session_date: sessionDate, category, location, notes,
+      circle_id: category === 'ijtima_arkan' ? null : selectedCircle,
+      uc_id: selectedUC,
+      topic_id: effectiveTopic || null,
+      attendance_month: category === 'ijtima_arkan' ? attendanceMonth : null,
+    };
+    const records = participants.map(p => ({ participant_id: p.id, status: p.status }));
+    const present = records.filter(r => r.status === 'present').length;
+    const place = category === 'ijtima_arkan' ? (ucs.find(u => u.id === selectedUC)?.name ?? "") : (activeCircle?.name ?? "");
+    const streak = weekStreak([...pastSessions.filter(s => s.category === category).map(s => s.session_date), sessionDate]);
+    const reset = () => {
+      setTopic(""); setTopicTouched(false); setLocation(""); setNotes("");
+      setParticipants(participants.map(p => ({ ...p, status: 'absent' })));
+    };
     setSubmitting(true);
     try {
-      const { data: session, error: sessionError } = await supabase
-        .from('sessions')
-        .insert({
-          session_date: sessionDate,
-          category, location, notes,
-          circle_id: category === 'ijtima_arkan' ? null : selectedCircle,
-          uc_id: selectedUC,
-          topic_id: topic || null,
-          attendance_month: category === 'ijtima_arkan' ? attendanceMonth : null
-        })
-        .select().single();
-      if (sessionError) throw sessionError;
-      const attendanceRecords = participants.map(p => ({ session_id: session.id, participant_id: p.id, status: p.status }));
-      if (attendanceRecords.length > 0) {
-        const { error: attError } = await supabase.from('attendance').insert(attendanceRecords);
-        if (attError) {
-          // Remove the half-saved session so it can't show up as a class with no attendance.
-          await supabase.from('sessions').delete().eq('id', session.id);
-          throw attError;
-        }
-      }
-      notify(`Saved: ${attendanceRecords.filter(r => r.status === 'present').length} present out of ${attendanceRecords.length}.`);
-      setTopic(""); setLocation(""); setNotes("");
-      setParticipants(participants.map(p => ({ ...p, status: 'absent' })));
+      await sendReport(session, records);
+      setThanks({ present, total: records.length, streak, place, offline: false });
+      reset();
       await refreshPastSessions();
     } catch (e: any) {
-      notify("Error: " + e.message);
+      if (isNetworkError(e)) {
+        // No signal: keep the report on this phone and send it automatically later.
+        queueReport(`${place} · ${sessionDate}`, session, records);
+        setPendingCount(pendingReports().length);
+        setThanks({ present, total: records.length, streak, place, offline: true });
+        reset();
+      } else {
+        notify("Error: " + e.message);
+      }
     } finally { setSubmitting(false); }
   }
 
@@ -376,7 +418,7 @@ export default function AttendancePage() {
   const isIjtima = category === "ijtima_arkan";
   const ready = isIjtima ? !!selectedUC : !!selectedCircle;
   const ucName = ucs.find((u) => u.id === selectedUC)?.name ?? "";
-  const topicRow = syllabus.find((t) => t.id === topic);
+  const topicRow = syllabus.find((t) => t.id === effectiveTopic);
   const tafheem = topicRow?.reference ? getTafheemLink(topicRow.reference) : null;
   const viewingSession = pastSessions.find((s) => s.id === expandedSessionId) ?? null;
   const allPresent = filteredParticipants.length > 0 && filteredParticipants.every((p) => p.status === "present");
@@ -418,6 +460,12 @@ export default function AttendancePage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-5 space-y-5">
+        {pendingCount > 0 && (
+          <div role="status" className="card p-3.5 flex items-center justify-between gap-3 bg-warning-tint">
+            <p className="text-[14px] text-warning-ink"><span className="font-semibold">{pendingCount} report{pendingCount === 1 ? "" : "s"} saved on this phone.</span> {pendingCount === 1 ? "It" : "They"} will be sent when you’re online.</p>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={async () => { const r = await flushPending(); setPendingCount(r.left); toast(r.sent ? `${r.sent} sent` : "Still offline, will try again", r.sent ? "success" : "info"); }}>Send now</button>
+          </div>
+        )}
         {/* Choose session */}
         <section className="card p-4 sm:p-5 space-y-4 animate-rise">
           <div>
@@ -479,8 +527,8 @@ export default function AttendancePage() {
                       </select>
                     </label>
                   ) : (
-                    <label className="block"><span className="form-label">Topic taught</span>
-                      <select className="form-input" value={topic} onChange={(e) => setTopic(e.target.value)}>
+                    <label className="block"><span className="form-label">Topic taught{!topicTouched && !topic && suggestedTopicId ? <span className="ml-1.5 badge badge-blue">Suggested</span> : null}</span>
+                      <select className="form-input" value={effectiveTopic} onChange={(e) => { setTopic(e.target.value); setTopicTouched(true); }}>
                         <option value="">Choose a topic (optional)</option>
                         {syllabus.map((t) => <option key={t.id} value={t.id}>Topic {t.topic_number}: {cleanTitle(t.title)}</option>)}
                       </select>
@@ -505,17 +553,22 @@ export default function AttendancePage() {
 
                 {/* Members */}
                 <section className="space-y-2.5">
-                  <div className="flex items-end justify-between gap-3 px-1">
+                  <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2 px-1">
                     <div>
                       <h2 className="text-[20px] font-bold">Members</h2>
                       <p className="text-[13px] text-label-2">{isIjtima ? "Choose Present, Leave or Absent for each member" : "Tap a name to mark present"}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {filteredParticipants.length > 0 && (
                         <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
                           const shown = new Set(filteredParticipants.map((p) => p.id));
                           setParticipants(participants.map((p) => (shown.has(p.id) ? { ...p, status: allPresent ? "absent" : "present" } : p)));
                         }}>{allPresent ? "Clear all" : "All present"}</button>
+                      )}
+                      {lastPresentIds.size > 0 && (
+                        <button type="button" className="btn btn-secondary btn-sm" title="Tick the members who came last time" onClick={() => setParticipants(participants.map((p) => ({ ...p, status: lastPresentIds.has(p.id) ? "present" : "absent" })))}>
+                          Same as last time
+                        </button>
                       )}
                       <button type="button" className="btn btn-tinted btn-sm" onClick={() => setIsAddingAttendee(true)}><UserPlus className="h-4 w-4" /> Add</button>
                     </div>
@@ -622,6 +675,22 @@ export default function AttendancePage() {
           </div>
         </div>
       )}
+
+      {/* Thank you */}
+      <Sheet open={!!thanks} onClose={() => setThanks(null)} title={thanks?.offline ? "Saved on this phone" : "JazakAllah khair"} footer={<button type="button" className="btn btn-primary w-full sm:w-auto" onClick={() => setThanks(null)}>Done</button>}>
+        {thanks && (
+          <div className="text-center py-2">
+            <div className={`mx-auto h-16 w-16 rounded-full grid place-items-center ${thanks.offline ? "bg-warning-tint text-warning" : "bg-success-tint text-success"}`}><Check className="h-8 w-8" strokeWidth={3} /></div>
+            <p className="mt-4 text-[34px] font-bold tabular tracking-[-0.03em]">{thanks.present}<span className="text-[20px] text-label-2 font-semibold"> / {thanks.total}</span></p>
+            <p className="text-[15px] text-label-2">present at {thanks.place}</p>
+            {thanks.offline ? (
+              <p className="mt-4 text-[14px] text-label-2">There’s no internet connection right now. The report is kept on this phone and will be sent automatically when you’re back online.</p>
+            ) : thanks.streak > 1 ? (
+              <p className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-accent-tint px-3.5 py-1.5 text-[14px] font-semibold text-accent-ink">{thanks.streak} weeks in a row with a report</p>
+            ) : null}
+          </div>
+        )}
+      </Sheet>
 
       {/* Add member */}
       <Sheet
