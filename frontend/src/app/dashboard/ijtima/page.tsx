@@ -78,11 +78,11 @@ export default function IjtimaRegister() {
         <div className="card"><EmptyState icon={Users} title="No Ijtima Arkan reports yet" text="They appear here once murabbis submit Ijtima Arkan attendance." /></div>
       ) : (
         <div className="card overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left border-collapse">
+          <table className="w-full text-left border-collapse">
             <caption className="sr-only">Ijtima Arkan attendance by union council and month</caption>
             <thead>
               <tr className="text-[12px] text-label-2">
-                <th scope="col" className="sticky left-0 bg-surface px-4 py-3 font-semibold">Union council</th>
+                <th scope="col" className="sticky left-0 z-[1] bg-surface px-4 py-3 font-semibold shadow-[1px_0_0_var(--color-separator)]">Union council</th>
                 <th scope="col" className="px-3 py-3 font-semibold text-right">Arkan</th>
                 {grid.months.map((m) => <th key={m} scope="col" className="px-3 py-3 font-semibold text-center">{monthLabel(m)}</th>)}
               </tr>
@@ -90,7 +90,11 @@ export default function IjtimaRegister() {
             <tbody>
               {ucs.map((u) => (
                 <tr key={u.id} className="border-t border-separator">
-                  <th scope="row" className="sticky left-0 bg-surface px-4 py-3 text-[14px] font-semibold whitespace-nowrap">{u.name}</th>
+                  {/* Frozen column stays narrow on phones: "UC-81" on top, the sector underneath. */}
+                  <th scope="row" className="sticky left-0 z-[1] bg-surface px-4 py-3 text-[14px] font-semibold whitespace-nowrap shadow-[1px_0_0_var(--color-separator)]">
+                    {u.name.replace(/\s*\(.*$/, "")}
+                    {u.name.includes("(") && <span className="block text-[12px] font-normal text-label-2">{u.name.replace(/^[^(]*\(|\)$/g, "")}</span>}
+                  </th>
                   <td className="px-3 py-3 text-[14px] text-right tabular text-label-2">{arkan.get(u.id) ?? 0}</td>
                   {grid.months.map((m) => {
                     const t = grid.cell.get(`${u.id}|${m}`);

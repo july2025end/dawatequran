@@ -164,15 +164,18 @@ export default function MonthlyReport() {
           <section>
             <h3 className="text-[15px] font-semibold mb-2">By union council</h3>
             <table className="w-full text-[13px] border-collapse">
-              <thead><tr className="text-label-2 text-left"><th className="py-1.5 font-medium">Council</th><th className="py-1.5 font-medium text-right">Circles reporting</th><th className="py-1.5 font-medium text-right">Sessions</th><th className="py-1.5 font-medium text-right">Present</th><th className="py-1.5 font-medium pl-4 w-[30%]">Attendance</th></tr></thead>
+              <thead><tr className="text-label-2 text-left"><th className="py-1.5 font-medium">Council</th><th className="py-1.5 pl-3 font-medium text-right leading-tight">Circles reporting</th><th className="py-1.5 pl-3 font-medium text-right leading-tight">Sessions</th><th className="py-1.5 pl-3 font-medium text-right leading-tight">Present</th><th className="py-1.5 font-medium pl-4 w-[30%]">Attendance</th></tr></thead>
               <tbody>
                 {r.ucRows.map((u) => (
                   <tr key={u.id} className="border-t border-separator">
-                    <td className="py-2 font-medium">{u.name}</td>
-                    <td className="py-2 text-right tabular">{u.reported}/{u.circles}</td>
-                    <td className="py-2 text-right tabular">{u.sessions}</td>
-                    <td className="py-2 text-right tabular">{u.present}</td>
-                    <td className="py-2 pl-4"><span className="flex items-center gap-2"><RateBar rate={u.rate} className="flex-1" /><span className="w-10 text-right tabular font-semibold">{u.rate === null ? "—" : `${u.rate}%`}</span></span></td>
+                    <td className="py-2 font-medium whitespace-nowrap">
+                      {u.name.replace(/\s*\(.*$/, "")}
+                      {u.name.includes("(") && <span className="block text-[11px] font-normal text-label-2">{u.name.replace(/^[^(]*\(|\)$/g, "")}</span>}
+                    </td>
+                    <td className="py-2 pl-3 text-right tabular">{u.reported}/{u.circles}</td>
+                    <td className="py-2 pl-3 text-right tabular">{u.sessions}</td>
+                    <td className="py-2 pl-3 text-right tabular">{u.present}</td>
+                    <td className="py-2 pl-4"><span className="flex items-center gap-2"><RateBar rate={u.rate} className="flex-1 max-sm:hidden" /><span className="w-10 text-right tabular font-semibold">{u.rate === null ? "—" : `${u.rate}%`}</span></span></td>
                   </tr>
                 ))}
               </tbody>
