@@ -33,6 +33,7 @@ const UR: Record<string, string> = {
   "leave": "رخصت",
   // Home
   "Choose your portal": "اپنا پورٹل منتخب کریں",
+  "Install app": "ایپ انسٹال کریں",
   "Attendance Portal": "حاضری پورٹل",
   "Admin Dashboard": "ایڈمن ڈیش بورڈ",
   "Public Portal": "عوامی پورٹل",

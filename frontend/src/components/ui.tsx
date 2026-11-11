@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { BookOpen, CheckCircle2, Info, Moon, Search, Sun, X, XCircle } from "lucide-react";
+import { BookOpen, CheckCircle2, Download, Info, Moon, Search, Sun, X, XCircle } from "lucide-react";
 
 /* ─── Toasts: replace alert() with a calm, non-blocking message ─── */
 type ToastKind = "success" | "error" | "info";
@@ -234,6 +234,25 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
     <button type="button" onClick={toggle} className={`btn btn-secondary btn-icon !min-h-[34px] !min-w-[34px] ${className}`} aria-label="Switch between light and dark mode" title="Light / dark mode">
       <Moon className="theme-icon-dark h-[17px] w-[17px]" aria-hidden />
       <Sun className="theme-icon-light h-[17px] w-[17px]" aria-hidden />
+    </button>
+  );
+}
+
+/* ─── Install: Chrome/Android offer this when the app can be installed (iPhone uses Share → Add to Home Screen) ─── */
+type InstallPrompt = Event & { prompt: () => Promise<void> };
+export function InstallButton({ label, className = "" }: { label: string; className?: string }) {
+  const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
+  useEffect(() => {
+    const ready = (e: Event) => { e.preventDefault(); setPrompt(e as InstallPrompt); };
+    const done = () => setPrompt(null);
+    window.addEventListener("beforeinstallprompt", ready);
+    window.addEventListener("appinstalled", done);
+    return () => { window.removeEventListener("beforeinstallprompt", ready); window.removeEventListener("appinstalled", done); };
+  }, []);
+  if (!prompt) return null;
+  return (
+    <button type="button" onClick={async () => { await prompt.prompt(); setPrompt(null); }} className={`btn btn-secondary !min-h-[34px] !px-3 !text-[14px] ${className}`}>
+      <Download className="h-[16px] w-[16px]" aria-hidden /> {label}
     </button>
   );
 }

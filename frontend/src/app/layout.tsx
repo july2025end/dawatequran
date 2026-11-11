@@ -42,12 +42,16 @@ export const viewport: Viewport = {
 // the toggle only overrides it for the current visit (sessionStorage), and live device changes are followed.
 const themeScript = `(function(){try{localStorage.removeItem("theme");var m=window.matchMedia("(prefers-color-scheme: dark)");var r=document.documentElement;var a=function(){var t=sessionStorage.getItem("theme")||(m.matches?"dark":"light");r.dataset.theme=t;r.style.colorScheme=t;};a();m.addEventListener("change",function(){sessionStorage.removeItem("theme");a();});}catch(e){}})();`;
 
+// Service worker: lets Chrome/Android offer "Install app" (see public/sw.js).
+const swScript = `if("serviceWorker" in navigator)addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").catch(function(){})});`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     // suppressHydrationWarning: data-theme is set by themeScript before React loads.
     <html lang="en" className={`${inter.variable} ${notoUrdu.variable} ${amiriQuran.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: swScript }} />
       </head>
       <body className="min-h-dvh bg-canvas text-label antialiased">
         {children}

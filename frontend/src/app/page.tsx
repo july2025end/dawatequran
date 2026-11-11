@@ -5,7 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookOpen, ChevronRight, ClipboardCheck, Eye, EyeOff, Globe, Lock, ShieldCheck } from "lucide-react";
-import { Sheet, ThemeToggle } from "@/components/ui";
+import { InstallButton, Sheet, ThemeToggle } from "@/components/ui";
 
 // Same passwords as before. They live in the page code, so they keep casual visitors out
 // but are not real security: anyone can read them, and /attendance and /dashboard open directly.
@@ -46,6 +46,7 @@ export default function Home() {
   return (
     <div className="min-h-dvh flex flex-col">
       <div className="flex justify-end gap-2 px-4 sm:px-6 pt-[max(1rem,env(safe-area-inset-top))]">
+        <InstallButton label={t("Install app")} className="me-auto" />
         <LangToggle />
         <ThemeToggle />
       </div>
