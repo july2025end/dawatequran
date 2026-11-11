@@ -138,7 +138,7 @@ export default function RepresentativesDirectory() {
                 type="button"
                 onClick={() => setSelectedUC(uc)}
                 aria-pressed={selectedUC === uc}
-                className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-[14px] font-medium transition-colors ${selectedUC === uc ? "bg-label text-white" : "bg-surface text-label shadow-[0_0_0_0.5px_var(--color-separator)] hover:bg-fill"}`}
+                className={`flex-shrink-0 rounded-full px-3.5 py-1.5 text-[14px] font-medium transition-colors ${selectedUC === uc ? "bg-label text-canvas" : "bg-surface text-label shadow-[0_0_0_0.5px_var(--color-separator)] hover:bg-fill"}`}
               >
                 {uc === "All" ? t("All councils") : uc}
               </button>

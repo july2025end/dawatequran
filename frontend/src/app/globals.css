@@ -377,8 +377,9 @@ html[lang="ur"] body {
   line-height: 1.95;
   letter-spacing: 0;
 }
-/* Nastaliq needs room above and below; tighten only the large headings. */
-html[lang="ur"] h1, html[lang="ur"] h2, html[lang="ur"] h3 { line-height: 1.6; letter-spacing: 0; }
+/* Nastaliq rises and drops far beyond the letter size: headings need about 2x their size or wrapped lines collide. */
+html[lang="ur"] h1, html[lang="ur"] h2, html[lang="ur"] h3 { line-height: 2; letter-spacing: 0; }
+html[lang="ur"] h1 { line-height: 2.4; }
 html[lang="ur"] .form-input { font-family: inherit; }
 /* Direction-sensitive icons point the other way in right-to-left. */
 [dir="rtl"] .lucide-chevron-right, [dir="rtl"] .lucide-chevron-left,

@@ -179,10 +179,16 @@ export function BiText({ text, className = "" }: { text: string | null | undefin
   return (
     <span className={className}>
       {text.split(ARABIC_RUN).map((part, i) =>
-        i % 2 ? <bdi key={i} dir="rtl" className="font-urdu-inline">{part}</bdi> : <span key={i}>{part}</span>,
+        i % 2 ? <bdi key={i} dir="rtl" className="font-urdu-inline">{part}</bdi> : <LtrRun key={i} text={part} />,
       )}
     </span>
   );
+}
+
+// English inside Urdu text keeps its own direction, so "(Praise of the Lord)" doesn't get its brackets flipped when it wraps.
+function LtrRun({ text }: { text: string }) {
+  const [, lead, core, trail] = text.match(/^(\s*)([\s\S]*?)(\s*)$/)!;
+  return <>{lead}{core && <bdi dir="ltr">{core}</bdi>}{trail}</>;
 }
 
 /** "الفاتحة (Al-Fatiha) 1-7" → "Al-Fatiha 1–7" with the Arabic surah name in the Quran face. */

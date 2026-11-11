@@ -620,7 +620,8 @@ export default function TopicPage(props: { params: Promise<{ id: string }> }) {
           {ayaat.length > 0 && (
             <>
               <button onClick={handlePlayAll} className={`btn btn-sm ${isPlaying ? "btn-secondary" : "btn-primary"}`}>
-                {isPlaying ? <><Pause className="w-4 h-4" /> {t("Stop")}</> : <><Play className="w-4 h-4" /> {t("Play all")}</>}
+                {/* Phones: icon only, so the app name beside it isn't cut off. */}
+                {isPlaying ? <><Pause className="w-4 h-4" aria-hidden /> <span className="max-sm:sr-only">{t("Stop")}</span></> : <><Play className="w-4 h-4" aria-hidden /> <span className="max-sm:sr-only">{t("Play all")}</span></>}
               </button>
               <button
                 onClick={() => { const m = !isMuted; setIsMuted(m); if (audioRef.current) audioRef.current.muted = m; }}
