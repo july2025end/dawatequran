@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { BookOpen, CheckCircle2, Download, Info, Moon, Search, Sun, X, XCircle } from "lucide-react";
+import { BookOpen, BookOpenText, CheckCircle2, Download, Info, Moon, Search, Sun, X, XCircle } from "lucide-react";
 
 /* ─── Toasts: replace alert() with a calm, non-blocking message ─── */
 type ToastKind = "success" | "error" | "info";
@@ -246,6 +246,17 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
 
 /* ─── Install: Chrome/Android offer this when the app can be installed (iPhone uses Share → Add to Home Screen) ─── */
 type InstallPrompt = Event & { prompt: () => Promise<void> };
+/** Top-bar button to the QuranGo reader, served at /quran on this domain (see next.config rewrites).
+ *  A plain <a>: /quran is a separate app, so it is a full page load, not client routing. */
+export function QuranLink({ label, className = "" }: { label: string; className?: string }) {
+  return (
+    <a href="/quran" className={`btn btn-secondary !min-h-[34px] !px-3 !text-[14px] ${className}`}>
+      {/* icon drops on very small phones so the brand name beside it stays whole */}
+      <BookOpenText className="hidden h-[16px] w-[16px] min-[380px]:block" aria-hidden /> {label}
+    </a>
+  );
+}
+
 export function InstallButton({ label, className = "" }: { label: string; className?: string }) {
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
   useEffect(() => {

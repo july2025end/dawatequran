@@ -34,6 +34,7 @@ const UR: Record<string, string> = {
   // Home
   "Choose your portal": "اپنا پورٹل منتخب کریں",
   "Install app": "ایپ انسٹال کریں",
+  "Quran": "قرآن",
   "Attendance Portal": "حاضری پورٹل",
   "Admin Dashboard": "ایڈمن ڈیش بورڈ",
   "Public Portal": "عوامی پورٹل",
@@ -52,7 +53,6 @@ const UR: Record<string, string> = {
   // Public portal
   "Syllabus": "نصاب",
   "Upcoming": "آئندہ",
-  "Find a circle": "حلقہ تلاش کریں",
   "Find your circle": "اپنا حلقہ تلاش کریں",
   "Weekly Quran circles in every union council. Follow the syllabus, read each lesson with translation and tafseer, and find the circle nearest you.":
     "ہر یونین کونسل میں ہفتہ وار قرآن حلقے۔ نصاب کے ساتھ چلیں، ہر سبق ترجمہ اور تفسیر کے ساتھ پڑھیں، اور اپنے قریب ترین حلقہ تلاش کریں۔",

@@ -1,7 +1,7 @@
 "use client";
 
 import { LangToggle, useLangDocument, useT } from "@/lib/i18n";
-import { BiText, Brand, QuranRef, ThemeToggle } from "@/components/ui";
+import { BiText, Brand, QuranLink, QuranRef, ThemeToggle } from "@/components/ui";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, BookOpen, CalendarDays, ChevronRight, MapPin, Users } from "lucide-react";
@@ -56,10 +56,10 @@ export default function PublicPortal() {
       <header className="sticky top-0 z-40 material border-b border-separator pt-[env(safe-area-inset-top)]">
         <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-12 flex items-center justify-between">
           <Brand size="sm" href="/" name={t("Dawat-e-Quran")} />
-          <nav className="flex items-center gap-4 sm:gap-5 text-[13px] text-label-2">
+          <nav className="flex items-center gap-2 sm:gap-5 text-[13px] text-label-2">
             <a href="#syllabus" className="hover:text-label hidden sm:inline">{t("Syllabus")}</a>
             <a href="#upcoming" className="hover:text-label hidden sm:inline">{t("Upcoming")}</a>
-            <Link href="/portal/representatives" className="hover:text-label">{t("Find a circle")}</Link>
+            <QuranLink label={t("Quran")} />
             <LangToggle />
             <ThemeToggle />
           </nav>
