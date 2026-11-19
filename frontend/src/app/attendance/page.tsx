@@ -289,7 +289,7 @@ export default function AttendancePage() {
     if (!circleId) { toast(t("Please choose the member's circle."), "error"); return; }
     try {
       const { data, error } = await supabase.from('participants')
-        .insert({ full_name: newAttendee.full_name.trim(), phone: newAttendee.phone, remarks: newAttendee.remarks, type: isIjtima ? 'haazir_arkan' : newAttendee.type, circle_id: circleId, is_active: true })
+        .insert({ full_name: newAttendee.full_name.trim(), phone: newAttendee.phone, remarks: newAttendee.remarks, type: isIjtima ? 'haazir_arkan' : 'aam_afraad', circle_id: circleId, is_active: true })
         .select().single();
       if (error) throw error;
       setParticipants([...participants, { ...data, status: 'present' }]);
@@ -399,7 +399,7 @@ export default function AttendancePage() {
           full_name: newEditAttendee.full_name.trim(),
           phone: newEditAttendee.phone,
           remarks: newEditAttendee.remarks,
-          type: isIjtima ? 'haazir_arkan' : newEditAttendee.type,
+          type: isIjtima ? 'haazir_arkan' : 'aam_afraad',
           circle_id: circleId,
           is_active: true
         })
@@ -719,11 +719,7 @@ export default function AttendancePage() {
                 {currentCircles.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </label>
-          ) : (
-            <div><span className="form-label">{t("Member type")}</span>
-              <Segmented label="Member type" value={newAttendee.type} onChange={(v) => setNewAttendee({ ...newAttendee, type: v })} options={[{ value: "aam_afraad", label: t("Public") }, { value: "haazir_arkan", label: t("Arkan") }]} />
-            </div>
-          )}
+          ) : null}
         </div>
       </Sheet>
 
@@ -801,12 +797,7 @@ export default function AttendancePage() {
                       <option value="">{t("Member’s circle")}</option>
                       {currentCircles.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
-                  ) : (
-                    <select className="form-input" value={newEditAttendee.type} onChange={(e) => setNewEditAttendee({ ...newEditAttendee, type: e.target.value })}>
-                      <option value="aam_afraad">{t("Public (Aam Afraad)")}</option>
-                      <option value="haazir_arkan">{t("Arkan (Haazir Arkan)")}</option>
-                    </select>
-                  )}
+                  ) : null}
                   <button type="button" className="btn btn-primary" disabled={addingEditAttendee} onClick={handleAddAttendeeInEditModal}>{t("Add and mark present")}</button>
                 </div>
               )}
